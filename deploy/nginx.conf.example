@@ -1,0 +1,49 @@
+# Copie para /etc/nginx/sites-available/conexao-esporte, crie o link
+# simbólico em sites-enabled e recarregue o Nginx (ver DEPLOY.md).
+#
+# Este servidor já tem outro app usando as portas 80/443 e ainda não tem
+# domínio definido para o Conexão Esporte — então este bloco sobe TEMPORARIAMENTE
+# numa porta alternativa (8080), acessível em http://SEU_IP:8080 enquanto isso.
+#
+# Quando o domínio estiver pronto: troque "listen 8080;" por
+# "listen 443 ssl;" (+ "listen 80;" para o redirect), defina
+# "server_name esporte.seudominio.com.br;" e rode
+# "sudo certbot --nginx -d esporte.seudominio.com.br". Isso convive numa boa
+# com o outro app que já está em 80/443 — o Nginx roteia por Host header
+# (nome de domínio), não por porta; cada server_name pega sua fatia.
+
+server {
+    listen 8080;
+    listen [::]:8080;
+    server_name _;
+
+    root /opt/conexao-esporte/frontend/dist;
+    index index.html;
+
+    # API — proxy para o backend Gunicorn/Uvicorn, que escuta só em 127.0.0.1:8010.
+    location /api/ {
+        # Rejeita uploads grandes aqui mesmo, antes de gastar memória do
+        # backend lendo o corpo da requisição. UPLOAD_MAX_SIZE_MB no backend
+        # é 10MB por arquivo — 12MB dá folga para o overhead do multipart.
+        client_max_body_size 12m;
+
+        proxy_pass http://127.0.0.1:8010;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Assets com hash no nome (Vite) — cache longo e imutável.
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # SPA: qualquer rota desconhecida cai no index.html (React Router).
+    location / {
+        try_files $uri /index.html;
+    }
+}

@@ -43,3 +43,10 @@ class UsuarioRepository:
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)
+
+    def atualizar_senha(self, usuario_id: UUID, novo_senha_hash: str) -> None:
+        m = self.db.get(UsuarioModel, usuario_id)
+        if not m:
+            return
+        m.senha_hash = novo_senha_hash
+        self.db.commit()

@@ -9,7 +9,8 @@ from app.infrastructure.database.models import PoloModel
 
 
 def _to_entity(m: PoloModel) -> Polo:
-    return Polo(id=m.id, nome=m.nome, endereco=m.endereco, status=m.status,
+    return Polo(id=m.id, nome=m.nome, codigo=m.codigo, endereco=m.endereco,
+                horario_funcionamento=m.horario_funcionamento, status=m.status,
                 gestor_responsavel_id=m.gestor_responsavel_id)
 
 
@@ -24,8 +25,13 @@ class PoloRepository:
         m = self.db.get(PoloModel, polo_id)
         return _to_entity(m) if m else None
 
+    def buscar_por_codigo(self, codigo: str) -> Polo | None:
+        m = self.db.scalar(select(PoloModel).where(PoloModel.codigo == codigo))
+        return _to_entity(m) if m else None
+
     def criar(self, polo: Polo) -> Polo:
-        m = PoloModel(nome=polo.nome, endereco=polo.endereco, status=polo.status,
+        m = PoloModel(nome=polo.nome, codigo=polo.codigo, endereco=polo.endereco,
+                      horario_funcionamento=polo.horario_funcionamento, status=polo.status,
                       gestor_responsavel_id=polo.gestor_responsavel_id)
         self.db.add(m)
         self.db.commit()

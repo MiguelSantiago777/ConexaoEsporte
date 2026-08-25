@@ -1,7 +1,85 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-brand-light text-gray-900 antialiased;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  @apply bg-brand/20;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+/* Transição de página: dispara a cada troca de rota (ver AppLayout, que
+   remonta o container com key={pathname}) — o conteúdo entra com um leve
+   deslize lateral + fade, dando a sensação de "vir do lado". */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-page-in {
+  animation: page-in 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Entrada em cascata para listas de cartões (ex.: StatTiles do dashboard,
+   os cards de cada tela) — aplique animate-fade-in-up em cada item e
+   defina --stagger-index via style inline; cada item atrasa um pouco mais
+   que o anterior. Ver frontend/src/lib/animation.ts (staggerStyle). */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fade-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger-index, 0) * 110ms);
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
 }

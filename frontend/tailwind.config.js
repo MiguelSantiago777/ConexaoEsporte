@@ -5,9 +5,14 @@ export default {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#1e6f3c",   // verde esporte
-          dark: "#154f2b",
-          light: "#eaf5ee",
+          DEFAULT: "#00417d",
+          dark: "#00325f",
+          light: "#e8f1f9",
+        },
+        accent: {
+          DEFAULT: "#fcba27",
+          dark: "#8a6008",
+          light: "#fef6e2",
         },
       },
     },

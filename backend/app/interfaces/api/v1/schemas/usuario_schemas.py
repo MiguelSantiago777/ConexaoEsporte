@@ -9,7 +9,7 @@ from app.domain.enums import PerfilUsuario
 class UsuarioCreateRequest(BaseModel):
     nome: str = Field(..., min_length=2, max_length=150)
     email: EmailStr
-    senha: str = Field(..., min_length=6)
+    senha: str = Field(..., min_length=8)
     perfil: PerfilUsuario
     polo_id: UUID | None = Field(
         default=None, description="Obrigatório quando perfil = GESTOR_POLO ou PROFESSOR."

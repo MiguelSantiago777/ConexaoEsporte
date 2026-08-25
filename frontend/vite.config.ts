@@ -12,6 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true, // escuta em todas as interfaces de rede, não só localhost
     proxy: {
       // Encaminha /api para o backend FastAPI em dev, evitando CORS.
       "/api": {

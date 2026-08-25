@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
+from app.core.rate_limit import limiter
 from app.core.security import hash_password
 from app.domain.enums import PerfilUsuario
 from app.infrastructure.database.models import (
@@ -18,6 +19,15 @@ from app.infrastructure.database.models import (
     UsuarioModel,
 )
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def _resetar_rate_limiter():
+    """O rate limiter é um contador global em memória (ver app/core/rate_limit.py)
+    — sem isso, os testes compartilhariam o mesmo contador entre si e um teste
+    esbarraria no limite por causa de chamadas de login de outro teste."""
+    limiter.reset()
+    yield
 
 # SQLite em memória compartilhada entre conexões
 engine = create_engine(

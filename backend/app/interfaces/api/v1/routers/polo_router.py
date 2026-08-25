@@ -37,7 +37,8 @@ def listar_polos(usuario: CurrentUser, db: DbSession) -> list[PoloResponse]:
 def criar_polo(body: PoloCreateRequest, usuario: SomenteMaster, db: DbSession) -> PoloResponse:
     service = PoloService(db)
     criado = service.criar(
-        nome=body.nome, endereco=body.endereco, gestor_responsavel_id=body.gestor_responsavel_id
+        nome=body.nome, codigo=body.codigo, endereco=body.endereco,
+        horario_funcionamento=body.horario_funcionamento, gestor_responsavel_id=body.gestor_responsavel_id,
     )
     return PoloResponse.model_validate(criado)
 

@@ -1,16 +1,12 @@
 """Rotas de Usuários (funcionários). Tag Swagger: 'Usuários'."""
-from uuid import UUID
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.application.usuario.service import UsuarioService
-from app.core.dependencies import DbSession, require_perfis
+from app.core.dependencies import DbSession, UsuarioAutenticado, require_perfis
 from app.domain.enums import PerfilUsuario
-from app.domain.shared.exceptions import RegraDeNegocioViolada
 from app.interfaces.api.v1.schemas.usuario_schemas import UsuarioCreateRequest, UsuarioResponse
-from fastapi import Depends
-from typing import Annotated
-from app.core.dependencies import UsuarioAutenticado
 
 router = APIRouter(prefix="/usuarios", tags=["Usuários"])
 
@@ -30,13 +26,10 @@ MasterOuGestor = Annotated[
 )
 def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSession) -> UsuarioResponse:
     service = UsuarioService(db)
-    try:
-        criado = service.criar_usuario(
-            nome=body.nome, email=body.email, senha=body.senha, perfil=body.perfil,
-            polo_id=body.polo_id, criado_por_perfil=usuario.perfil, criado_por_polo_id=usuario.polo_id,
-        )
-    except RegraDeNegocioViolada as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    criado = service.criar_usuario(
+        nome=body.nome, email=body.email, senha=body.senha, perfil=body.perfil,
+        polo_id=body.polo_id, criado_por_perfil=usuario.perfil, criado_por_polo_id=usuario.polo_id,
+    )
     return UsuarioResponse.model_validate(criado)
 
 

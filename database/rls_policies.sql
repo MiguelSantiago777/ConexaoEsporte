@@ -1,6 +1,17 @@
 -- =====================================================================
 -- CONEXÃO ESPORTE — Row Level Security (RLS) para Supabase
 -- =====================================================================
+-- ⚠️  NÃO EXECUTE ESTE ARQUIVO NO SERVIDOR POSTGRES AUTOGERENCIADO. ⚠️
+-- Estas políticas dependem de `request.jwt.claims`, um valor de sessão que
+-- só existe quando as conexões passam pelo PostgREST do Supabase. Numa
+-- instalação própria, o backend FastAPI conecta direto via SQLAlchemy e
+-- nunca define esse valor — então toda policy abaixo avaliaria para FALSE
+-- e, se o papel de conexão do app não for o dono das tabelas, a aplicação
+-- ficaria travada (nenhuma linha visível/gravável). O RBAC por polo/turma
+-- já é imposto inteiramente pelo backend em app/core/dependencies.py.
+-- Este arquivo fica no repositório apenas como referência caso o projeto
+-- volte a usar Supabase no futuro.
+-- =====================================================================
 -- OBSERVAÇÃO IMPORTANTE SOBRE ARQUITETURA:
 -- O backend FastAPI já impõe o RBAC por polo/turma via middleware
 -- (app/core/dependencies.py). As políticas abaixo são uma CAMADA EXTRA
@@ -29,13 +40,14 @@ $$ LANGUAGE sql STABLE;
 -- ---------------------------------------------------------------------
 -- Habilitar RLS
 -- ---------------------------------------------------------------------
-ALTER TABLE polos            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE usuarios         ENABLE ROW LEVEL SECURITY;
-ALTER TABLE turmas           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE beneficiarios    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE frequencias      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE relatorios_aula  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE modalidades      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE polos                  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turmas                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beneficiarios          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beneficiario_documentos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE frequencias            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE relatorios_aula        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE modalidades            ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------
 -- POLOS
@@ -85,21 +97,57 @@ CREATE POLICY beneficiarios_master_all ON beneficiarios
 CREATE POLICY beneficiarios_gestor_all ON beneficiarios
     FOR ALL USING (
         auth_perfil() = 'GESTOR_POLO'
-        AND (turma_id IS NULL OR turma_id IN (
-            SELECT id FROM turmas WHERE polo_id = auth_polo_id()
-        ))
+        AND (
+            polo_id = auth_polo_id()
+            OR (polo_id IS NULL AND (turma_id IS NULL OR turma_id IN (
+                SELECT id FROM turmas WHERE polo_id = auth_polo_id()
+            )))
+        )
     )
     WITH CHECK (
         auth_perfil() = 'GESTOR_POLO'
-        AND (turma_id IS NULL OR turma_id IN (
-            SELECT id FROM turmas WHERE polo_id = auth_polo_id()
-        ))
+        AND (
+            polo_id = auth_polo_id()
+            OR (polo_id IS NULL AND (turma_id IS NULL OR turma_id IN (
+                SELECT id FROM turmas WHERE polo_id = auth_polo_id()
+            )))
+        )
     );
 
 CREATE POLICY beneficiarios_professor_read ON beneficiarios
     FOR SELECT USING (
         auth_perfil() = 'PROFESSOR'
         AND turma_id IN (SELECT id FROM turmas WHERE professor_id = auth_user_id())
+    );
+
+-- ---------------------------------------------------------------------
+-- DOCUMENTOS DE BENEFICIÁRIOS
+--   Mesma regra de acesso do beneficiário dono do documento.
+--   MASTER: tudo | GESTOR_POLO: documentos de beneficiários do seu polo.
+-- ---------------------------------------------------------------------
+CREATE POLICY beneficiario_documentos_master_all ON beneficiario_documentos
+    FOR ALL USING (auth_perfil() = 'MASTER') WITH CHECK (auth_perfil() = 'MASTER');
+
+CREATE POLICY beneficiario_documentos_gestor_all ON beneficiario_documentos
+    FOR ALL USING (
+        auth_perfil() = 'GESTOR_POLO'
+        AND beneficiario_id IN (
+            SELECT id FROM beneficiarios WHERE
+                polo_id = auth_polo_id()
+                OR (polo_id IS NULL AND (turma_id IS NULL OR turma_id IN (
+                    SELECT id FROM turmas WHERE polo_id = auth_polo_id()
+                )))
+        )
+    )
+    WITH CHECK (
+        auth_perfil() = 'GESTOR_POLO'
+        AND beneficiario_id IN (
+            SELECT id FROM beneficiarios WHERE
+                polo_id = auth_polo_id()
+                OR (polo_id IS NULL AND (turma_id IS NULL OR turma_id IN (
+                    SELECT id FROM turmas WHERE polo_id = auth_polo_id()
+                )))
+        )
     );
 
 -- ---------------------------------------------------------------------

@@ -14,5 +14,8 @@ dist/
 # Env
 .env
 
+# Uploads (documentos de beneficiários — nunca versionar)
+backend/uploads/
+
 # OS
 .DS_Store

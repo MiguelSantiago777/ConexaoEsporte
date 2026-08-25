@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.domain.enums import PerfilUsuario
-from app.domain.shared.exceptions import RegraDeNegocioViolada
+from app.domain.shared.exceptions import RecursoJaExiste, RegraDeNegocioViolada
 from app.domain.usuario.entities import Usuario
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
@@ -19,7 +19,7 @@ class UsuarioService:
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
     ) -> Usuario:
         if self.repo.buscar_por_email(email):
-            raise RegraDeNegocioViolada("Já existe um usuário com este email.")
+            raise RecursoJaExiste("Já existe um usuário com este email.")
 
         # Regra: GESTOR_POLO só pode cadastrar PROFESSOR, e apenas no próprio polo.
         if criado_por_perfil == PerfilUsuario.GESTOR_POLO:

@@ -6,7 +6,9 @@ from uuid import UUID
 class Polo:
     id: UUID | None
     nome: str
+    codigo: str | None
     endereco: str | None
+    horario_funcionamento: str | None
     status: str  # "ATIVO" | "INATIVO"
     gestor_responsavel_id: UUID | None
 

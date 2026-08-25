@@ -24,3 +24,7 @@ export async function fetchMe(): Promise<UsuarioLogado> {
   const { data } = await api.get<UsuarioLogado>("/auth/me");
   return data;
 }
+
+export async function alterarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
+  await api.patch("/auth/senha", { senha_atual: senhaAtual, nova_senha: novaSenha });
+}

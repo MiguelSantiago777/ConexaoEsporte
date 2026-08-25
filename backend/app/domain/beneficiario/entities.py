@@ -4,7 +4,7 @@ sistema — nunca "aluno"). Representa a pessoa atendida pelos projetos
 esportivos do Conexão Esporte.
 """
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 
@@ -14,12 +14,17 @@ class Beneficiario:
     nome_completo: str
     data_nascimento: date
     documento: str
+    polo_id: UUID | None
     responsavel_legal_nome: str | None
-    responsavel_legal_contato: str | None
-    contato: str | None
+    responsavel_legal_data_nascimento: date | None
+    responsavel_legal_tipo_relacao: str | None
+    responsavel_legal_telefone_1: str | None
+    responsavel_legal_telefone_2: str | None
+    responsavel_legal_email: str | None
+    responsavel_legal_rede_social: str | None
     endereco: str | None
-    turma_id: UUID | None
     observacoes_medicas: str | None
+    autoriza_whatsapp: bool = False
     ativo: bool = True
 
     def __post_init__(self) -> None:
@@ -44,3 +49,29 @@ class Beneficiario:
         """Regra de negócio: beneficiário menor de idade precisa de responsável legal."""
         if self.eh_menor_de_idade and not (self.responsavel_legal_nome and self.responsavel_legal_nome.strip()):
             raise ValueError("Beneficiário menor de idade requer nome do responsável legal.")
+
+
+# Tipos de documento aceitos no upload de anexos do beneficiário.
+TIPOS_DOCUMENTO_BENEFICIARIO = (
+    "certidao_nascimento_ou_identidade",
+    "identidade_responsavel",
+    "comprovante_residencia",
+    "comprovante_escolar",
+)
+
+
+@dataclass
+class BeneficiarioDocumento:
+    id: UUID | None
+    beneficiario_id: UUID
+    tipo: str
+    nome_arquivo: str
+    caminho_arquivo: str
+    content_type: str | None
+    tamanho_bytes: int | None
+    enviado_por_id: UUID | None
+    criado_em: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.tipo not in TIPOS_DOCUMENTO_BENEFICIARIO:
+            raise ValueError(f"Tipo de documento inválido: {self.tipo}")

@@ -3,10 +3,13 @@ import { ProtectedRoute } from "./ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { DashboardPage } from "@/features/auth/pages/DashboardPage";
+import { AlterarSenhaPage } from "@/features/auth/pages/AlterarSenhaPage";
 import { PolosPage } from "@/features/polos/PolosPage";
 import { ModalidadesPage } from "@/features/modalidades/ModalidadesPage";
 import { TurmasPage } from "@/features/turmas/TurmasPage";
 import { BeneficiariosPage } from "@/features/beneficiarios/BeneficiariosPage";
+import { ProfessoresPage } from "@/features/professores/ProfessoresPage";
+import { AutorizacaoImagemPage } from "@/features/beneficiarios/AutorizacaoImagemPage";
 import { FrequenciaPage } from "@/features/frequencia/FrequenciaPage";
 import { RelatoriosPage } from "@/features/relatorios/RelatoriosPage";
 
@@ -20,6 +23,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: "/", element: <DashboardPage /> },
+          { path: "/alterar-senha", element: <AlterarSenhaPage /> },
           // MASTER: polos
           {
             element: <ProtectedRoute perfisPermitidos={["MASTER"]} />,
@@ -32,6 +36,8 @@ export const router = createBrowserRouter([
               { path: "/modalidades", element: <ModalidadesPage /> },
               { path: "/turmas", element: <TurmasPage /> },
               { path: "/beneficiarios", element: <BeneficiariosPage /> },
+              { path: "/beneficiarios/:id/autorizacao-imagem", element: <AutorizacaoImagemPage /> },
+              { path: "/professores", element: <ProfessoresPage /> },
             ],
           },
           // PROFESSOR

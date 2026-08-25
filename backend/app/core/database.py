@@ -1,5 +1,6 @@
 """
-Engine e sessão do SQLAlchemy apontando para o Postgres do Supabase.
+Engine e sessão do SQLAlchemy apontando para o PostgreSQL configurado em
+DATABASE_URL (servidor próprio, sem dependência de serviços de terceiros).
 """
 from collections.abc import Generator
 

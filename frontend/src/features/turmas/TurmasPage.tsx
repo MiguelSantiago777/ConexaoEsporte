@@ -4,16 +4,25 @@ import type { Modalidade, Polo, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Badge } from "@/components/ui/Badge";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/toast/ToastContext";
+import { staggerStyle } from "@/lib/animation";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
 
 export function TurmasPage() {
   const { usuario } = useAuth();
+  const toast = useToast();
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [polos, setPolos] = useState<Polo[]>([]);
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
     polo_id: "", modalidade_id: "", horario_inicio: "", horario_fim: "",
     dias_semana: [] as string[], limite_vagas: 20,
@@ -33,7 +42,9 @@ export function TurmasPage() {
       setForm((f) => ({ ...f, polo_id: usuario.polo_id! }));
     }
   }
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar().finally(() => setCarregando(false));
+  }, []);
 
   function toggleDia(dia: string) {
     setForm((f) => ({
@@ -44,51 +55,62 @@ export function TurmasPage() {
     }));
   }
 
+  function poloNome(id: string) {
+    return polos.find((p) => p.id === id)?.nome ?? "—";
+  }
+  function modalidadeNome(id: string) {
+    return modalidades.find((m) => m.id === id)?.nome ?? "—";
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setErro(null);
+    setSalvando(true);
     try {
       await api.post("/turmas", { ...form, limite_vagas: Number(form.limite_vagas) });
       setForm({ polo_id: usuario?.polo_id ?? "", modalidade_id: "", horario_inicio: "", horario_fim: "", dias_semana: [], limite_vagas: 20 });
+      toast.success("Turma cadastrada com sucesso.");
       carregar();
     } catch (err: any) {
-      setErro(err?.response?.data?.detail ?? "Erro ao cadastrar turma.");
+      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar turma.");
+    } finally {
+      setSalvando(false);
     }
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Turmas</h1>
-      <Card title="Cadastrar turma">
-        {erro && <div className="bg-red-50 text-red-700 text-sm p-2 rounded mb-4">{erro}</div>}
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-          <label className="block">
-            <span className="block text-sm font-medium text-gray-700 mb-1">Polo</span>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md" value={form.polo_id}
-              onChange={(e) => setForm({ ...form, polo_id: e.target.value })}
-              disabled={usuario?.perfil === "GESTOR_POLO"} required>
-              <option value="">— Selecione —</option>
-              {polos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="block text-sm font-medium text-gray-700 mb-1">Modalidade</span>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md" value={form.modalidade_id}
-              onChange={(e) => setForm({ ...form, modalidade_id: e.target.value })} required>
-              <option value="">— Selecione —</option>
-              {modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-            </select>
-          </label>
+      <PageHeader title="Turmas" subtitle="Turmas de cada modalidade oferecidas por polo." />
+      <Card title="Cadastrar turma" className="animate-fade-in-up" style={staggerStyle(0)}>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Select
+            label="Polo"
+            value={form.polo_id}
+            onChange={(e) => setForm({ ...form, polo_id: e.target.value })}
+            disabled={usuario?.perfil === "GESTOR_POLO"}
+            required
+          >
+            <option value="">— Selecione —</option>
+            {polos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </Select>
+          <Select
+            label="Modalidade"
+            value={form.modalidade_id}
+            onChange={(e) => setForm({ ...form, modalidade_id: e.target.value })}
+            required
+          >
+            <option value="">— Selecione —</option>
+            {modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </Select>
           <Input label="Horário início" type="time" value={form.horario_inicio}
             onChange={(e) => setForm({ ...form, horario_inicio: e.target.value })} required />
           <Input label="Horário fim" type="time" value={form.horario_fim}
             onChange={(e) => setForm({ ...form, horario_fim: e.target.value })} required />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <span className="block text-sm font-medium text-gray-700 mb-1">Dias da semana</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {DIAS.map((d) => (
                 <button type="button" key={d} onClick={() => toggleDia(d)}
-                  className={`px-3 py-1 rounded text-sm border ${form.dias_semana.includes(d) ? "bg-brand text-white border-brand" : "bg-white border-gray-300"}`}>
+                  className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${form.dias_semana.includes(d) ? "bg-accent text-brand-dark border-accent" : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"}`}>
                   {d}
                 </button>
               ))}
@@ -96,24 +118,49 @@ export function TurmasPage() {
           </div>
           <Input label="Limite de vagas" type="number" min={1} value={form.limite_vagas}
             onChange={(e) => setForm({ ...form, limite_vagas: Number(e.target.value) })} required />
-          <div className="col-span-2"><Button type="submit">Cadastrar turma</Button></div>
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={salvando}>{salvando ? "Cadastrando…" : "Cadastrar turma"}</Button>
+          </div>
         </form>
       </Card>
-      <Card title={`Turmas (${turmas.length})`}>
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-gray-500 border-b">
-            <th className="py-2">Horário</th><th>Dias</th><th>Vagas</th><th>Professor</th></tr></thead>
-          <tbody>
-            {turmas.map((t) => (
-              <tr key={t.id} className="border-b last:border-0">
-                <td className="py-2">{t.horario_inicio}–{t.horario_fim}</td>
-                <td>{t.dias_semana.join(", ")}</td>
-                <td>{t.vagas_ocupadas}/{t.limite_vagas}</td>
-                <td>{t.professor_id ? t.professor_id.slice(0, 8) : <span className="text-gray-400">sem professor</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card
+        title="Turmas"
+        actions={<Badge variant="accent">{turmas.length}</Badge>}
+        className="animate-fade-in-up"
+        style={staggerStyle(1)}
+      >
+        {carregando ? (
+          <Spinner label="Carregando turmas…" />
+        ) : turmas.length === 0 ? (
+          <EmptyState message="Nenhuma turma cadastrada ainda." />
+        ) : (
+          <div className="overflow-x-auto -mx-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                  <th className="py-2.5 px-6">Polo</th>
+                  <th className="px-3">Modalidade</th>
+                  <th className="px-3">Horário</th>
+                  <th className="px-3">Dias</th>
+                  <th className="px-3">Vagas</th>
+                  <th className="px-3">Professor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {turmas.map((t) => (
+                  <tr key={t.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
+                    <td className="py-2.5 px-6 font-medium text-gray-800">{poloNome(t.polo_id)}</td>
+                    <td className="px-3 text-gray-600">{modalidadeNome(t.modalidade_id)}</td>
+                    <td className="px-3 text-gray-600">{t.horario_inicio}–{t.horario_fim}</td>
+                    <td className="px-3 text-gray-600">{t.dias_semana.join(", ")}</td>
+                    <td className="px-3"><Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge></td>
+                    <td className="px-3">{t.professor_id ? t.professor_id.slice(0, 8) : <span className="text-gray-400">sem professor</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -16,7 +16,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,11 @@ from app.core.database import get_db
 from app.core.security import decode_token
 from app.domain.enums import PerfilUsuario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# Esquema "Bearer" puro: no Swagger, o botão Authorize pede só o token JWT
+# colado (sem os campos de client_id/client_secret do fluxo OAuth2 padrão).
+# O login em si continua em POST /auth/login (form email/senha), que emite
+# o token a ser colado aqui.
+bearer_scheme = HTTPBearer(auto_error=True, description="Cole o access_token retornado por POST /auth/login.")
 
 
 @dataclass
@@ -34,14 +38,16 @@ class UsuarioAutenticado:
     polo_id: UUID | None  # relevante para GESTOR_POLO
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> UsuarioAutenticado:
+def get_current_user(
+    auth: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+) -> UsuarioAutenticado:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não foi possível validar as credenciais.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = decode_token(token)
+        payload = decode_token(auth.credentials)
         if payload.get("type") != "access":
             raise credentials_exception
         usuario_id = payload.get("sub")

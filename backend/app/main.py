@@ -6,14 +6,18 @@ Swagger/OpenAPI:
 - ReDoc em                   /redoc
 - JSON do schema OpenAPI em  /openapi.json
 
-A autenticação Bearer JWT é reconhecida automaticamente pelo Swagger a partir
-do OAuth2PasswordBearer (tokenUrl=/api/v1/auth/login). Basta clicar em
-**Authorize** e colar o access token obtido no login.
+A autenticação usa Bearer JWT puro (esquema HTTPBearer): no Swagger, basta
+clicar em **Authorize** e colar o `access_token` obtido em POST /auth/login
+— sem campos de client_id/client_secret do fluxo OAuth2 completo.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
+from app.core.exception_handlers import registrar_exception_handlers
+from app.core.rate_limit import limiter
 from app.interfaces.api.v1.routers import (
     auth_router,
     beneficiario_router,
@@ -53,13 +57,19 @@ API do sistema **Conexão Esporte** — plataforma de gestão de projetos esport
 3. Clique em **Authorize** (cadeado, topo direito) e cole o token.
 """
 
+# Em produção, o Swagger/ReDoc/openapi.json ficam desligados por padrão para
+# reduzir a superfície exposta publicamente (a API continua funcionando
+# normalmente; só a documentação interativa fica indisponível).
+_docs_habilitados = not settings.is_production
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
     description=description,
     openapi_tags=tags_metadata,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _docs_habilitados else None,
+    redoc_url="/redoc" if _docs_habilitados else None,
+    openapi_url="/openapi.json" if _docs_habilitados else None,
     contact={"name": "Equipe Conexão Esporte"},
 )
 
@@ -70,6 +80,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting (login e troca de senha) — ver app/core/rate_limit.py.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Mapeia toda exceção de domínio para o status HTTP correto — ver
+# app/core/exception_handlers.py. Nenhum router precisa de try/except
+# manual para isso.
+registrar_exception_handlers(app)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Cabeçalhos de segurança padrão, aplicados a toda resposta.
+
+    HSTS só faz sentido quando a conexão já é HTTPS (o Nginx da produção
+    cuida disso — ver DEPLOY.md); em HTTP puro o header é inofensivo mas
+    inútil, então fica de fora até a migração para domínio+TLS.
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 
 API = settings.API_V1_PREFIX
 app.include_router(auth_router.router, prefix=API)
@@ -84,4 +121,4 @@ app.include_router(relatorio_aula_router.router, prefix=API)
 
 @app.get("/", tags=["Health"], summary="Health check")
 def health():
-    return {"status": "ok", "servico": settings.PROJECT_NAME, "docs": "/docs"}
+    return {"status": "ok", "servico": settings.PROJECT_NAME, "docs": "/docs" if _docs_habilitados else None}

@@ -20,10 +20,11 @@ VALUES (
 ) ON CONFLICT (email) DO NOTHING;
 
 -- POLO
-INSERT INTO polos (id, nome, endereco, status)
+INSERT INTO polos (id, nome, codigo, endereco, status)
 VALUES (
     '22222222-2222-2222-2222-222222222222',
     'Polo Zona Norte',
+    'ZN01',
     'Rua das Palmeiras, 100 - Zona Norte',
     'ATIVO'
 ) ON CONFLICT DO NOTHING;
@@ -72,13 +73,22 @@ VALUES (
 -- BENEFICIÁRIO de exemplo
 INSERT INTO beneficiarios (
     id, nome_completo, data_nascimento, documento,
-    responsavel_legal_nome, responsavel_legal_contato, turma_id
+    polo_id,
+    responsavel_legal_nome, responsavel_legal_tipo_relacao, responsavel_legal_telefone_1,
+    autoriza_whatsapp
 ) VALUES (
     '99999999-9999-9999-9999-999999999999',
     'Maria Beneficiária da Silva',
     '2014-05-20',
     '123.456.789-00',
-    'Ana da Silva (mãe)',
-    '(21) 99999-0000',
-    '88888888-8888-8888-8888-888888888888'
+    '22222222-2222-2222-2222-222222222222',
+    'Ana da Silva',
+    'Mãe',
+    '21999990000',
+    TRUE
 ) ON CONFLICT (documento) DO NOTHING;
+
+-- MATRÍCULA da beneficiária de exemplo na turma de Judô
+INSERT INTO matriculas (beneficiario_id, turma_id)
+VALUES ('99999999-9999-9999-9999-999999999999', '88888888-8888-8888-8888-888888888888')
+ON CONFLICT (beneficiario_id, turma_id) DO NOTHING;

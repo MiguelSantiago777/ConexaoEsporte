@@ -52,7 +52,9 @@ class PoloModel(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(150), nullable=False)
+    codigo: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     endereco: Mapped[str] = mapped_column(String(255), nullable=True)
+    horario_funcionamento: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="ATIVO", nullable=False)
     gestor_responsavel_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
@@ -94,7 +96,7 @@ class TurmaModel(Base):
     polo: Mapped["PoloModel"] = relationship(back_populates="turmas")
     modalidade: Mapped["ModalidadeModel"] = relationship()
     professor: Mapped["UsuarioModel | None"] = relationship(foreign_keys=[professor_id])
-    beneficiarios: Mapped[list["BeneficiarioModel"]] = relationship(back_populates="turma")
+    matriculas: Mapped[list["MatriculaModel"]] = relationship(back_populates="turma")
 
 
 class BeneficiarioModel(Base):
@@ -103,17 +105,68 @@ class BeneficiarioModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_completo: Mapped[str] = mapped_column(String(150), nullable=False)
     data_nascimento: Mapped[date] = mapped_column(Date, nullable=False)
-    documento: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)  # CPF ou outro doc
+    documento: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)  # CPF ou outro doc — sempre exclusivo do próprio beneficiário
+    polo_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=True)
     responsavel_legal_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    responsavel_legal_contato: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    contato: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    responsavel_legal_data_nascimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    responsavel_legal_tipo_relacao: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    responsavel_legal_telefone_1: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    responsavel_legal_telefone_2: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    responsavel_legal_email: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    responsavel_legal_rede_social: Mapped[str | None] = mapped_column(String(150), nullable=True)
     endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    turma_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("turmas.id"), nullable=True)
+    autoriza_whatsapp: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     observacoes_medicas: Mapped[str | None] = mapped_column(Text, nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    turma: Mapped["TurmaModel | None"] = relationship(back_populates="beneficiarios")
+    matriculas: Mapped[list["MatriculaModel"]] = relationship(
+        back_populates="beneficiario", cascade="all, delete-orphan"
+    )
+    documentos: Mapped[list["BeneficiarioDocumentoModel"]] = relationship(
+        back_populates="beneficiario", cascade="all, delete-orphan"
+    )
+
+
+class MatriculaModel(Base):
+    """Vínculo N:N entre beneficiário e turma — permite o mesmo beneficiário
+    matriculado em várias turmas/modalidades ao mesmo tempo."""
+
+    __tablename__ = "matriculas"
+    __table_args__ = (UniqueConstraint("beneficiario_id", "turma_id", name="uq_matricula_beneficiario_turma"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    beneficiario_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="CASCADE"), nullable=False
+    )
+    turma_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("turmas.id", ondelete="CASCADE"), nullable=False
+    )
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    beneficiario: Mapped["BeneficiarioModel"] = relationship(back_populates="matriculas")
+    turma: Mapped["TurmaModel"] = relationship(back_populates="matriculas")
+
+
+class BeneficiarioDocumentoModel(Base):
+    __tablename__ = "beneficiario_documentos"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    beneficiario_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="CASCADE"), nullable=False
+    )
+    tipo: Mapped[str] = mapped_column(String(50), nullable=False)
+    nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)
+    caminho_arquivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enviado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    beneficiario: Mapped["BeneficiarioModel"] = relationship(back_populates="documentos")
 
 
 class FrequenciaModel(Base):

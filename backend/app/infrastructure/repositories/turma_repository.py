@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.turma.entities import Turma
-from app.infrastructure.database.models import BeneficiarioModel, TurmaModel
+from app.infrastructure.database.models import BeneficiarioModel, MatriculaModel, TurmaModel
 
 
 def _to_entity(m: TurmaModel) -> Turma:
@@ -33,8 +33,16 @@ class TurmaRepository:
         return _to_entity(m) if m else None
 
     def contar_beneficiarios_ativos(self, turma_id: UUID) -> int:
-        stmt = select(func.count()).select_from(BeneficiarioModel).where(
-            BeneficiarioModel.turma_id == turma_id, BeneficiarioModel.ativo.is_(True)
+        """Conta matrículas ativas na turma, de beneficiários ativos (vagas ocupadas)."""
+        stmt = (
+            select(func.count())
+            .select_from(MatriculaModel)
+            .join(BeneficiarioModel, BeneficiarioModel.id == MatriculaModel.beneficiario_id)
+            .where(
+                MatriculaModel.turma_id == turma_id,
+                MatriculaModel.ativo.is_(True),
+                BeneficiarioModel.ativo.is_(True),
+            )
         )
         return self.db.scalar(stmt) or 0
 
