@@ -27,12 +27,12 @@ class PoloService:
 
     def criar(
         self, nome: str, codigo: str | None, endereco: str | None, gestor_responsavel_id: UUID | None,
-        horario_funcionamento: str | None = None,
+        horario_funcionamento: str | None = None, **dados_parceria,
     ) -> Polo:
         self._validar_codigo_disponivel(codigo)
         polo = Polo(id=None, nome=nome, codigo=codigo, endereco=endereco,
                     horario_funcionamento=horario_funcionamento, status="ATIVO",
-                    gestor_responsavel_id=gestor_responsavel_id)
+                    gestor_responsavel_id=gestor_responsavel_id, **dados_parceria)
         return self.repo.criar(polo)
 
     def atualizar(self, polo_id: UUID, **campos) -> Polo | None:

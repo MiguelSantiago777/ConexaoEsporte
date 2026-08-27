@@ -14,6 +14,9 @@ class TurmaCreateRequest(BaseModel):
     horario_fim: str = Field(..., examples=["09:30"])
     dias_semana: list[str] = Field(..., examples=[["SEG", "QUA", "SEX"]])
     limite_vagas: int = Field(..., gt=0, examples=[20])
+    coordenador_nome: str | None = Field(default=None, max_length=150)
+    monitor_nome: str | None = Field(default=None, max_length=150)
+    periodicidade: str | None = Field(default=None, max_length=50, examples=["Semanal"])
 
     @field_validator("dias_semana")
     @classmethod
@@ -30,6 +33,9 @@ class TurmaUpdateRequest(BaseModel):
     horario_fim: str | None = None
     dias_semana: list[str] | None = None
     limite_vagas: int | None = Field(default=None, gt=0)
+    coordenador_nome: str | None = Field(default=None, max_length=150)
+    monitor_nome: str | None = Field(default=None, max_length=150)
+    periodicidade: str | None = Field(default=None, max_length=50)
 
 
 class TurmaResponse(BaseModel):
@@ -42,5 +48,8 @@ class TurmaResponse(BaseModel):
     dias_semana: list[str]
     limite_vagas: int
     vagas_ocupadas: int = 0
+    coordenador_nome: str | None = None
+    monitor_nome: str | None = None
+    periodicidade: str | None = None
 
     model_config = {"from_attributes": True}

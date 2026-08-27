@@ -78,8 +78,50 @@ body {
   animation-delay: calc(var(--stagger-index, 0) * 110ms);
 }
 
+/* Margem zero força o Chrome/Edge a não reservar espaço para o cabeçalho/
+   rodapé padrão de impressão (URL, título da aba, data, "1/1") — sem essa
+   margem não há onde desenhá-los. O respiro visual da página impressa volta
+   via padding no próprio conteúdo (ver AppLayout, classe print:p-10). */
+@page {
+  margin: 0;
+}
+
 @media print {
   body {
     background: #fff;
   }
+
+  /* Corrige o gráfico (Recharts) vazando da página impressa — via CSS pura,
+     sem depender de nenhum evento/timing de JavaScript (o que falhava
+     especificamente no preview do diálogo de impressão).
+
+     Quando <ResponsiveContainer width="100%"> mede a largura em pixels via
+     ResizeObserver, ele coloca esse valor MEDIDO NA TELA (que pode ficar
+     "preso" e não é remedido a tempo do layout — bem mais estreito — da
+     impressão) numa divzinha interna sem classe, entre o container e o
+     gráfico. Essa divzinha normalmente tem width:0 (truque proposital do
+     Recharts para conseguir encolher) — é o primeiro <div> direto dentro de
+     .recharts-responsive-container. Forçamos ela pra 100% (do container,
+     que já está corretamente dimensionado pelo layout da página impressa);
+     max-width nos elementos seguintes garante que a largura antiga medida
+     na tela nunca ultrapasse esse espaço, encolhendo o gráfico até caber —
+     nunca cortando nem vazando. */
+  .recharts-responsive-container > div {
+    width: 100% !important;
+  }
+  .recharts-wrapper {
+    max-width: 100% !important;
+  }
+  .recharts-wrapper svg {
+    max-width: 100% !important;
+  }
+}
+
+/* Centraliza o gráfico dentro do card sempre que ele acabar renderizando
+   mais estreito que o espaço disponível — por exemplo quando o max-width
+   de impressão acima encolhe uma medição menor que a largura real da
+   página. Sem efeito quando o gráfico já ocupa 100% (caso comum em tela). */
+.recharts-wrapper {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }

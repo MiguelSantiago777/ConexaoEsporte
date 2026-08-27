@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { RelatorioAula, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
@@ -12,23 +13,23 @@ import { staggerStyle } from "@/lib/animation";
 
 export function RelatoriosPage() {
   const toast = useToast();
-  const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [relatorios, setRelatorios] = useState<RelatorioAula[]>([]);
+  const queryClient = useQueryClient();
+  const { data: turmas = [] } = useQuery({
+    queryKey: ["turmas"],
+    queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
+  });
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
     turma_id: "", data: new Date().toISOString().slice(0, 10),
     conteudo_trabalhado: "", observacoes: "",
   });
 
-  useEffect(() => {
-    api.get<Turma[]>("/turmas").then((r) => setTurmas(r.data));
-  }, []);
-
-  async function carregarRelatorios(turmaId: string) {
-    if (!turmaId) return setRelatorios([]);
-    const { data } = await api.get<RelatorioAula[]>(`/relatorios-aula/turma/${turmaId}`);
-    setRelatorios(data);
-  }
+  const relatoriosQueryKey = ["relatorios-aula", "turma", form.turma_id];
+  const { data: relatorios = [] } = useQuery({
+    queryKey: relatoriosQueryKey,
+    queryFn: () => api.get<RelatorioAula[]>(`/relatorios-aula/turma/${form.turma_id}`).then((r) => r.data),
+    enabled: !!form.turma_id,
+  });
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -37,7 +38,7 @@ export function RelatoriosPage() {
       await api.post("/relatorios-aula", { ...form, observacoes: form.observacoes || null });
       setForm({ ...form, conteudo_trabalhado: "", observacoes: "" });
       toast.success("Relatório emitido com sucesso.");
-      carregarRelatorios(form.turma_id);
+      queryClient.invalidateQueries({ queryKey: relatoriosQueryKey });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? "Erro ao emitir relatório.");
     } finally {
@@ -52,7 +53,7 @@ export function RelatoriosPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="Turma" value={form.turma_id}
-              onChange={(e) => { setForm({ ...form, turma_id: e.target.value }); carregarRelatorios(e.target.value); }} required>
+              onChange={(e) => setForm({ ...form, turma_id: e.target.value })} required>
               <option value="">— Selecione —</option>
               {turmas.map((t) => <option key={t.id} value={t.id}>{t.horario_inicio}–{t.horario_fim}</option>)}
             </Select>

@@ -21,6 +21,9 @@ from app.core.rate_limit import limiter
 from app.interfaces.api.v1.routers import (
     auth_router,
     beneficiario_router,
+    dashboard_router,
+    entrega_material_router,
+    ficha_execucao_router,
     frequencia_router,
     modalidade_router,
     polo_router,
@@ -33,12 +36,30 @@ from app.interfaces.api.v1.routers import (
 tags_metadata = [
     {"name": "Autenticação", "description": "Login, refresh de token e dados do usuário autenticado (JWT)."},
     {"name": "Usuários", "description": "Cadastro de funcionários: MASTER, GESTOR_POLO e PROFESSOR."},
-    {"name": "Polos", "description": "Gestão de polos esportivos (exclusivo do MASTER)."},
+    {
+        "name": "Polos",
+        "description": "Gestão de polos esportivos (exclusivo do MASTER) — cada polo é sua própria "
+        "entidade parceira, com os dados do Termo de Fomento (CNPJ, representante legal etc.).",
+    },
     {"name": "Modalidades", "description": "Modalidades esportivas oferecidas (Futebol, Judô, etc.)."},
     {"name": "Turmas", "description": "Turmas por polo/modalidade e vínculo de professores."},
     {"name": "Beneficiários", "description": "Cadastro das pessoas atendidas pelo sistema (nomenclatura oficial)."},
     {"name": "Frequência", "description": "Chamada/presença diária dos beneficiários (perfil PROFESSOR)."},
     {"name": "Relatórios de Aula", "description": "Emissão e consulta de relatórios de aula (perfil PROFESSOR)."},
+    {
+        "name": "Fichas de Execução",
+        "description": "Ficha Técnica de Execução da Entidade (Portaria nº 102/2024), uma por polo e por "
+        "período, e sua exportação em .xlsx — exclusivo do MASTER.",
+    },
+    {
+        "name": "Entregas de Materiais",
+        "description": "Termo de Entrega de Materiais — registro e exportação em .docx por polo.",
+    },
+    {
+        "name": "Relatórios Gerenciais",
+        "description": "KPIs e séries para gráficos (frequência, beneficiários por modalidade, ranking de "
+        "polos) por período — para acompanhamento do Gestor de Polo e visão geral do MASTER.",
+    },
 ]
 
 description = """
@@ -117,6 +138,9 @@ app.include_router(turma_router.router, prefix=API)
 app.include_router(beneficiario_router.router, prefix=API)
 app.include_router(frequencia_router.router, prefix=API)
 app.include_router(relatorio_aula_router.router, prefix=API)
+app.include_router(ficha_execucao_router.router, prefix=API)
+app.include_router(entrega_material_router.router, prefix=API)
+app.include_router(dashboard_router.router, prefix=API)
 
 
 @app.get("/", tags=["Health"], summary="Health check")

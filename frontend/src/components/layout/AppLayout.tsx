@@ -4,8 +4,12 @@ import { useAuth } from "@/features/auth/AuthContext";
 import type { Perfil } from "@/types";
 import {
   AcademicCapIcon,
+  ArchiveIcon,
+  BoxIcon,
   BuildingIcon,
   CalendarCheckIcon,
+  ChartBarIcon,
+  ChartPieIcon,
   ClipboardIcon,
   DocumentTextIcon,
   HomeIcon,
@@ -25,10 +29,14 @@ interface ItemMenu {
 const MENU: ItemMenu[] = [
   { label: "Dashboard", to: "/", perfis: ["MASTER", "GESTOR_POLO", "PROFESSOR"], icon: HomeIcon },
   { label: "Polos", to: "/polos", perfis: ["MASTER"], icon: BuildingIcon },
+  { label: "Fichas de Execução", to: "/fichas-execucao", perfis: ["MASTER"], icon: ArchiveIcon },
   { label: "Modalidades", to: "/modalidades", perfis: ["MASTER", "GESTOR_POLO"], icon: TrophyIcon },
   { label: "Turmas", to: "/turmas", perfis: ["MASTER", "GESTOR_POLO"], icon: UsersIcon },
   { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], icon: ClipboardIcon },
   { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], icon: AcademicCapIcon },
+  { label: "Entregas de Materiais", to: "/entregas-materiais", perfis: ["MASTER", "GESTOR_POLO"], icon: BoxIcon },
+  { label: "Relatório do Polo", to: "/relatorio-polo", perfis: ["MASTER", "GESTOR_POLO"], icon: ChartPieIcon },
+  { label: "Relatório Geral", to: "/relatorio-geral", perfis: ["MASTER"], icon: ChartBarIcon },
   { label: "Frequência", to: "/frequencia", perfis: ["PROFESSOR"], icon: CalendarCheckIcon },
   { label: "Relatórios de Aula", to: "/relatorios", perfis: ["PROFESSOR"], icon: DocumentTextIcon },
 ];
@@ -124,7 +132,7 @@ export function AppLayout() {
         {/* key={pathname} força o React a remontar este container a cada troca
             de rota, o que reinicia a animação de entrada (senão ela só tocaria
             uma vez, no primeiro carregamento). */}
-        <div key={location.pathname} className="max-w-6xl mx-auto p-8 print:p-0 print:max-w-none animate-page-in">
+        <div key={location.pathname} className="max-w-6xl mx-auto p-8 print:p-10 print:max-w-none animate-page-in">
           <Outlet />
         </div>
       </main>

@@ -43,6 +43,34 @@ class FrequenciaRepository:
         )
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
+    def listar_por_turma_e_periodo(self, turma_id: UUID, data_inicio: date, data_fim: date) -> list[RegistroFrequencia]:
+        stmt = select(FrequenciaModel).where(
+            FrequenciaModel.turma_id == turma_id,
+            FrequenciaModel.data >= data_inicio,
+            FrequenciaModel.data <= data_fim,
+        )
+        return [_to_entity(m) for m in self.db.scalars(stmt)]
+
     def listar_por_beneficiario(self, beneficiario_id: UUID) -> list[RegistroFrequencia]:
         stmt = select(FrequenciaModel).where(FrequenciaModel.beneficiario_id == beneficiario_id)
+        return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_por_turmas_e_periodo(
+        self, turma_ids: list[UUID], data_inicio: date, data_fim: date
+    ) -> list[RegistroFrequencia]:
+        """Frequências de várias turmas num período — usado nos relatórios agregados de polo."""
+        if not turma_ids:
+            return []
+        stmt = select(FrequenciaModel).where(
+            FrequenciaModel.turma_id.in_(turma_ids),
+            FrequenciaModel.data >= data_inicio,
+            FrequenciaModel.data <= data_fim,
+        )
+        return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_por_periodo(self, data_inicio: date, data_fim: date) -> list[RegistroFrequencia]:
+        """Todas as frequências (todos os polos/turmas) num período — usado no relatório geral do MASTER."""
+        stmt = select(FrequenciaModel).where(
+            FrequenciaModel.data >= data_inicio, FrequenciaModel.data <= data_fim
+        )
         return [_to_entity(m) for m in self.db.scalars(stmt)]

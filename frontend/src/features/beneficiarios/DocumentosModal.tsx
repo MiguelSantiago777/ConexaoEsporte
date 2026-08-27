@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Beneficiario } from "@/types";
 import { Modal } from "@/components/ui/Modal";
@@ -32,23 +33,14 @@ export function DocumentosModal({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const [documentos, setDocumentos] = useState<DocumentoAnexo[]>([]);
-  const [carregando, setCarregando] = useState(false);
   const [baixando, setBaixando] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!beneficiario) {
-      setDocumentos([]);
-      return;
-    }
-    setCarregando(true);
-    api
-      .get<DocumentoAnexo[]>(`/beneficiarios/${beneficiario.id}/documentos`)
-      .then((r) => setDocumentos(r.data))
-      .catch(() => toast.error("Não foi possível carregar os documentos."))
-      .finally(() => setCarregando(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beneficiario]);
+  const { data: documentos = [], isLoading: carregando, isError } = useQuery({
+    queryKey: ["beneficiarios", beneficiario?.id, "documentos"],
+    queryFn: () =>
+      api.get<DocumentoAnexo[]>(`/beneficiarios/${beneficiario!.id}/documentos`).then((r) => r.data),
+    enabled: !!beneficiario,
+  });
 
   async function baixar(doc: DocumentoAnexo) {
     setBaixando(doc.id);
@@ -73,6 +65,8 @@ export function DocumentosModal({
     <Modal open={!!beneficiario} onClose={onClose} title={beneficiario ? `Documentos — ${beneficiario.nome_completo}` : ""}>
       {carregando ? (
         <Spinner label="Carregando documentos…" />
+      ) : isError ? (
+        <EmptyState message="Não foi possível carregar os documentos." />
       ) : documentos.length === 0 ? (
         <EmptyState message="Nenhum documento anexado ainda." />
       ) : (

@@ -13,6 +13,7 @@ def _to_entity(m: TurmaModel) -> Turma:
         id=m.id, polo_id=m.polo_id, modalidade_id=m.modalidade_id, professor_id=m.professor_id,
         horario_inicio=m.horario_inicio, horario_fim=m.horario_fim,
         dias_semana=m.dias_semana.split(","), limite_vagas=m.limite_vagas,
+        coordenador_nome=m.coordenador_nome, monitor_nome=m.monitor_nome, periodicidade=m.periodicidade,
     )
 
 
@@ -51,6 +52,8 @@ class TurmaRepository:
             polo_id=turma.polo_id, modalidade_id=turma.modalidade_id, professor_id=turma.professor_id,
             horario_inicio=turma.horario_inicio, horario_fim=turma.horario_fim,
             dias_semana=",".join(turma.dias_semana), limite_vagas=turma.limite_vagas,
+            coordenador_nome=turma.coordenador_nome, monitor_nome=turma.monitor_nome,
+            periodicidade=turma.periodicidade,
         )
         self.db.add(m)
         self.db.commit()

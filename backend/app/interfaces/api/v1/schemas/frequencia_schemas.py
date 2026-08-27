@@ -1,5 +1,5 @@
 """DTOs de Frequência/Presença dos Beneficiários."""
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,5 +25,20 @@ class FrequenciaResponse(BaseModel):
     data: date
     presente: bool
     registrado_por_id: UUID
+
+    model_config = {"from_attributes": True}
+
+
+class ChamadaEvidenciaResponse(BaseModel):
+    """Foto anexada a uma chamada (turma + data) comprovando que a aula aconteceu."""
+
+    id: UUID
+    turma_id: UUID
+    data: date
+    nome_arquivo: str
+    content_type: str | None
+    tamanho_bytes: int | None
+    enviado_por_id: UUID | None
+    criado_em: datetime | None
 
     model_config = {"from_attributes": True}

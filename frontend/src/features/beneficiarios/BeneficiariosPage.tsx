@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Beneficiario, Modalidade, Polo, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
@@ -26,6 +27,8 @@ const FORM_INICIAL = {
   data_nascimento: "",
   documento: "",
   polo_id: "",
+  modalidade_id: "",
+  turma_id: "",
   responsavel_legal_nome: "",
   responsavel_legal_data_nascimento: "",
   responsavel_legal_tipo_relacao: "",
@@ -69,11 +72,25 @@ const ARQUIVOS_INICIAL: Record<CampoDocumento, File | null> = {
  */
 export function BeneficiariosPage() {
   const toast = useToast();
-  const [beneficiarios, setBeneficiarios] = useState<Beneficiario[]>([]);
-  const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [polos, setPolos] = useState<Polo[]>([]);
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: beneficiarios = [], isLoading: carregando } = useQuery({
+    queryKey: ["beneficiarios"],
+    queryFn: () => api.get<Beneficiario[]>("/beneficiarios").then((r) => r.data),
+  });
+  const { data: turmas = [] } = useQuery({
+    queryKey: ["turmas"],
+    queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
+  });
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
+  });
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+  });
+
   const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [arquivos, setArquivos] = useState<Record<CampoDocumento, File | null>>(ARQUIVOS_INICIAL);
@@ -83,26 +100,14 @@ export function BeneficiariosPage() {
   const [beneficiarioEditando, setBeneficiarioEditando] = useState<Beneficiario | null>(null);
   const [beneficiarioMatriculas, setBeneficiarioMatriculas] = useState<Beneficiario | null>(null);
 
-  async function carregar() {
-    const [b, t, p, m] = await Promise.all([
-      api.get<Beneficiario[]>("/beneficiarios"),
-      api.get<Turma[]>("/turmas"),
-      api.get<Polo[]>("/polos"),
-      api.get<Modalidade[]>("/modalidades"),
-    ]);
-    setBeneficiarios(b.data);
-    setTurmas(t.data);
-    setPolos(p.data);
-    setModalidades(m.data);
-  }
-
-  useEffect(() => {
-    carregar().finally(() => setCarregando(false));
-  }, []);
-
-  function poloNome(id: string) {
+  function poloNome(id: string | null) {
     return polos.find((p) => p.id === id)?.nome ?? "—";
   }
+
+  const turmasDoFormulario = useMemo(
+    () => turmas.filter((t) => t.polo_id === form.polo_id && t.modalidade_id === form.modalidade_id),
+    [turmas, form.polo_id, form.modalidade_id]
+  );
 
   const beneficiariosFiltrados = useMemo(
     () =>
@@ -115,15 +120,20 @@ export function BeneficiariosPage() {
     [beneficiarios, filtroNome, filtroPolo]
   );
 
-  async function excluirBeneficiario(b: Beneficiario) {
-    if (!window.confirm(`Remover ${b.nome_completo} da lista de beneficiários?`)) return;
-    try {
-      await api.patch(`/beneficiarios/${b.id}`, { ativo: false });
+  const removerMutation = useMutation({
+    mutationFn: (b: Beneficiario) => api.patch(`/beneficiarios/${b.id}`, { ativo: false }),
+    onSuccess: () => {
       toast.success("Beneficiário removido.");
-      carregar();
-    } catch (err: any) {
+      queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
+    },
+    onError: (err: any) => {
       toast.error(err?.response?.data?.detail ?? "Erro ao remover beneficiário.");
-    }
+    },
+  });
+
+  function excluirBeneficiario(b: Beneficiario) {
+    if (!window.confirm(`Remover ${b.nome_completo} da lista de beneficiários?`)) return;
+    removerMutation.mutate(b);
   }
 
   async function enviarDocumentos(beneficiarioId: string) {
@@ -143,9 +153,13 @@ export function BeneficiariosPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!form.modalidade_id || !form.turma_id) {
+      toast.error("Selecione a modalidade e a turma do beneficiário.");
+      return;
+    }
     setEnviando(true);
     try {
-      const { responsavel_legal_tipo_relacao_outro, ...dadosForm } = form;
+      const { responsavel_legal_tipo_relacao_outro, modalidade_id, turma_id, ...dadosForm } = form;
       const tipoRelacaoFinal =
         form.responsavel_legal_tipo_relacao === "Outro"
           ? responsavel_legal_tipo_relacao_outro
@@ -164,10 +178,20 @@ export function BeneficiariosPage() {
         observacoes_medicas: form.observacoes_medicas || null,
       });
       await enviarDocumentos(criado.id);
+      try {
+        await api.post(`/beneficiarios/${criado.id}/matriculas`, { turma_id });
+        toast.success("Beneficiário cadastrado e matriculado com sucesso.");
+      } catch (err: any) {
+        toast.error(
+          `Beneficiário cadastrado, mas houve um problema ao matricular na turma: ${
+            err?.response?.data?.detail ?? "erro desconhecido"
+          }. Você pode tentar novamente pelo ícone de troféu na lista.`
+        );
+      }
       setForm(FORM_INICIAL);
       setArquivos(ARQUIVOS_INICIAL);
-      toast.success("Beneficiário cadastrado com sucesso.");
-      carregar();
+      queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
+      queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar beneficiário.");
     } finally {
@@ -212,7 +236,7 @@ export function BeneficiariosPage() {
               <Select
                 label="Polo"
                 value={form.polo_id}
-                onChange={(e) => setForm({ ...form, polo_id: e.target.value })}
+                onChange={(e) => setForm({ ...form, polo_id: e.target.value, modalidade_id: "", turma_id: "" })}
                 required
               >
                 <option value="">— Selecione —</option>
@@ -222,10 +246,38 @@ export function BeneficiariosPage() {
                   </option>
                 ))}
               </Select>
+              <Select
+                label="Modalidade"
+                value={form.modalidade_id}
+                onChange={(e) => setForm({ ...form, modalidade_id: e.target.value, turma_id: "" })}
+                disabled={!form.polo_id}
+                required
+              >
+                <option value="">— Selecione —</option>
+                {modalidades.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Turma"
+                value={form.turma_id}
+                onChange={(e) => setForm({ ...form, turma_id: e.target.value })}
+                disabled={!form.modalidade_id}
+                required
+              >
+                <option value="">— Selecione —</option>
+                {turmasDoFormulario.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.horario_inicio}–{t.horario_fim} ({t.dias_semana.join(", ")}) — {t.vagas_ocupadas}/{t.limite_vagas} vagas
+                  </option>
+                ))}
+              </Select>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              A matrícula em modalidades/turmas é feita depois do cadastro, na tela de beneficiários — ele pode
-              estar em mais de uma ao mesmo tempo.
+              Essa é a matrícula inicial do beneficiário. Para matricular em outras modalidades/turmas ao mesmo
+              tempo, use o ícone de troféu na lista depois do cadastro.
             </p>
           </section>
 
@@ -467,7 +519,7 @@ export function BeneficiariosPage() {
         onSalvo={() => {
           setBeneficiarioEditando(null);
           toast.success("Alterações salvas.");
-          carregar();
+          queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
         }}
       />
       <MatriculasModal
@@ -476,7 +528,10 @@ export function BeneficiariosPage() {
         modalidades={modalidades}
         polos={polos}
         onClose={() => setBeneficiarioMatriculas(null)}
-        onAlterado={carregar}
+        onAlterado={() => {
+          queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
+          queryClient.invalidateQueries({ queryKey: ["turmas"] });
+        }}
       />
     </div>
   );

@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Beneficiario, Matricula, Modalidade, Polo, Turma } from "@/types";
 import { Modal } from "@/components/ui/Modal";
@@ -20,25 +21,15 @@ interface Props {
 
 export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onClose, onAlterado }: Props) {
   const toast = useToast();
-  const [matriculas, setMatriculas] = useState<Matricula[]>([]);
-  const [carregando, setCarregando] = useState(false);
+  const queryClient = useQueryClient();
   const [turmaId, setTurmaId] = useState("");
-  const [matriculando, setMatriculando] = useState(false);
 
-  useEffect(() => {
-    if (!beneficiario) {
-      setMatriculas([]);
-      setTurmaId("");
-      return;
-    }
-    setCarregando(true);
-    api
-      .get<Matricula[]>(`/beneficiarios/${beneficiario.id}/matriculas`)
-      .then((r) => setMatriculas(r.data))
-      .catch(() => toast.error("Não foi possível carregar as matrículas."))
-      .finally(() => setCarregando(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beneficiario]);
+  const matriculasQueryKey = ["beneficiarios", beneficiario?.id, "matriculas"];
+  const { data: matriculas = [], isLoading: carregando, isError } = useQuery({
+    queryKey: matriculasQueryKey,
+    queryFn: () => api.get<Matricula[]>(`/beneficiarios/${beneficiario!.id}/matriculas`).then((r) => r.data),
+    enabled: !!beneficiario,
+  });
 
   function turmaLabel(turmaId: string) {
     const t = turmas.find((tu) => tu.id === turmaId);
@@ -56,40 +47,43 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
     return turmas.filter((t) => t.polo_id === beneficiario.polo_id && !idsJaMatriculado.has(t.id));
   }, [turmas, beneficiario, matriculasAtivas]);
 
-  if (!beneficiario) return null;
-
-  async function matricular(e: FormEvent) {
-    e.preventDefault();
-    if (!beneficiario || !turmaId) return;
-    setMatriculando(true);
-    try {
-      const { data } = await api.post<Matricula>(`/beneficiarios/${beneficiario.id}/matriculas`, {
-        turma_id: turmaId,
-      });
-      setMatriculas((atual) => [...atual, data]);
+  const matricularMutation = useMutation({
+    mutationFn: (turma_id: string) =>
+      api.post<Matricula>(`/beneficiarios/${beneficiario!.id}/matriculas`, { turma_id }),
+    onSuccess: () => {
       setTurmaId("");
       toast.success("Matrícula realizada com sucesso.");
+      queryClient.invalidateQueries({ queryKey: matriculasQueryKey });
       onAlterado();
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       toast.error(err?.response?.data?.detail ?? "Erro ao matricular o beneficiário.");
-    } finally {
-      setMatriculando(false);
-    }
+    },
+  });
+
+  const encerrarMutation = useMutation({
+    mutationFn: (matricula: Matricula) =>
+      api.patch<Matricula>(`/beneficiarios/${beneficiario!.id}/matriculas/${matricula.id}`, { ativo: false }),
+    onSuccess: () => {
+      toast.success("Matrícula encerrada.");
+      queryClient.invalidateQueries({ queryKey: matriculasQueryKey });
+      onAlterado();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Erro ao encerrar a matrícula.");
+    },
+  });
+
+  if (!beneficiario) return null;
+
+  function matricular(e: FormEvent) {
+    e.preventDefault();
+    if (!turmaId) return;
+    matricularMutation.mutate(turmaId);
   }
 
-  async function encerrar(matricula: Matricula) {
-    if (!beneficiario) return;
-    try {
-      const { data } = await api.patch<Matricula>(
-        `/beneficiarios/${beneficiario.id}/matriculas/${matricula.id}`,
-        { ativo: false }
-      );
-      setMatriculas((atual) => atual.map((m) => (m.id === data.id ? data : m)));
-      toast.success("Matrícula encerrada.");
-      onAlterado();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao encerrar a matrícula.");
-    }
+  function encerrar(matricula: Matricula) {
+    encerrarMutation.mutate(matricula);
   }
 
   return (
@@ -105,13 +99,15 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
             ))}
           </Select>
         </div>
-        <Button type="submit" disabled={!turmaId || matriculando}>
-          {matriculando ? "Matriculando…" : "Matricular"}
+        <Button type="submit" disabled={!turmaId || matricularMutation.isPending}>
+          {matricularMutation.isPending ? "Matriculando…" : "Matricular"}
         </Button>
       </form>
 
       {carregando ? (
         <Spinner label="Carregando matrículas…" />
+      ) : isError ? (
+        <EmptyState message="Não foi possível carregar as matrículas." />
       ) : matriculasAtivas.length === 0 ? (
         <EmptyState message="Nenhuma matrícula ativa. O beneficiário pode estar em várias turmas ao mesmo tempo." />
       ) : (

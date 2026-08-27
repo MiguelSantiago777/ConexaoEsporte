@@ -27,33 +27,93 @@ END$$;
 
 -- ---------------------------------------------------------------------
 -- TABELA: polos
+-- Cada polo/núcleo é sua própria parceria com o poder público: carrega o
+-- Termo de Fomento, CNPJ e representante legal próprios (não existe um
+-- cadastro de "Entidade" separado — o polo É a entidade parceira para
+-- fins da Ficha Técnica de Execução, Portaria nº 102/2024).
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS polos (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome                    VARCHAR(150) NOT NULL,
-    codigo                  VARCHAR(20) UNIQUE,  -- código curto de identificação (ex.: "ZN01")
-    endereco                VARCHAR(255),
-    horario_funcionamento   VARCHAR(100),  -- ex.: "Seg a Sex, 08h às 18h"
-    status                  status_polo NOT NULL DEFAULT 'ATIVO',
-    gestor_responsavel_id   UUID,  -- FK adicionada após criar 'usuarios' (referência circular)
-    criado_em               TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome                        VARCHAR(150) NOT NULL,
+    codigo                      VARCHAR(20) UNIQUE,  -- código curto de identificação (ex.: "ZN01")
+    endereco                    VARCHAR(255),
+    horario_funcionamento       VARCHAR(100),  -- ex.: "Seg a Sex, 08h às 18h"
+    status                      status_polo NOT NULL DEFAULT 'ATIVO',
+    gestor_responsavel_id       UUID,  -- FK adicionada após criar 'usuarios' (referência circular)
+
+    -- Dados da parceria (Termo de Fomento) — próprios deste polo
+    processo_sei                VARCHAR(50),
+    termo_fomento_numero        VARCHAR(50),
+    nome_entidade                VARCHAR(150),  -- razão social da OSC parceira responsável por este polo
+    cnpj                         VARCHAR(20),
+    representante_legal_nome    VARCHAR(150),
+    representante_legal_cpf     VARCHAR(20),
+    objeto                       TEXT,
+    vigencia_inicio              DATE,
+    vigencia_fim                 DATE,
+    -- Valores em texto livre (ex.: "R$ 200.000,00") — campos de
+    -- preenchimento/impressão do documento oficial, não um livro-caixa.
+    valor_pactuado                VARCHAR(50),
+    valor_executado               VARCHAR(50),
+    parlamentar                  VARCHAR(150),
+    emenda                        VARCHAR(100),
+    -- Lista de até 2 aditivos: [{"numero": "PRIMEIRO", "objeto": "...", "data_assinatura": "2026-03-01"}, ...]
+    termos_aditivos               JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- Contato do núcleo para a seção "Identificação dos Núcleos" da Ficha
+    responsavel_nome             VARCHAR(150),
+    responsavel_email            VARCHAR(150),
+    responsavel_telefone         VARCHAR(20),
+
+    -- Dados pessoais do representante legal para o Termo de Responsabilidade
+    representante_legal_rg        VARCHAR(20),
+    representante_legal_endereco VARCHAR(255),
+    representante_legal_bairro   VARCHAR(100),
+    representante_legal_cidade   VARCHAR(100),
+
+    criado_em                    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE polos ADD COLUMN IF NOT EXISTS codigo VARCHAR(20) UNIQUE;
 ALTER TABLE polos ADD COLUMN IF NOT EXISTS horario_funcionamento VARCHAR(100);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS processo_sei VARCHAR(50);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS termo_fomento_numero VARCHAR(50);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS nome_entidade VARCHAR(150);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_nome VARCHAR(150);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_cpf VARCHAR(20);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS objeto TEXT;
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS vigencia_inicio DATE;
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS vigencia_fim DATE;
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS valor_pactuado VARCHAR(50);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS valor_executado VARCHAR(50);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS parlamentar VARCHAR(150);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS emenda VARCHAR(100);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS termos_aditivos JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS responsavel_nome VARCHAR(150);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS responsavel_email VARCHAR(150);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS responsavel_telefone VARCHAR(20);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_rg VARCHAR(20);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_endereco VARCHAR(255);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_bairro VARCHAR(100);
+ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_cidade VARCHAR(100);
 
 -- ---------------------------------------------------------------------
 -- TABELA: usuarios (funcionários: MASTER, GESTOR_POLO, PROFESSOR)
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuarios (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome        VARCHAR(150) NOT NULL,
-    email       VARCHAR(150) NOT NULL UNIQUE,
-    senha_hash  VARCHAR(255) NOT NULL,
-    perfil      perfil_usuario NOT NULL,
-    polo_id     UUID REFERENCES polos(id) ON DELETE SET NULL,
-    ativo       BOOLEAN NOT NULL DEFAULT TRUE,
-    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome                    VARCHAR(150) NOT NULL,
+    email                   VARCHAR(150) NOT NULL UNIQUE,
+    senha_hash              VARCHAR(255) NOT NULL,
+    perfil                  perfil_usuario NOT NULL,
+    polo_id                 UUID REFERENCES polos(id) ON DELETE SET NULL,
+    ativo                   BOOLEAN NOT NULL DEFAULT TRUE,
+    -- RH do núcleo (Planilha de Núcleos — RH e Beneficiário): telefone e
+    -- carga horária semanal do professor/gestor naquele polo.
+    telefone                VARCHAR(20),
+    carga_horaria_semanal   VARCHAR(20),
+    criado_em               TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Regra: GESTOR_POLO deve estar vinculado a um polo
     CONSTRAINT chk_gestor_tem_polo
         CHECK (perfil <> 'GESTOR_POLO' OR polo_id IS NOT NULL)
@@ -61,6 +121,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
 CREATE INDEX IF NOT EXISTS idx_usuarios_polo  ON usuarios(polo_id);
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefone VARCHAR(20);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carga_horaria_semanal VARCHAR(20);
 
 -- FK circular: gestor responsável do polo referencia usuarios
 ALTER TABLE polos
@@ -242,3 +305,131 @@ CREATE TABLE IF NOT EXISTS relatorios_aula (
 );
 
 CREATE INDEX IF NOT EXISTS idx_relatorios_turma ON relatorios_aula(turma_id);
+
+-- ---------------------------------------------------------------------
+-- Campos de Lista de Presença em `turmas` (coordenador/monitor não são
+-- necessariamente usuários do sistema — só nomes para impressão no
+-- relatório oficial — e periodicidade da turma, ex.: "Semanal").
+-- ---------------------------------------------------------------------
+ALTER TABLE turmas ADD COLUMN IF NOT EXISTS coordenador_nome VARCHAR(150);
+ALTER TABLE turmas ADD COLUMN IF NOT EXISTS monitor_nome     VARCHAR(150);
+ALTER TABLE turmas ADD COLUMN IF NOT EXISTS periodicidade    VARCHAR(50);
+
+-- A tabela "entidade" (cadastro único de OSC) foi substituída pelos campos
+-- de parceria direto em `polos` — cada polo é sua própria entidade
+-- parceira. Remove o resquício de bancos que já rodaram a versão anterior.
+DROP TABLE IF EXISTS entidade;
+
+-- ---------------------------------------------------------------------
+-- TABELA: fichas_execucao — uma por polo e por período/trimestre
+-- reportado (Ficha Técnica de Execução da Entidade, Portaria nº
+-- 102/2024). Só o MASTER cadastra/edita/exporta.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fichas_execucao (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    polo_id                      UUID REFERENCES polos(id) ON DELETE CASCADE,
+    periodo_referencia          VARCHAR(100) NOT NULL,  -- ex.: "1º Trimestre 2026" (uso interno/nome do arquivo)
+    data_documento               DATE,
+
+    -- 2 - Valores efetivamente recebidos e executados no período
+    valor_recebido_periodo      VARCHAR(50),
+    valor_recebido_extenso      VARCHAR(255),
+    data_recebimento            DATE,
+
+    -- 1.2 - Ajustes do plano de trabalho
+    ajuste_status                VARCHAR(20) NOT NULL DEFAULT 'NAO_SOLICITADO'
+        CHECK (ajuste_status IN ('NAO_SOLICITADO', 'APROVADO', 'NAO_APROVADO')),
+    ajuste_justificativa        TEXT,
+
+    -- 3 - Análise de valor: 2 metas fixas (Planejamento/Divulgação), até 5 etapas cada.
+    -- [{"meta": "META 01 – ...", "etapas": [{"nome": "...", "previsto": "...", "executado": "..."}]}]
+    metas                        JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- 4 - Desenvolvimento das atividades: comparativo pactuado x executado,
+    -- 15 itens fixos e na mesma ordem do modelo (Núcleo, Modalidades, ...).
+    -- [{"pactuado": "...", "executado": "...", "observacoes": "..."}]
+    atividades_comparativo      JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- 5 - Execução: checklist de documentação (16 itens fixos do modelo).
+    -- [{"documento": "...", "situacao": "Inserido"|"Não Inserido", "observacao": "..."}]
+    checklist_documentos        JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    -- 6 - Inscrição dos beneficiados
+    periodo_inscricao_inicio    DATE,
+    periodo_inscricao_fim       DATE,
+    inscricao_todos_nucleos     BOOLEAN,
+    qtd_inscritos                INTEGER,
+    observacoes_inscricao       TEXT,
+
+    -- 7 - Identificação do núcleo (nome/endereço/responsável/e-mail/telefone
+    -- vêm do próprio polo — aqui só a narrativa do período)
+    quantitativo_beneficiados    VARCHAR(50),
+    modalidades                  VARCHAR(255),
+    periodo_funcionamento       VARCHAR(50),  -- ex.: "MANHA,TARDE"
+    descricao_atividades        TEXT,
+    dificuldades                 TEXT,
+
+    -- 9 - Impactos do benefício social obtido até o período
+    impactos_sociais             TEXT,
+    consideracoes_finais        TEXT,
+
+    criado_por_id                UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em                    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_fichas_execucao_periodo ON fichas_execucao(periodo_referencia);
+
+-- Upgrade idempotente para bancos que já rodaram a versão anterior deste
+-- schema (ficha_execucao com `nucleos` JSONB cobrindo vários polos) — as
+-- colunas novas precisam existir antes de criar o índice que usa polo_id.
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS polo_id UUID REFERENCES polos(id) ON DELETE CASCADE;
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS quantitativo_beneficiados VARCHAR(50);
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS modalidades VARCHAR(255);
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS periodo_funcionamento VARCHAR(50);
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS descricao_atividades TEXT;
+ALTER TABLE fichas_execucao ADD COLUMN IF NOT EXISTS dificuldades TEXT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'fichas_execucao' AND column_name = 'nucleos') THEN
+        ALTER TABLE fichas_execucao DROP COLUMN nucleos;
+    END IF;
+END$$;
+
+CREATE INDEX IF NOT EXISTS idx_fichas_execucao_polo ON fichas_execucao(polo_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: entregas_materiais — Termo de Entrega de Materiais, um registro
+-- por entrega física de materiais/uniformes ao núcleo (MASTER/GESTOR_POLO
+-- do próprio polo cadastram e exportam o termo assinável em .docx).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS entregas_materiais (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    polo_id         UUID NOT NULL REFERENCES polos(id) ON DELETE CASCADE,
+    data_entrega    DATE,
+    coordenador_nome VARCHAR(150),  -- snapshot do responsável do núcleo no momento da entrega
+    -- [{"descricao": "Bolas de futebol", "quantidade": "10"}, ...]
+    itens           JSONB NOT NULL DEFAULT '[]'::jsonb,
+    criado_por_id   UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_entregas_materiais_polo ON entregas_materiais(polo_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: chamada_evidencias — fotos anexadas pelo professor a uma chamada
+-- (turma + data), comprovando que a aula realmente aconteceu.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS chamada_evidencias (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    turma_id        UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+    data            DATE NOT NULL,
+    nome_arquivo    VARCHAR(255) NOT NULL,
+    caminho_arquivo VARCHAR(500) NOT NULL,
+    content_type    VARCHAR(100),
+    tamanho_bytes   INTEGER,
+    enviado_por_id  UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chamada_evidencias_turma_data ON chamada_evidencias(turma_id, data);

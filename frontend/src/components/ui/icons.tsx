@@ -165,6 +165,63 @@ export function SpinnerIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function IdentificationIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3.5" y="5" width="17" height="14" rx="1.5" strokeLinejoin="round" />
+      <circle cx="8.5" cy="11" r="2" />
+      <path d="M5.5 16c.4-1.7 1.6-2.5 3-2.5s2.6.8 3 2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.5 9.5h5M13.5 12.5h5M13.5 15.5h3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ArchiveIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3.5" y="4" width="17" height="4" rx="1" strokeLinejoin="round" />
+      <path d="M4.5 8v10.5a1 1 0 001 1h13a1 1 0 001-1V8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.5 12.5h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BoxIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 8l8-4.5L20 8v8l-8 4.5L4 16V8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 8l8 4.5M12 12.5L20 8M12 12.5V21" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CameraIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 8.5a1.5 1.5 0 011.5-1.5h2l1-2h7l1 2h2A1.5 1.5 0 0120 8.5v9a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 17.5v-9z" strokeLinejoin="round" />
+      <circle cx="12" cy="13" r="3.3" />
+    </svg>
+  );
+}
+
+export function ChartPieIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3.5a8.5 8.5 0 108.5 8.5H12V3.5z" strokeLinejoin="round" />
+      <path d="M15.5 3.9A8.51 8.51 0 0120.1 8.5H15.5V3.9z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ChartBarIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M5 20V10M12 20V4M19 20v-7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 20.5h17" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ className = "w-4 h-4" }: Props) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">

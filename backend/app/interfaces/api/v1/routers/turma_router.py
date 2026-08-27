@@ -1,9 +1,11 @@
 """Rotas de Turmas. Tag Swagger: 'Turmas'."""
 from typing import Annotated
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from app.application.relatorios.service import RelatorioService
 from app.application.turma.service import TurmaService
 from app.core.dependencies import (
     CurrentUser,
@@ -20,6 +22,13 @@ router = APIRouter(prefix="/turmas", tags=["Turmas"])
 
 MasterOuGestor = Annotated[
     UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
+]
+# Exportação da Lista de Presença: também liberada para o PROFESSOR da
+# turma (é quem lança a chamada) — assert_acesso_a_turma já restringe ao
+# professor vinculado, mesma regra usada em POST /frequencias/chamada.
+QualquerPerfil = Annotated[
+    UsuarioAutenticado,
+    Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO, PerfilUsuario.PROFESSOR)),
 ]
 
 
@@ -54,6 +63,8 @@ def criar_turma(body: TurmaCreateRequest, usuario: MasterOuGestor, db: DbSession
         polo_id=body.polo_id, modalidade_id=body.modalidade_id, professor_id=body.professor_id,
         horario_inicio=body.horario_inicio, horario_fim=body.horario_fim,
         dias_semana=body.dias_semana, limite_vagas=body.limite_vagas,
+        coordenador_nome=body.coordenador_nome, monitor_nome=body.monitor_nome,
+        periodicidade=body.periodicidade,
     )
     return TurmaResponse(**criada)
 
@@ -74,3 +85,29 @@ def atualizar_turma(
     if not atualizada:
         raise HTTPException(status_code=404, detail="Turma não encontrada.")
     return TurmaResponse(**atualizada)
+
+
+@router.get(
+    "/{turma_id}/lista-presenca/exportar",
+    summary="Exportar Lista de Presença mensal da turma em .xlsx",
+    description="Gera o arquivo preenchido no layout oficial do modelo, com a grade de "
+    "presença (P/A) do mês a partir dos registros de frequência já lançados. MASTER e "
+    "GESTOR_POLO exportam qualquer turma do seu escopo; PROFESSOR só a(s) sua(s).",
+)
+def exportar_lista_presenca(
+    turma_id: UUID,
+    usuario: QualquerPerfil,
+    db: DbSession,
+    mes: Annotated[int, Query(ge=1, le=12)],
+    ano: Annotated[int, Query(ge=2000, le=2100)],
+) -> Response:
+    assert_acesso_a_turma(usuario, db, turma_id)
+    buffer = RelatorioService(db).gerar_lista_presenca(turma_id, mes, ano)
+    nome_arquivo = f"Lista de Presenca - {mes:02d}-{ano}.xlsx"
+    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
+    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": content_disposition},
+    )

@@ -17,6 +17,7 @@ class UsuarioService:
     def criar_usuario(
         self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
+        telefone: str | None = None, carga_horaria_semanal: str | None = None,
     ) -> Usuario:
         if self.repo.buscar_por_email(email):
             raise RecursoJaExiste("Já existe um usuário com este email.")
@@ -30,8 +31,15 @@ class UsuarioService:
         usuario = Usuario(
             id=None, nome=nome, email=email, senha_hash=hash_password(senha),
             perfil=perfil, polo_id=polo_id, ativo=True,
+            telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
         )
         return self.repo.criar(usuario)
 
     def listar_usuarios(self, polo_id: UUID | None = None) -> list[Usuario]:
         return self.repo.listar(polo_id=polo_id)
+
+    def buscar_usuario(self, usuario_id: UUID) -> Usuario | None:
+        return self.repo.buscar_por_id(usuario_id)
+
+    def atualizar_usuario(self, usuario_id: UUID, **campos) -> Usuario | None:
+        return self.repo.atualizar(usuario_id, **campos)

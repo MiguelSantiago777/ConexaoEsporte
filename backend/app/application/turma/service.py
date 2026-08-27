@@ -38,12 +38,14 @@ class TurmaService:
     def criar(
         self, polo_id: UUID, modalidade_id: UUID, professor_id: UUID | None,
         horario_inicio: str, horario_fim: str, dias_semana: list[str], limite_vagas: int,
+        coordenador_nome: str | None = None, monitor_nome: str | None = None, periodicidade: str | None = None,
     ) -> dict:
         self._validar_professor(professor_id, polo_id)
         turma = Turma(
             id=None, polo_id=polo_id, modalidade_id=modalidade_id, professor_id=professor_id,
             horario_inicio=horario_inicio, horario_fim=horario_fim,
             dias_semana=dias_semana, limite_vagas=limite_vagas,
+            coordenador_nome=coordenador_nome, monitor_nome=monitor_nome, periodicidade=periodicidade,
         )
         criada = self.repo.criar(turma)
         return self._com_vagas(criada)
@@ -64,4 +66,6 @@ class TurmaService:
             "professor_id": turma.professor_id, "horario_inicio": turma.horario_inicio,
             "horario_fim": turma.horario_fim, "dias_semana": turma.dias_semana,
             "limite_vagas": turma.limite_vagas, "vagas_ocupadas": ocupadas,
+            "coordenador_nome": turma.coordenador_nome, "monitor_nome": turma.monitor_nome,
+            "periodicidade": turma.periodicidade,
         }

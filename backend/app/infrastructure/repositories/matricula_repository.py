@@ -34,6 +34,21 @@ class MatriculaRepository:
         stmt = select(MatriculaModel).where(MatriculaModel.beneficiario_id == beneficiario_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
+    def listar_beneficiarios_ativos_por_turma(self, turma_id: UUID) -> list[tuple[UUID, str]]:
+        """[(beneficiario_id, nome_completo), ...] das matrículas ativas da turma,
+        em ordem alfabética — usado na exportação da Lista de Presença."""
+        stmt = (
+            select(BeneficiarioModel.id, BeneficiarioModel.nome_completo)
+            .join(MatriculaModel, MatriculaModel.beneficiario_id == BeneficiarioModel.id)
+            .where(
+                MatriculaModel.turma_id == turma_id,
+                MatriculaModel.ativo.is_(True),
+                BeneficiarioModel.ativo.is_(True),
+            )
+            .order_by(BeneficiarioModel.nome_completo)
+        )
+        return list(self.db.execute(stmt).all())
+
     def contar_ativas_por_turma(self, turma_id: UUID) -> int:
         stmt = (
             select(func.count())

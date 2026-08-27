@@ -41,3 +41,6 @@ class ArmazenamentoLocalDocumentos:
 
 
 armazenamento_documentos = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR)
+# Fotos de evidência de aula (chamada) — mesma implementação, pasta separada
+# dos documentos de beneficiário.
+armazenamento_evidencias = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_EVIDENCIAS)

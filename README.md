@@ -169,7 +169,7 @@ npm run preview    # serve o build localmente
 | POST | `/api/v1/auth/refresh` | público |
 | GET | `/api/v1/auth/me` | autenticado |
 | PATCH | `/api/v1/auth/senha` | autenticado (troca a própria senha) |
-| GET/POST | `/api/v1/polos` | MASTER (POST) |
+| GET/POST/PATCH | `/api/v1/polos` | MASTER — cada polo é sua própria entidade parceira (Termo de Fomento, CNPJ, representante legal ficam no cadastro do polo) |
 | GET/POST | `/api/v1/modalidades` | MASTER, GESTOR_POLO |
 | GET/POST/PATCH | `/api/v1/turmas` | MASTER, GESTOR_POLO |
 | GET/POST/PATCH | `/api/v1/beneficiarios` | MASTER, GESTOR_POLO |
@@ -179,9 +179,50 @@ npm run preview    # serve o build localmente
 | GET | `/api/v1/beneficiarios/documentos/{id}/arquivo` | MASTER, GESTOR_POLO |
 | POST | `/api/v1/frequencias/chamada` | PROFESSOR (+ MASTER/GESTOR) |
 | POST | `/api/v1/relatorios-aula` | PROFESSOR |
-| GET/POST | `/api/v1/usuarios` | MASTER, GESTOR_POLO — cadastro de gestores/professores (aba "Professores" do front usa este endpoint filtrando por PROFESSOR) |
+| GET/POST/PATCH | `/api/v1/usuarios` | MASTER, GESTOR_POLO — cadastro de gestores/professores (aba "Professores" do front usa este endpoint filtrando por PROFESSOR); PATCH edita nome/telefone/carga horária (GESTOR_POLO só o próprio professor) |
+| GET/POST/PATCH | `/api/v1/fichas-execucao` | MASTER — Ficha Técnica de Execução da Entidade (Portaria nº 102/2024), uma por polo e por período |
+| GET | `/api/v1/fichas-execucao/{id}/exportar` | MASTER — exporta a ficha em `.xlsx`, no layout oficial do modelo |
+| GET | `/api/v1/turmas/{id}/lista-presenca/exportar` | MASTER, GESTOR_POLO — exporta a Lista de Presença mensal da turma em `.xlsx` a partir da frequência já lançada |
+| GET | `/api/v1/polos/{id}/grade-horaria/exportar` | MASTER, GESTOR_POLO — exporta a Grade Horária semanal do polo em `.docx` a partir das turmas já cadastradas |
+| GET | `/api/v1/polos/{id}/planilha-nucleos/exportar` | MASTER, GESTOR_POLO — exporta a Planilha de Núcleos (RH e Beneficiário) do polo em `.xlsx` |
+| GET/POST/PATCH | `/api/v1/entregas-materiais` | MASTER, GESTOR_POLO — registro de entregas de materiais/uniformes por polo |
+| GET | `/api/v1/entregas-materiais/{id}/exportar` | MASTER, GESTOR_POLO — exporta o Termo de Entrega de Materiais em `.docx` |
+| GET | `/api/v1/polos/{id}/termo-responsabilidade/exportar` | MASTER, GESTOR_POLO — exporta o Termo de Responsabilidade em `.docx` a partir dos dados do representante legal cadastrados no polo |
 
 Todos os detalhes (DTOs, exemplos, códigos de resposta) estão no Swagger.
+
+### Relatórios oficiais (exportação `.xlsx`/`.docx`)
+
+O sistema gera os 6 documentos de prestação de contas exigidos pela
+Portaria nº 102/2024, preenchidos automaticamente a partir dos dados já
+cadastrados, no layout dos modelos oficiais:
+
+- **Ficha Técnica de Execução da Entidade** — cadastre primeiro os dados da
+  parceria (Termo de Fomento, CNPJ, representante legal) editando o **Polo**
+  em **Polos** (cada polo é sua própria entidade parceira), depois crie uma
+  Ficha por período em **Fichas de Execução** e use "Exportar .xlsx".
+- **Lista de Presença** — na aba **Turmas**, seção "Exportar Lista de
+  Presença": escolha a turma e o mês/ano; o arquivo sai preenchido com a
+  grade de presença (P/A) a partir da frequência já lançada pelo professor.
+- **Grade Horária** — na aba **Polos**, ícone de calendário na linha do
+  polo: informe as horas de planejamento semanal e o arquivo sai
+  preenchido com a carga horária (Segunda/Quarta/Sexta) de cada turma do
+  polo, já somando o total semanal + planejamento.
+- **Planilha de Núcleos — RH e Beneficiário** — na aba **Polos**, ícone de
+  prancheta na linha do polo: o arquivo sai preenchido com a equipe (RH —
+  gestor/professores do polo, com telefone e carga horária cadastrados em
+  **Professores**) e os beneficiários ativos do polo (nome, idade,
+  modalidade).
+- **Termo de Entrega de Materiais** — aba **Entregas de Materiais**:
+  registre a entrega (polo, data, itens) e use "Exportar .docx"; o
+  coordenador do termo é copiado do responsável cadastrado no polo.
+- **Termo de Responsabilidade** — na aba **Polos**, ícone de documento na
+  linha do polo: gera o termo com os dados pessoais do representante legal
+  (nome, RG, CPF, endereço) cadastrados na edição do polo.
+
+Os arquivos-modelo ficam em `backend/app/infrastructure/templates/` — os
+`.xlsx` são carregados com `openpyxl` e o `.docx` com `python-docx` (ambos
+preservam 100% do layout/estilo originais).
 
 ---
 

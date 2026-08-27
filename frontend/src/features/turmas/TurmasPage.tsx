@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Modalidade, Polo, Turma } from "@/types";
+import type { Modalidade, Polo, Turma, Usuario } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,39 +13,66 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { useAuth } from "@/features/auth/AuthContext";
+import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
+const MES_ATUAL = new Date().getMonth() + 1;
+const ANO_ATUAL = new Date().getFullYear();
 
 export function TurmasPage() {
   const { usuario } = useAuth();
   const toast = useToast();
-  const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [polos, setPolos] = useState<Polo[]>([]);
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: turmas = [], isLoading: carregando } = useQuery({
+    queryKey: ["turmas"],
+    queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
+  });
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
+  });
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+  });
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ["usuarios"],
+    queryFn: () => api.get<Usuario[]>("/usuarios").then((r) => r.data),
+  });
+  const professores = usuarios.filter((x) => x.perfil === "PROFESSOR");
+
   const [salvando, setSalvando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [form, setForm] = useState({
     polo_id: "", modalidade_id: "", horario_inicio: "", horario_fim: "",
     dias_semana: [] as string[], limite_vagas: 20,
+    coordenador_nome: "", monitor_nome: "", periodicidade: "",
+  });
+  const [exportForm, setExportForm] = useState({ turma_id: "", mes: MES_ATUAL, ano: ANO_ATUAL });
+
+  // Gestor de polo já vem com o polo pré-selecionado.
+  useEffect(() => {
+    if (usuario?.polo_id) {
+      setForm((f) => (f.polo_id ? f : { ...f, polo_id: usuario.polo_id! }));
+    }
+  }, [usuario]);
+
+  const atribuirProfessorMutation = useMutation({
+    mutationFn: ({ turmaId, professorId }: { turmaId: string; professorId: string }) =>
+      api.patch(`/turmas/${turmaId}`, { professor_id: professorId || null }),
+    onSuccess: () => {
+      toast.success("Professor atualizado.");
+      queryClient.invalidateQueries({ queryKey: ["turmas"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Erro ao atualizar o professor da turma.");
+    },
   });
 
-  async function carregar() {
-    const [t, p, m] = await Promise.all([
-      api.get<Turma[]>("/turmas"),
-      api.get<Polo[]>("/polos"),
-      api.get<Modalidade[]>("/modalidades"),
-    ]);
-    setTurmas(t.data);
-    setPolos(p.data);
-    setModalidades(m.data);
-    // Gestor de polo já vem com o polo pré-selecionado
-    if (usuario?.polo_id && !form.polo_id) {
-      setForm((f) => ({ ...f, polo_id: usuario.polo_id! }));
-    }
+  function atribuirProfessor(turmaId: string, professorId: string) {
+    atribuirProfessorMutation.mutate({ turmaId, professorId });
   }
-  useEffect(() => {
-    carregar().finally(() => setCarregando(false));
-  }, []);
 
   function toggleDia(dia: string) {
     setForm((f) => ({
@@ -66,14 +94,39 @@ export function TurmasPage() {
     e.preventDefault();
     setSalvando(true);
     try {
-      await api.post("/turmas", { ...form, limite_vagas: Number(form.limite_vagas) });
-      setForm({ polo_id: usuario?.polo_id ?? "", modalidade_id: "", horario_inicio: "", horario_fim: "", dias_semana: [], limite_vagas: 20 });
+      await api.post("/turmas", {
+        ...form,
+        limite_vagas: Number(form.limite_vagas),
+        coordenador_nome: form.coordenador_nome || null,
+        monitor_nome: form.monitor_nome || null,
+        periodicidade: form.periodicidade || null,
+      });
+      setForm({
+        polo_id: usuario?.polo_id ?? "", modalidade_id: "", horario_inicio: "", horario_fim: "",
+        dias_semana: [], limite_vagas: 20, coordenador_nome: "", monitor_nome: "", periodicidade: "",
+      });
       toast.success("Turma cadastrada com sucesso.");
-      carregar();
+      queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar turma.");
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function exportarListaPresenca(e: FormEvent) {
+    e.preventDefault();
+    if (!exportForm.turma_id) return;
+    setExportando(true);
+    try {
+      await baixarExportacao(
+        `/turmas/${exportForm.turma_id}/lista-presenca/exportar?mes=${exportForm.mes}&ano=${exportForm.ano}`,
+        `Lista de Presenca - ${String(exportForm.mes).padStart(2, "0")}-${exportForm.ano}.xlsx`
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Lista de Presença.");
+    } finally {
+      setExportando(false);
     }
   }
 
@@ -118,8 +171,33 @@ export function TurmasPage() {
           </div>
           <Input label="Limite de vagas" type="number" min={1} value={form.limite_vagas}
             onChange={(e) => setForm({ ...form, limite_vagas: Number(e.target.value) })} required />
+          <Input label="Coordenador" placeholder="Nome do coordenador do núcleo" value={form.coordenador_nome}
+            onChange={(e) => setForm({ ...form, coordenador_nome: e.target.value })} />
+          <Input label="Monitor" placeholder="Nome do monitor/instrutor" value={form.monitor_nome}
+            onChange={(e) => setForm({ ...form, monitor_nome: e.target.value })} />
+          <Input label="Periodicidade" placeholder="ex.: Semanal" value={form.periodicidade}
+            onChange={(e) => setForm({ ...form, periodicidade: e.target.value })} />
           <div className="sm:col-span-2">
             <Button type="submit" disabled={salvando}>{salvando ? "Cadastrando…" : "Cadastrar turma"}</Button>
+          </div>
+        </form>
+      </Card>
+      <Card title="Exportar Lista de Presença" subtitle="Gera o arquivo .xlsx do mês no layout oficial, a partir da frequência já lançada." className="animate-fade-in-up" style={staggerStyle(1)}>
+        <form onSubmit={exportarListaPresenca} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+          <div className="sm:col-span-2">
+            <Select label="Turma" value={exportForm.turma_id} onChange={(e) => setExportForm({ ...exportForm, turma_id: e.target.value })} required>
+              <option value="">— Selecione —</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>{poloNome(t.polo_id)} — {modalidadeNome(t.modalidade_id)} ({t.horario_inicio}–{t.horario_fim})</option>
+              ))}
+            </Select>
+          </div>
+          <Input label="Mês" type="number" min={1} max={12} value={exportForm.mes}
+            onChange={(e) => setExportForm({ ...exportForm, mes: Number(e.target.value) })} required />
+          <Input label="Ano" type="number" min={2000} max={2100} value={exportForm.ano}
+            onChange={(e) => setExportForm({ ...exportForm, ano: Number(e.target.value) })} required />
+          <div className="sm:col-span-4">
+            <Button type="submit" variant="secondary" disabled={exportando}>{exportando ? "Exportando…" : "Exportar .xlsx"}</Button>
           </div>
         </form>
       </Card>
@@ -127,7 +205,7 @@ export function TurmasPage() {
         title="Turmas"
         actions={<Badge variant="accent">{turmas.length}</Badge>}
         className="animate-fade-in-up"
-        style={staggerStyle(1)}
+        style={staggerStyle(2)}
       >
         {carregando ? (
           <Spinner label="Carregando turmas…" />
@@ -154,7 +232,25 @@ export function TurmasPage() {
                     <td className="px-3 text-gray-600">{t.horario_inicio}–{t.horario_fim}</td>
                     <td className="px-3 text-gray-600">{t.dias_semana.join(", ")}</td>
                     <td className="px-3"><Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge></td>
-                    <td className="px-3">{t.professor_id ? t.professor_id.slice(0, 8) : <span className="text-gray-400">sem professor</span>}</td>
+                    <td className="px-3">
+                      <select
+                        className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white hover:border-gray-400 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none disabled:opacity-50"
+                        value={t.professor_id ?? ""}
+                        disabled={
+                          atribuirProfessorMutation.isPending && atribuirProfessorMutation.variables?.turmaId === t.id
+                        }
+                        onChange={(e) => atribuirProfessor(t.id, e.target.value)}
+                      >
+                        <option value="">— Sem professor —</option>
+                        {professores
+                          .filter((p) => p.polo_id === t.polo_id)
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nome}
+                            </option>
+                          ))}
+                      </select>
+                    </td>
                   </tr>
                 ))}
               </tbody>

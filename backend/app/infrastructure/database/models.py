@@ -8,6 +8,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
@@ -42,6 +43,9 @@ class UsuarioModel(Base):
         PG_UUID(as_uuid=True), ForeignKey("polos.id", use_alter=True), nullable=True
     )
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # RH do núcleo (Planilha de Núcleos — RH e Beneficiário)
+    telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    carga_horaria_semanal: Mapped[str | None] = mapped_column(String(20), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     polo: Mapped["PoloModel"] = relationship(foreign_keys=[polo_id], back_populates="usuarios_vinculados")
@@ -59,6 +63,35 @@ class PoloModel(Base):
     gestor_responsavel_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )
+
+    # Dados da parceria (Termo de Fomento) — próprios deste polo; cada polo
+    # é sua própria entidade parceira para fins da Ficha Técnica de Execução.
+    processo_sei: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    termo_fomento_numero: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    nome_entidade: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cnpj: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    representante_legal_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    representante_legal_cpf: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    objeto: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vigencia_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vigencia_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valor_pactuado: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    valor_executado: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    parlamentar: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    emenda: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    termos_aditivos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
+    # Contato do núcleo para a seção "Identificação dos Núcleos" da Ficha
+    responsavel_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    responsavel_email: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    responsavel_telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    # Dados pessoais do representante legal para o Termo de Responsabilidade
+    representante_legal_rg: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    representante_legal_endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    representante_legal_bairro: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    representante_legal_cidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     usuarios_vinculados: Mapped[list["UsuarioModel"]] = relationship(
@@ -91,6 +124,11 @@ class TurmaModel(Base):
     horario_fim: Mapped[str] = mapped_column(String(5), nullable=False)
     dias_semana: Mapped[str] = mapped_column(String(50), nullable=False)  # ex: "SEG,QUA,SEX"
     limite_vagas: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    # Coordenador/monitor da turma para a Lista de Presença — não são
+    # necessariamente usuários do sistema, por isso são só nomes de impressão.
+    coordenador_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    monitor_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    periodicidade: Mapped[str | None] = mapped_column(String(50), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     polo: Mapped["PoloModel"] = relationship(back_populates="turmas")
@@ -184,6 +222,25 @@ class FrequenciaModel(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class ChamadaEvidenciaModel(Base):
+    """Fotos anexadas pelo professor a uma chamada (turma + data), como
+    comprovação de que a aula aconteceu."""
+
+    __tablename__ = "chamada_evidencias"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    turma_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("turmas.id"), nullable=False)
+    data: Mapped[date] = mapped_column(Date, nullable=False)
+    nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)
+    caminho_arquivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enviado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class RelatorioAulaModel(Base):
     __tablename__ = "relatorios_aula"
 
@@ -193,4 +250,68 @@ class RelatorioAulaModel(Base):
     data: Mapped[date] = mapped_column(Date, nullable=False)
     conteudo_trabalhado: Mapped[str] = mapped_column(Text, nullable=False)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class FichaExecucaoModel(Base):
+    """Ficha Técnica de Execução da Entidade — uma por polo e por
+    período/trimestre reportado (Portaria nº 102/2024). Só o MASTER
+    cadastra/edita/exporta."""
+
+    __tablename__ = "fichas_execucao"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    polo_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=True)
+    periodo_referencia: Mapped[str] = mapped_column(String(100), nullable=False)
+    data_documento: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    valor_recebido_periodo: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    valor_recebido_extenso: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    data_recebimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    ajuste_status: Mapped[str] = mapped_column(String(20), nullable=False, default="NAO_SOLICITADO")
+    ajuste_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    metas: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    atividades_comparativo: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    checklist_documentos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
+    periodo_inscricao_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
+    periodo_inscricao_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
+    inscricao_todos_nucleos: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    qtd_inscritos: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    observacoes_inscricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # 7 - Identificação do núcleo: nome/endereço/responsável/e-mail/telefone
+    # vêm do próprio polo — aqui só a narrativa do período.
+    quantitativo_beneficiados: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    modalidades: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    periodo_funcionamento: Mapped[str | None] = mapped_column(String(50), nullable=True)  # ex.: "MANHA,TARDE"
+    descricao_atividades: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dificuldades: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    impactos_sociais: Mapped[str | None] = mapped_column(Text, nullable=True)
+    consideracoes_finais: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class EntregaMaterialModel(Base):
+    """Termo de Entrega de Materiais — um registro por entrega física de
+    materiais/uniformes ao núcleo. MASTER/GESTOR_POLO do próprio polo
+    cadastram e exportam o termo assinável em .docx."""
+
+    __tablename__ = "entregas_materiais"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    polo_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=False)
+    data_entrega: Mapped[date | None] = mapped_column(Date, nullable=True)
+    coordenador_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    itens: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

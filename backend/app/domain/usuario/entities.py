@@ -13,6 +13,8 @@ class Usuario:
     perfil: PerfilUsuario
     polo_id: UUID | None  # obrigatório apenas para GESTOR_POLO; usado também por PROFESSOR do polo
     ativo: bool = True
+    telefone: str | None = None
+    carga_horaria_semanal: str | None = None
 
     def __post_init__(self) -> None:
         if self.perfil == PerfilUsuario.GESTOR_POLO and self.polo_id is None:

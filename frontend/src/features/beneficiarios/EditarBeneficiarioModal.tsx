@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Beneficiario, Polo } from "@/types";
 import { Modal } from "@/components/ui/Modal";
@@ -21,7 +22,7 @@ function formInicialDe(b: Beneficiario) {
   const tipoConhecido = b.responsavel_legal_tipo_relacao && TIPOS_RELACAO.includes(b.responsavel_legal_tipo_relacao);
   return {
     nome_completo: b.nome_completo,
-    polo_id: b.polo_id,
+    polo_id: b.polo_id ?? "",
     responsavel_legal_nome: b.responsavel_legal_nome ?? "",
     responsavel_legal_data_nascimento: b.responsavel_legal_data_nascimento ?? "",
     responsavel_legal_tipo_relacao: tipoConhecido ? b.responsavel_legal_tipo_relacao! : b.responsavel_legal_tipo_relacao ? "Outro" : "",
@@ -39,45 +40,46 @@ function formInicialDe(b: Beneficiario) {
 export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState(beneficiario ? formInicialDe(beneficiario) : null);
-  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     setForm(beneficiario ? formInicialDe(beneficiario) : null);
   }, [beneficiario]);
 
+  const salvarMutation = useMutation({
+    mutationFn: (payload: { id: string; form: NonNullable<typeof form> }) => {
+      const tipoRelacaoFinal =
+        payload.form.responsavel_legal_tipo_relacao === "Outro"
+          ? payload.form.responsavel_legal_tipo_relacao_outro
+          : payload.form.responsavel_legal_tipo_relacao;
+      return api.patch(`/beneficiarios/${payload.id}`, {
+        nome_completo: payload.form.nome_completo,
+        polo_id: payload.form.polo_id,
+        responsavel_legal_nome: payload.form.responsavel_legal_nome || null,
+        responsavel_legal_data_nascimento: payload.form.responsavel_legal_data_nascimento || null,
+        responsavel_legal_tipo_relacao: tipoRelacaoFinal || null,
+        responsavel_legal_telefone_1: onlyDigits(payload.form.responsavel_legal_telefone_1) || null,
+        responsavel_legal_telefone_2: onlyDigits(payload.form.responsavel_legal_telefone_2) || null,
+        responsavel_legal_email: payload.form.responsavel_legal_email || null,
+        responsavel_legal_rede_social: payload.form.responsavel_legal_rede_social || null,
+        endereco: payload.form.endereco || null,
+        autoriza_whatsapp: payload.form.autoriza_whatsapp,
+        observacoes_medicas: payload.form.observacoes_medicas || null,
+      });
+    },
+    onSuccess: () => onSalvo(),
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Erro ao salvar alterações.");
+    },
+  });
+
   if (!beneficiario || !form) {
     return null;
   }
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form || !beneficiario) return;
-    setSalvando(true);
-    try {
-      const tipoRelacaoFinal =
-        form.responsavel_legal_tipo_relacao === "Outro"
-          ? form.responsavel_legal_tipo_relacao_outro
-          : form.responsavel_legal_tipo_relacao;
-      await api.patch(`/beneficiarios/${beneficiario.id}`, {
-        nome_completo: form.nome_completo,
-        polo_id: form.polo_id,
-        responsavel_legal_nome: form.responsavel_legal_nome || null,
-        responsavel_legal_data_nascimento: form.responsavel_legal_data_nascimento || null,
-        responsavel_legal_tipo_relacao: tipoRelacaoFinal || null,
-        responsavel_legal_telefone_1: onlyDigits(form.responsavel_legal_telefone_1) || null,
-        responsavel_legal_telefone_2: onlyDigits(form.responsavel_legal_telefone_2) || null,
-        responsavel_legal_email: form.responsavel_legal_email || null,
-        responsavel_legal_rede_social: form.responsavel_legal_rede_social || null,
-        endereco: form.endereco || null,
-        autoriza_whatsapp: form.autoriza_whatsapp,
-        observacoes_medicas: form.observacoes_medicas || null,
-      });
-      onSalvo();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao salvar alterações.");
-    } finally {
-      setSalvando(false);
-    }
+    salvarMutation.mutate({ id: beneficiario.id, form });
   }
 
   return (
@@ -195,8 +197,8 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
         />
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar alterações"}
+          <Button type="submit" disabled={salvarMutation.isPending}>
+            {salvarMutation.isPending ? "Salvando…" : "Salvar alterações"}
           </Button>
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar

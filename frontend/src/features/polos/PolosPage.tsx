@@ -1,97 +1,98 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PencilIcon, TrashIcon } from "@/components/ui/icons";
+import { CalendarCheckIcon, ClipboardIcon, DocumentTextIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
+import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
+import { CadastrarPoloWizard } from "./CadastrarPoloWizard";
 import { EditarPoloModal } from "./EditarPoloModal";
 
 export function PolosPage() {
   const toast = useToast();
-  const [polos, setPolos] = useState<Polo[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [form, setForm] = useState({ nome: "", codigo: "", endereco: "", horario_funcionamento: "" });
-  const [salvando, setSalvando] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: polos = [], isLoading: carregando } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
+  });
+
   const [poloEditando, setPoloEditando] = useState<Polo | null>(null);
+  const [exportandoGrade, setExportandoGrade] = useState<string | null>(null);
+  const [exportandoNucleos, setExportandoNucleos] = useState<string | null>(null);
+  const [exportandoTermo, setExportandoTermo] = useState<string | null>(null);
 
-  async function carregar() {
-    const { data } = await api.get<Polo[]>("/polos");
-    setPolos(data);
-  }
-  useEffect(() => {
-    carregar().finally(() => setCarregando(false));
-  }, []);
-
-  async function excluirPolo(p: Polo) {
-    if (!window.confirm(`Desativar o polo "${p.nome}"? Ele deixa de aparecer como opção em novos cadastros.`)) return;
-    try {
-      await api.patch(`/polos/${p.id}`, { status: "INATIVO" });
+  const desativarMutation = useMutation({
+    mutationFn: (p: Polo) => api.patch(`/polos/${p.id}`, { status: "INATIVO" }),
+    onSuccess: () => {
       toast.success("Polo desativado.");
-      carregar();
-    } catch (err: any) {
+      queryClient.invalidateQueries({ queryKey: ["polos"] });
+    },
+    onError: (err: any) => {
       toast.error(err?.response?.data?.detail ?? "Erro ao desativar polo.");
+    },
+  });
+
+  function excluirPolo(p: Polo) {
+    if (!window.confirm(`Desativar o polo "${p.nome}"? Ele deixa de aparecer como opção em novos cadastros.`)) return;
+    desativarMutation.mutate(p);
+  }
+
+  async function exportarGradeHoraria(p: Polo) {
+    const entrada = window.prompt("Horas de planejamento semanal (opcional):", "0");
+    if (entrada === null) return;
+    const planejamento = Number(entrada.replace(",", ".")) || 0;
+    setExportandoGrade(p.id);
+    try {
+      await baixarExportacao(
+        `/polos/${p.id}/grade-horaria/exportar?planejamento_horas=${planejamento}`,
+        `Grade Horaria - ${p.nome}.docx`
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Grade Horária.");
+    } finally {
+      setExportandoGrade(null);
     }
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSalvando(true);
+  async function exportarPlanilhaNucleos(p: Polo) {
+    setExportandoNucleos(p.id);
     try {
-      await api.post("/polos", {
-        nome: form.nome,
-        codigo: form.codigo.trim() || null,
-        endereco: form.endereco || null,
-        horario_funcionamento: form.horario_funcionamento || null,
-      });
-      setForm({ nome: "", codigo: "", endereco: "", horario_funcionamento: "" });
-      toast.success("Polo cadastrado com sucesso.");
-      carregar();
+      await baixarExportacao(`/polos/${p.id}/planilha-nucleos/exportar`, `Planilha de Nucleos - ${p.nome}.xlsx`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar polo.");
+      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Planilha de Núcleos.");
     } finally {
-      setSalvando(false);
+      setExportandoNucleos(null);
+    }
+  }
+
+  async function exportarTermoResponsabilidade(p: Polo) {
+    setExportandoTermo(p.id);
+    try {
+      await baixarExportacao(`/polos/${p.id}/termo-responsabilidade/exportar`, `Termo de Responsabilidade - ${p.nome}.docx`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? "Erro ao exportar o Termo de Responsabilidade.");
+    } finally {
+      setExportandoTermo(null);
     }
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Polos" subtitle="Unidades onde os projetos esportivos são executados." />
-      <Card title="Cadastrar polo" className="animate-fade-in-up" style={staggerStyle(0)}>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2">
-            <Input label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
-          </div>
-          <Input
-            label="Código"
-            placeholder="ex.: ZN01"
-            value={form.codigo}
-            onChange={(e) => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
-            maxLength={20}
-            hint="Identificador curto, usado no lugar do ID nas telas."
-          />
-          <div className="sm:col-span-3">
-            <Input label="Endereço" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
-          </div>
-          <div className="sm:col-span-3">
-            <Input
-              label="Horário de funcionamento"
-              placeholder="ex.: Seg a Sex, 08h às 18h"
-              value={form.horario_funcionamento}
-              onChange={(e) => setForm({ ...form, horario_funcionamento: e.target.value })}
-            />
-          </div>
-          <div className="sm:col-span-3">
-            <Button type="submit" disabled={salvando}>{salvando ? "Cadastrando…" : "Cadastrar polo"}</Button>
-          </div>
-        </form>
-      </Card>
+      <PageHeader
+        title="Polos"
+        subtitle="Unidades onde os projetos esportivos são executados. Cada polo é sua própria entidade parceira do Termo de Fomento — edite para preencher CNPJ, representante legal etc."
+      />
+      <CadastrarPoloWizard
+        onCadastrado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
+        style={staggerStyle(0)}
+      />
       <Card
         title="Polos"
         actions={<Badge variant="accent">{polos.length}</Badge>}
@@ -109,8 +110,8 @@ export function PolosPage() {
                 <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
                   <th className="py-2.5 px-6">Código</th>
                   <th className="px-3">Nome</th>
-                  <th className="px-3">Endereço</th>
-                  <th className="px-3">Horário de funcionamento</th>
+                  <th className="px-3">Entidade parceira</th>
+                  <th className="px-3">Termo de Fomento</th>
                   <th className="px-3">Status</th>
                   <th className="px-3 text-right pr-6">Ações</th>
                 </tr>
@@ -120,13 +121,40 @@ export function PolosPage() {
                   <tr key={p.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
                     <td className="py-2.5 px-6 font-medium text-gray-800">{p.codigo ?? "—"}</td>
                     <td className="px-3 text-gray-600">{p.nome}</td>
-                    <td className="px-3 text-gray-600">{p.endereco ?? "—"}</td>
-                    <td className="px-3 text-gray-600">{p.horario_funcionamento ?? "—"}</td>
+                    <td className="px-3 text-gray-600">{p.nome_entidade ?? "—"}</td>
+                    <td className="px-3 text-gray-600">{p.termo_fomento_numero ?? "—"}</td>
                     <td className="px-3">
                       <Badge variant={p.status === "ATIVO" ? "accent" : "gray"}>{p.status}</Badge>
                     </td>
                     <td className="px-3 text-right pr-6">
                       <div className="flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          title="Exportar Grade Horária"
+                          onClick={() => exportarGradeHoraria(p)}
+                          disabled={exportandoGrade === p.id}
+                          className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
+                        >
+                          <CalendarCheckIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Exportar Planilha de Núcleos"
+                          onClick={() => exportarPlanilhaNucleos(p)}
+                          disabled={exportandoNucleos === p.id}
+                          className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
+                        >
+                          <ClipboardIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Exportar Termo de Responsabilidade"
+                          onClick={() => exportarTermoResponsabilidade(p)}
+                          disabled={exportandoTermo === p.id}
+                          className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
+                        >
+                          <DocumentTextIcon className="w-4 h-4" />
+                        </button>
                         <button
                           type="button"
                           title="Editar"
@@ -161,8 +189,9 @@ export function PolosPage() {
         onSalvo={() => {
           setPoloEditando(null);
           toast.success("Alterações salvas.");
-          carregar();
+          queryClient.invalidateQueries({ queryKey: ["polos"] });
         }}
+        onAtualizado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
       />
     </div>
   );

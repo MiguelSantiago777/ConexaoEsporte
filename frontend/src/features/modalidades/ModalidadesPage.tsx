@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Modalidade } from "@/types";
 import { Card } from "@/components/ui/Card";
@@ -13,18 +14,13 @@ import { staggerStyle } from "@/lib/animation";
 
 export function ModalidadesPage() {
   const toast = useToast();
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: modalidades = [], isLoading: carregando } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+  });
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({ nome: "", descricao: "" });
-
-  async function carregar() {
-    const { data } = await api.get<Modalidade[]>("/modalidades");
-    setModalidades(data);
-  }
-  useEffect(() => {
-    carregar().finally(() => setCarregando(false));
-  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -33,7 +29,7 @@ export function ModalidadesPage() {
       await api.post("/modalidades", { nome: form.nome, descricao: form.descricao || null });
       setForm({ nome: "", descricao: "" });
       toast.success("Modalidade cadastrada com sucesso.");
-      carregar();
+      queryClient.invalidateQueries({ queryKey: ["modalidades"] });
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar modalidade.");
     } finally {

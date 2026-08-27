@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../AuthContext";
 import { api } from "@/lib/api";
 import type { Beneficiario, Modalidade, Polo, Turma } from "@/types";
@@ -22,33 +23,29 @@ const descricaoPorPerfil: Record<string, string> = {
 
 export function DashboardPage() {
   const { usuario } = useAuth();
-  const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [beneficiarios, setBeneficiarios] = useState<Beneficiario[]>([]);
-  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [polos, setPolos] = useState<Polo[]>([]);
-  const [carregando, setCarregando] = useState(true);
-
   const mostrarRelatorio = usuario?.perfil === "MASTER" || usuario?.perfil === "GESTOR_POLO";
 
-  useEffect(() => {
-    if (!mostrarRelatorio) {
-      setCarregando(false);
-      return;
-    }
-    Promise.all([
-      api.get<Turma[]>("/turmas"),
-      api.get<Beneficiario[]>("/beneficiarios"),
-      api.get<Modalidade[]>("/modalidades"),
-      api.get<Polo[]>("/polos"),
-    ])
-      .then(([t, b, m, p]) => {
-        setTurmas(t.data);
-        setBeneficiarios(b.data);
-        setModalidades(m.data);
-        setPolos(p.data);
-      })
-      .finally(() => setCarregando(false));
-  }, [mostrarRelatorio]);
+  const { data: turmas = [], isLoading: carregandoTurmas } = useQuery({
+    queryKey: ["turmas"],
+    queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
+    enabled: mostrarRelatorio,
+  });
+  const { data: beneficiarios = [], isLoading: carregandoBeneficiarios } = useQuery({
+    queryKey: ["beneficiarios"],
+    queryFn: () => api.get<Beneficiario[]>("/beneficiarios").then((r) => r.data),
+    enabled: mostrarRelatorio,
+  });
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+    enabled: mostrarRelatorio,
+  });
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
+    enabled: mostrarRelatorio,
+  });
+  const carregando = mostrarRelatorio && (carregandoTurmas || carregandoBeneficiarios);
 
   const beneficiariosAtivos = useMemo(() => beneficiarios.filter((b) => b.ativo), [beneficiarios]);
 

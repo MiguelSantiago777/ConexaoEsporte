@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads/documentos"
     UPLOAD_MAX_SIZE_MB: int = 10
 
+    # Fotos de evidência de aula (comprovam que a chamada de uma turma+data
+    # realmente aconteceu) — mesmo esquema de armazenamento, pasta separada.
+    UPLOAD_DIR_EVIDENCIAS: str = "uploads/evidencias"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]

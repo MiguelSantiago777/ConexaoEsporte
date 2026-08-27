@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Beneficiario } from "@/types";
 import { Card } from "@/components/ui/Card";
@@ -22,17 +23,13 @@ function hoje() {
  */
 export function AutorizacaoImagemPage() {
   const { id } = useParams<{ id: string }>();
-  const [beneficiario, setBeneficiario] = useState<Beneficiario | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const { data: beneficiarios = [], isLoading: carregando } = useQuery({
+    queryKey: ["beneficiarios"],
+    queryFn: () => api.get<Beneficiario[]>("/beneficiarios").then((r) => r.data),
+  });
+  const beneficiario = beneficiarios.find((b) => b.id === id) ?? null;
   const [documentoResponsavel, setDocumentoResponsavel] = useState("");
   const [cidade, setCidade] = useState("");
-
-  useEffect(() => {
-    api.get<Beneficiario[]>("/beneficiarios").then((r) => {
-      setBeneficiario(r.data.find((b) => b.id === id) ?? null);
-      setCarregando(false);
-    });
-  }, [id]);
 
   if (carregando) {
     return <Spinner label="Carregando…" />;
