@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Usuario } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -36,7 +37,7 @@ export function EditarProfessorModal({ professor, onClose, onSalvo }: Props) {
       }),
     onSuccess: () => onSalvo(),
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao salvar alterações.");
+      toast.error(mensagemErroApi(err, "Erro ao salvar alterações."));
     },
   });
 

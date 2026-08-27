@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Polo, RelatorioPolo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 
 const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
 
@@ -67,6 +69,7 @@ export function RelatorioPoloPage() {
   const [relatorio, setRelatorio] = useState<RelatorioPolo | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,6 +89,21 @@ export function RelatorioPoloPage() {
     }
   }
 
+  async function baixarXlsx() {
+    if (!poloId) return;
+    setExportandoXlsx(true);
+    try {
+      await baixarExportacao(
+        `/relatorios/polo/${poloId}/exportar?data_inicio=${dataInicio}&data_fim=${dataFim}`,
+        "relatorio-do-polo.xlsx"
+      );
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
+    }
+  }
+
   async function gerar() {
     if (!poloId) return;
     setCarregando(true);
@@ -95,7 +113,7 @@ export function RelatorioPoloPage() {
       });
       setRelatorio(data);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao gerar o relatório.");
+      toast.error(mensagemErroApi(err, "Erro ao gerar o relatório."));
       setRelatorio(null);
     } finally {
       setCarregando(false);
@@ -132,9 +150,14 @@ export function RelatorioPoloPage() {
           </div>
           <Button onClick={gerar} disabled={!poloId || carregando}>{carregando ? "Gerando…" : "Gerar relatório"}</Button>
           {relatorio && (
-            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
-              {exportando ? "Gerando…" : "Baixar PDF"}
-            </Button>
+            <>
+              <Button variant="secondary" onClick={baixarXlsx} disabled={exportandoXlsx}>
+                {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+              </Button>
+              <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+                {exportando ? "Gerando…" : "Baixar PDF"}
+              </Button>
+            </>
           )}
         </div>
       </Card>

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Polo, Usuario } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -84,7 +85,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       onAtualizado?.();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao criar acesso do gestor.");
+      toast.error(mensagemErroApi(err, "Erro ao criar acesso do gestor."));
     },
   });
 
@@ -167,7 +168,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
     },
     onSuccess: () => onSalvo(),
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao salvar alterações.");
+      toast.error(mensagemErroApi(err, "Erro ao salvar alterações."));
     },
   });
 

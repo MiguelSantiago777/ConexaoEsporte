@@ -12,7 +12,9 @@ import { staggerStyle } from "@/lib/animation";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { exportarXlsxMultiplasAbas } from "@/lib/exportarXlsx";
 import { FichaChamadaImpressao } from "@/features/frequencia/FichaChamadaImpressao";
+import { fichaChamadaParaAbas } from "@/features/frequencia/statusChamada";
 
 const MES_ATUAL = new Date().getMonth() + 1;
 const ANO_ATUAL = new Date().getFullYear();
@@ -23,6 +25,7 @@ export function RelatorioFichaChamadaPage() {
   const ehMaster = temPerfil("MASTER");
   const toast = useToast();
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   const { data: polos = [] } = useQuery({
@@ -75,6 +78,18 @@ export function RelatorioFichaChamadaPage() {
     }
   }
 
+  async function baixarXlsx() {
+    if (!ficha) return;
+    setExportandoXlsx(true);
+    try {
+      await exportarXlsxMultiplasAbas(fichaChamadaParaAbas(ficha), "ficha-de-chamada.xlsx");
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="animate-fade-in-up" style={staggerStyle(0)}>
@@ -104,9 +119,14 @@ export function RelatorioFichaChamadaPage() {
             <Input label="Ano" type="number" min={2000} max={2100} value={ano} onChange={(e) => setAno(Number(e.target.value))} />
           </div>
           {ficha && (
-            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
-              {exportando ? "Gerando…" : "Baixar PDF"}
-            </Button>
+            <>
+              <Button variant="secondary" onClick={baixarXlsx} disabled={exportandoXlsx}>
+                {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+              </Button>
+              <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+                {exportando ? "Gerando…" : "Baixar PDF"}
+              </Button>
+            </>
           )}
         </div>
       </Card>

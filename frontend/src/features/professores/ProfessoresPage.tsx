@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Modalidade, Polo, Turma, Usuario } from "@/types";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Card } from "@/components/ui/Card";
@@ -64,7 +65,7 @@ export function ProfessoresPage() {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao desativar o professor.");
+      toast.error(mensagemErroApi(err, "Erro ao desativar o professor."));
     },
   });
 
@@ -104,7 +105,7 @@ export function ProfessoresPage() {
       } catch (err: any) {
         toast.error(
           `Professor cadastrado, mas houve um problema ao vincular à turma: ${
-            err?.response?.data?.detail ?? "erro desconhecido"
+            mensagemErroApi(err, "erro desconhecido")
           }. Você pode tentar novamente na tela de Turmas.`
         );
       }
@@ -112,7 +113,7 @@ export function ProfessoresPage() {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar professor.");
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar professor."));
     } finally {
       setSalvando(false);
     }

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Beneficiario, Modalidade, Polo, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -127,7 +128,7 @@ export function BeneficiariosPage() {
       queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao remover beneficiário.");
+      toast.error(mensagemErroApi(err, "Erro ao remover beneficiário."));
     },
   });
 
@@ -184,7 +185,7 @@ export function BeneficiariosPage() {
       } catch (err: any) {
         toast.error(
           `Beneficiário cadastrado, mas houve um problema ao matricular na turma: ${
-            err?.response?.data?.detail ?? "erro desconhecido"
+            mensagemErroApi(err, "erro desconhecido")
           }. Você pode tentar novamente pelo ícone de troféu na lista.`
         );
       }
@@ -193,7 +194,7 @@ export function BeneficiariosPage() {
       queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar beneficiário.");
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar beneficiário."));
     } finally {
       setEnviando(false);
     }

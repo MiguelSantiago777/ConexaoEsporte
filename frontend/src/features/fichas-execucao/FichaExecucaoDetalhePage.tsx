@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { AjusteStatus, FichaExecucao, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -83,7 +84,7 @@ export function FichaExecucaoDetalhePage() {
       toast.success("Ficha salva.");
       queryClient.invalidateQueries({ queryKey: ["fichas-execucao"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao salvar a ficha.");
+      toast.error(mensagemErroApi(err, "Erro ao salvar a ficha."));
     } finally {
       setSalvando(false);
     }
@@ -162,7 +163,7 @@ export function FichaExecucaoDetalhePage() {
 
       <Card title="3 — Análise de valor (metas e etapas)" className="animate-fade-in-up" style={staggerStyle(2)}>
         <div className="space-y-6">
-          {ficha.metas.map((meta, mi) => (
+          {(ficha.metas ?? []).map((meta, mi) => (
             <div key={mi}>
               <h3 className="text-sm font-semibold text-brand-dark mb-2">{meta.meta}</h3>
               <div className="overflow-x-auto -mx-6">
@@ -240,21 +241,21 @@ export function FichaExecucaoDetalhePage() {
               </tr>
             </thead>
             <tbody>
-              {ficha.atividades_comparativo.map((item, i) => (
+              {(ficha.atividades_comparativo ?? []).map((item, i) => (
                 <tr key={i} className="border-t border-gray-100">
                   <td className="py-1.5 px-6 font-medium text-gray-700 whitespace-nowrap">{item.item}</td>
                   <td className="px-3"><Input value={item.pactuado} onChange={(e) => {
-                    const lista = [...ficha.atividades_comparativo];
+                    const lista = [...(ficha.atividades_comparativo ?? [])];
                     lista[i] = { ...item, pactuado: e.target.value };
                     patch({ atividades_comparativo: lista });
                   }} /></td>
                   <td className="px-3"><Input value={item.executado} onChange={(e) => {
-                    const lista = [...ficha.atividades_comparativo];
+                    const lista = [...(ficha.atividades_comparativo ?? [])];
                     lista[i] = { ...item, executado: e.target.value };
                     patch({ atividades_comparativo: lista });
                   }} /></td>
                   <td className="px-3 pr-6"><Input value={item.observacoes} onChange={(e) => {
-                    const lista = [...ficha.atividades_comparativo];
+                    const lista = [...(ficha.atividades_comparativo ?? [])];
                     lista[i] = { ...item, observacoes: e.target.value };
                     patch({ atividades_comparativo: lista });
                   }} /></td>
@@ -276,12 +277,12 @@ export function FichaExecucaoDetalhePage() {
               </tr>
             </thead>
             <tbody>
-              {ficha.checklist_documentos.map((item, i) => (
+              {(ficha.checklist_documentos ?? []).map((item, i) => (
                 <tr key={i} className="border-t border-gray-100">
                   <td className="py-1.5 px-6 text-gray-700">{item.documento}</td>
                   <td className="px-3 w-44">
                     <Select value={item.situacao} onChange={(e) => {
-                      const lista = [...ficha.checklist_documentos];
+                      const lista = [...(ficha.checklist_documentos ?? [])];
                       lista[i] = { ...item, situacao: e.target.value as "Inserido" | "Não Inserido" };
                       patch({ checklist_documentos: lista });
                     }}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -35,7 +36,7 @@ export function PolosPage() {
       queryClient.invalidateQueries({ queryKey: ["polos"] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao desativar polo.");
+      toast.error(mensagemErroApi(err, "Erro ao desativar polo."));
     },
   });
 
@@ -55,7 +56,7 @@ export function PolosPage() {
         `Grade Horaria - ${p.nome}.docx`
       );
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Grade Horária.");
+      toast.error(mensagemErroApi(err, "Erro ao exportar a Grade Horária."));
     } finally {
       setExportandoGrade(null);
     }
@@ -66,7 +67,7 @@ export function PolosPage() {
     try {
       await baixarExportacao(`/polos/${p.id}/planilha-nucleos/exportar`, `Planilha de Nucleos - ${p.nome}.xlsx`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Planilha de Núcleos.");
+      toast.error(mensagemErroApi(err, "Erro ao exportar a Planilha de Núcleos."));
     } finally {
       setExportandoNucleos(null);
     }
@@ -77,7 +78,7 @@ export function PolosPage() {
     try {
       await baixarExportacao(`/polos/${p.id}/termo-responsabilidade/exportar`, `Termo de Responsabilidade - ${p.nome}.docx`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao exportar o Termo de Responsabilidade.");
+      toast.error(mensagemErroApi(err, "Erro ao exportar o Termo de Responsabilidade."));
     } finally {
       setExportandoTermo(null);
     }

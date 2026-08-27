@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Modalidade, Polo, Turma, Usuario } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -66,7 +67,7 @@ export function TurmasPage() {
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao atualizar o professor da turma.");
+      toast.error(mensagemErroApi(err, "Erro ao atualizar o professor da turma."));
     },
   });
 
@@ -108,7 +109,7 @@ export function TurmasPage() {
       toast.success("Turma cadastrada com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar turma.");
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar turma."));
     } finally {
       setSalvando(false);
     }
@@ -124,7 +125,7 @@ export function TurmasPage() {
         `Lista de Presenca - ${String(exportForm.mes).padStart(2, "0")}-${exportForm.ano}.xlsx`
       );
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Lista de Presença.");
+      toast.error(mensagemErroApi(err, "Erro ao exportar a Lista de Presença."));
     } finally {
       setExportando(false);
     }

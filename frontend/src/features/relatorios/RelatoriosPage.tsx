@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { RelatorioAula, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +41,7 @@ export function RelatoriosPage() {
       toast.success("Relatório emitido com sucesso.");
       queryClient.invalidateQueries({ queryKey: relatoriosQueryKey });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao emitir relatório.");
+      toast.error(mensagemErroApi(err, "Erro ao emitir relatório."));
     } finally {
       setSalvando(false);
     }

@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Beneficiario, Matricula, Modalidade, Polo, Turma } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -57,7 +58,7 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
       onAlterado();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao matricular o beneficiário.");
+      toast.error(mensagemErroApi(err, "Erro ao matricular o beneficiário."));
     },
   });
 
@@ -70,7 +71,7 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
       onAlterado();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Erro ao encerrar a matrícula.");
+      toast.error(mensagemErroApi(err, "Erro ao encerrar a matrícula."));
     },
   });
 

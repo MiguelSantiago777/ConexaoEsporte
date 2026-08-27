@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { FichaExecucao, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -60,7 +61,7 @@ export function FichasExecucaoPage() {
       toast.success("Ficha de Execução criada.");
       queryClient.invalidateQueries({ queryKey: ["fichas-execucao"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao criar Ficha de Execução.");
+      toast.error(mensagemErroApi(err, "Erro ao criar Ficha de Execução."));
     } finally {
       setSalvando(false);
     }
@@ -102,6 +103,7 @@ export function FichasExecucaoPage() {
             placeholder="ex.: 1º Trimestre 2026"
             value={form.periodo_referencia}
             onChange={(e) => setForm({ ...form, periodo_referencia: e.target.value })}
+            minLength={2}
             required
           />
           <Input

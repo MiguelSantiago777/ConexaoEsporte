@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { staggerStyle } from "@/lib/animation";
 import { mascararNomeLGPD } from "@/lib/masks";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { exportarXlsx } from "@/lib/exportarXlsx";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 /**
@@ -31,6 +32,7 @@ export function RelatorioProfessoresPage() {
   const [usoExterno, setUsoExterno] = useState(false);
   const [incluirDemitidos, setIncluirDemitidos] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   function poloNome(id: string | null) {
@@ -46,6 +48,25 @@ export function RelatorioProfessoresPage() {
       toast.error("Não foi possível gerar o PDF. Tente novamente.");
     } finally {
       setExportando(false);
+    }
+  }
+
+  async function baixarXlsx() {
+    setExportandoXlsx(true);
+    try {
+      const linhas = ativos.map((p) => ({
+        Nome: usoExterno ? mascararNomeLGPD(p.nome) : p.nome,
+        Email: p.email,
+        Telefone: p.telefone ?? "—",
+        Polo: poloNome(p.polo_id),
+        "Carga horária": p.carga_horaria_semanal ?? "—",
+        ...(incluirDemitidos ? { Situação: p.ativo ? "Ativo" : "Demitido" } : {}),
+      }));
+      await exportarXlsx(linhas, "ficha-cadastral-professores.xlsx", "Professores");
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
     }
   }
 
@@ -79,9 +100,14 @@ export function RelatorioProfessoresPage() {
               </span>
             </label>
           </div>
-          <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
-            {exportando ? "Gerando…" : "Baixar PDF"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={baixarXlsx} disabled={ativos.length === 0 || exportandoXlsx}>
+              {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+            </Button>
+            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+              {exportando ? "Gerando…" : "Baixar PDF"}
+            </Button>
+          </div>
         </div>
       </Card>
 

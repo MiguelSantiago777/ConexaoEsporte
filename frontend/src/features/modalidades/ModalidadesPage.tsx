@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { Modalidade } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -31,7 +32,7 @@ export function ModalidadesPage() {
       toast.success("Modalidade cadastrada com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["modalidades"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar modalidade.");
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar modalidade."));
     } finally {
       setSalvando(false);
     }

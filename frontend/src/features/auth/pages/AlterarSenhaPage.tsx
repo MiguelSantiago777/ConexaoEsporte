@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { alterarSenha } from "../authService";
+import { mensagemErroApi } from "@/lib/erros";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -35,7 +36,7 @@ export function AlterarSenhaPage() {
       setConfirmarSenha("");
       toast.success("Senha alterada com sucesso.");
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao alterar a senha.");
+      toast.error(mensagemErroApi(err, "Erro ao alterar a senha."));
     } finally {
       setSalvando(false);
     }

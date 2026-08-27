@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { RelatorioGeral } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +26,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 
 const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
 
@@ -57,6 +59,7 @@ export function RelatorioGeralPage() {
   const [relatorio, setRelatorio] = useState<RelatorioGeral | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   async function baixarPdf() {
@@ -71,6 +74,20 @@ export function RelatorioGeralPage() {
     }
   }
 
+  async function baixarXlsx() {
+    setExportandoXlsx(true);
+    try {
+      await baixarExportacao(
+        `/relatorios/geral/exportar?data_inicio=${dataInicio}&data_fim=${dataFim}`,
+        "relatorio-geral.xlsx"
+      );
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
+    }
+  }
+
   async function gerar() {
     setCarregando(true);
     try {
@@ -79,7 +96,7 @@ export function RelatorioGeralPage() {
       });
       setRelatorio(data);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao gerar o relatório.");
+      toast.error(mensagemErroApi(err, "Erro ao gerar o relatório."));
       setRelatorio(null);
     } finally {
       setCarregando(false);
@@ -108,9 +125,14 @@ export function RelatorioGeralPage() {
           </div>
           <Button onClick={gerar} disabled={carregando}>{carregando ? "Gerando…" : "Gerar relatório"}</Button>
           {relatorio && (
-            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
-              {exportando ? "Gerando…" : "Baixar PDF"}
-            </Button>
+            <>
+              <Button variant="secondary" onClick={baixarXlsx} disabled={exportandoXlsx}>
+                {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+              </Button>
+              <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+                {exportando ? "Gerando…" : "Baixar PDF"}
+              </Button>
+            </>
           )}
         </div>
       </Card>

@@ -11,6 +11,7 @@ import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { maskCPF, maskTelefone, mascararCPFLGPD, mascararNomeLGPD } from "@/lib/masks";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { exportarXlsx } from "@/lib/exportarXlsx";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 /**
@@ -30,6 +31,7 @@ export function RelatorioBeneficiariosPage() {
   });
   const [usoExterno, setUsoExterno] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   function poloNome(id: string | null) {
@@ -45,6 +47,29 @@ export function RelatorioBeneficiariosPage() {
       toast.error("Não foi possível gerar o PDF. Tente novamente.");
     } finally {
       setExportando(false);
+    }
+  }
+
+  async function baixarXlsx() {
+    setExportandoXlsx(true);
+    try {
+      const linhas = ativos.map((b) => ({
+        Nome: usoExterno ? mascararNomeLGPD(b.nome_completo) : b.nome_completo,
+        CPF: usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento),
+        Nascimento: formatarData(b.data_nascimento),
+        Polo: poloNome(b.polo_id),
+        Responsável: b.responsavel_legal_nome
+          ? usoExterno
+            ? mascararNomeLGPD(b.responsavel_legal_nome)
+            : b.responsavel_legal_nome
+          : "—",
+        Contato: b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—",
+      }));
+      await exportarXlsx(linhas, "ficha-cadastral-beneficiarios.xlsx", "Beneficiários");
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
     }
   }
 
@@ -65,9 +90,14 @@ export function RelatorioBeneficiariosPage() {
               Uso externo <span className="text-gray-400">— mascara nome e CPF (LGPD)</span>
             </span>
           </label>
-          <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
-            {exportando ? "Gerando…" : "Baixar PDF"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={baixarXlsx} disabled={ativos.length === 0 || exportandoXlsx}>
+              {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+            </Button>
+            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+              {exportando ? "Gerando…" : "Baixar PDF"}
+            </Button>
+          </div>
         </div>
       </Card>
 

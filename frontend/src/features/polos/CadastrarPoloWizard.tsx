@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -101,7 +102,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
       });
       poloId = data.id;
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao cadastrar polo.");
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar polo."));
       setSalvando(false);
       return;
     }
@@ -121,7 +122,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
     } catch (err: any) {
       toast.error(
         `Polo cadastrado, mas houve um problema ao criar o acesso do gestor: ${
-          err?.response?.data?.detail ?? "erro desconhecido"
+          mensagemErroApi(err, "erro desconhecido")
         }. Você pode tentar novamente em "Editar Polo".`
       );
     }

@@ -1,6 +1,7 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { ChamadaEvidencia, FichaChamada, StatusDia, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +16,8 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { exportarPdf } from "@/lib/exportarPdf";
-import { STATUS_ESTILO, diaCurto } from "./statusChamada";
+import { exportarXlsxMultiplasAbas } from "@/lib/exportarXlsx";
+import { STATUS_ESTILO, diaCurto, fichaChamadaParaAbas } from "./statusChamada";
 import { FichaChamadaImpressao } from "./FichaChamadaImpressao";
 
 const MES_ATUAL = new Date().getMonth() + 1;
@@ -67,6 +69,7 @@ export function FrequenciaPage() {
   const [mes, setMes] = useState(MES_ATUAL);
   const [ano, setAno] = useState(ANO_ATUAL);
   const [exportandoPdf, setExportandoPdf] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const fichaImpressaoRef = useRef<HTMLDivElement>(null);
 
   async function baixarPdfFichaChamada() {
@@ -91,6 +94,18 @@ export function FrequenciaPage() {
     enabled: !!turmaId,
   });
 
+  async function baixarXlsxFichaChamada() {
+    if (!ficha) return;
+    setExportandoXlsx(true);
+    try {
+      await exportarXlsxMultiplasAbas(fichaChamadaParaAbas(ficha), "ficha-de-chamada.xlsx");
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
+    }
+  }
+
   const marcarMutation = useMutation({
     mutationFn: (payload: {
       beneficiarioId: string;
@@ -112,7 +127,7 @@ export function FrequenciaPage() {
         ],
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: fichaQueryKey }),
-    onError: (err: any) => toast.error(err?.response?.data?.detail ?? "Erro ao atualizar a chamada."),
+    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao atualizar a chamada.")),
   });
 
   const impeditivoMutation = useMutation({
@@ -122,7 +137,7 @@ export function FrequenciaPage() {
       toast.success("Impeditivo de aula registrado.");
       queryClient.invalidateQueries({ queryKey: fichaQueryKey });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.detail ?? "Erro ao registrar o impeditivo."),
+    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao registrar o impeditivo.")),
   });
 
   const removerImpeditivoMutation = useMutation({
@@ -131,7 +146,7 @@ export function FrequenciaPage() {
       toast.success("Impeditivo removido.");
       queryClient.invalidateQueries({ queryKey: fichaQueryKey });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.detail ?? "Erro ao remover o impeditivo."),
+    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover o impeditivo.")),
   });
 
   function alternarPresenca(beneficiarioId: string, dataIso: string, statusAtual: StatusDia) {
@@ -199,7 +214,7 @@ export function FrequenciaPage() {
       queryClient.invalidateQueries({ queryKey: evidenciasQueryKey });
       toast.success(`${resp.data.length} foto(s) anexada(s) como comprovação da aula.`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao enviar as fotos.");
+      toast.error(mensagemErroApi(err, "Erro ao enviar as fotos."));
     } finally {
       setEnviandoFotos(false);
       e.target.value = "";
@@ -220,7 +235,7 @@ export function FrequenciaPage() {
         `Lista de Presenca - ${String(mesExportacao).padStart(2, "0")}-${anoExportacao}.xlsx`
       );
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao exportar a Lista de Presença.");
+      toast.error(mensagemErroApi(err, "Erro ao exportar a Lista de Presença."));
     } finally {
       setExportando(false);
     }
@@ -255,9 +270,14 @@ export function FrequenciaPage() {
           title="Chamada do mês"
           subtitle={`${ficha.polo_nome} — ${ficha.modalidade_nome} — ${ficha.horario_inicio}–${ficha.horario_fim}${ficha.professor_nome ? ` — ${ficha.professor_nome}` : ""}`}
           actions={
-            <Button variant="secondary" onClick={baixarPdfFichaChamada} disabled={exportandoPdf}>
-              {exportandoPdf ? "Gerando…" : "Baixar PDF da ficha de chamada"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={baixarXlsxFichaChamada} disabled={exportandoXlsx}>
+                {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+              </Button>
+              <Button variant="secondary" onClick={baixarPdfFichaChamada} disabled={exportandoPdf}>
+                {exportandoPdf ? "Gerando…" : "Baixar PDF da ficha de chamada"}
+              </Button>
+            </div>
           }
           className="animate-fade-in-up"
           style={staggerStyle(1)}

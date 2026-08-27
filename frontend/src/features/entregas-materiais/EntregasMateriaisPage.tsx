@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { mensagemErroApi } from "@/lib/erros";
 import type { EntregaMaterial, ItemEntrega, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -74,7 +75,7 @@ export function EntregasMateriaisPage() {
       toast.success("Entrega de materiais registrada.");
       queryClient.invalidateQueries({ queryKey: ["entregas-materiais"] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erro ao registrar a entrega.");
+      toast.error(mensagemErroApi(err, "Erro ao registrar a entrega."));
     } finally {
       setSalvando(false);
     }

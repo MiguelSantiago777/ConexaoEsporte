@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { exportarPdf } from "@/lib/exportarPdf";
+import { exportarXlsx } from "@/lib/exportarXlsx";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 /** Relatório de entregas de materiais: quem entregou, quem recebeu, data e polo. */
@@ -24,6 +25,7 @@ export function RelatorioEntregasPage() {
     queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
   });
   const [exportando, setExportando] = useState(false);
+  const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
   function poloNome(id: string) {
@@ -42,9 +44,31 @@ export function RelatorioEntregasPage() {
     }
   }
 
+  async function baixarXlsx() {
+    setExportandoXlsx(true);
+    try {
+      const linhas = entregas.map((e) => ({
+        Polo: poloNome(e.polo_id),
+        Data: e.data_entrega ? formatarData(e.data_entrega) : "—",
+        "Entregue por": e.entregue_por ?? "—",
+        "Recebido por": e.coordenador_nome ?? "—",
+        Itens:
+          e.itens.length === 0 ? "—" : e.itens.map((item) => `${item.descricao} (${item.quantidade})`).join(", "),
+      }));
+      await exportarXlsx(linhas, "relatorio-entregas-materiais.xlsx", "Entregas");
+    } catch {
+      toast.error("Não foi possível gerar o Excel. Tente novamente.");
+    } finally {
+      setExportandoXlsx(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <Card className="animate-fade-in-up flex justify-end" style={staggerStyle(0)}>
+      <Card className="animate-fade-in-up flex justify-end gap-2" style={staggerStyle(0)}>
+        <Button variant="secondary" onClick={baixarXlsx} disabled={entregas.length === 0 || exportandoXlsx}>
+          {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
+        </Button>
         <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
           {exportando ? "Gerando…" : "Baixar PDF"}
         </Button>
