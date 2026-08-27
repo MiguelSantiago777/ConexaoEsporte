@@ -14,6 +14,7 @@ def _to_entity(m: FrequenciaModel) -> RegistroFrequencia:
     return RegistroFrequencia(
         id=m.id, turma_id=m.turma_id, beneficiario_id=m.beneficiario_id,
         data=m.data, presente=m.presente, registrado_por_id=m.registrado_por_id,
+        falta_justificada=m.falta_justificada, justificativa=m.justificativa,
     )
 
 
@@ -28,9 +29,13 @@ class FrequenciaRepository:
             stmt = pg_insert(FrequenciaModel).values(
                 turma_id=r.turma_id, beneficiario_id=r.beneficiario_id, data=r.data,
                 presente=r.presente, registrado_por_id=r.registrado_por_id,
+                falta_justificada=r.falta_justificada, justificativa=r.justificativa,
             ).on_conflict_do_update(
                 index_elements=["turma_id", "beneficiario_id", "data"],
-                set_={"presente": r.presente, "registrado_por_id": r.registrado_por_id},
+                set_={
+                    "presente": r.presente, "registrado_por_id": r.registrado_por_id,
+                    "falta_justificada": r.falta_justificada, "justificativa": r.justificativa,
+                },
             ).returning(FrequenciaModel)
             m = self.db.execute(stmt).scalar_one()
             resultado.append(m)

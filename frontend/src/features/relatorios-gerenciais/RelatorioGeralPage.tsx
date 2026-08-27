@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -18,13 +18,13 @@ import type { RelatorioGeral } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
+import { exportarPdf } from "@/lib/exportarPdf";
 
 const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
 
@@ -56,6 +56,20 @@ export function RelatorioGeralPage() {
   const [dataFim, setDataFim] = useState(hoje());
   const [relatorio, setRelatorio] = useState<RelatorioGeral | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const conteudoRef = useRef<HTMLDivElement>(null);
+
+  async function baixarPdf() {
+    if (!conteudoRef.current) return;
+    setExportando(true);
+    try {
+      await exportarPdf(conteudoRef.current, "relatorio-geral.pdf");
+    } catch {
+      toast.error("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   async function gerar() {
     setCarregando(true);
@@ -84,11 +98,7 @@ export function RelatorioGeralPage() {
 
   return (
     <div className="space-y-6">
-      <div className="print:hidden">
-        <PageHeader title="Relatório Geral" subtitle="Visão consolidada de todos os polos: frequência, beneficiários e ranking de desempenho." />
-      </div>
-
-      <Card className="print:hidden animate-fade-in-up" style={staggerStyle(0)}>
+      <Card className="animate-fade-in-up" style={staggerStyle(0)}>
         <div className="flex flex-col sm:flex-row gap-4 sm:items-end flex-wrap">
           <div className="sm:w-44">
             <Input label="Período — de" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
@@ -97,7 +107,11 @@ export function RelatorioGeralPage() {
             <Input label="Período — até" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
           <Button onClick={gerar} disabled={carregando}>{carregando ? "Gerando…" : "Gerar relatório"}</Button>
-          {relatorio && <Button variant="secondary" onClick={() => window.print()}>Imprimir / salvar PDF</Button>}
+          {relatorio && (
+            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+              {exportando ? "Gerando…" : "Baixar PDF"}
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -108,8 +122,8 @@ export function RelatorioGeralPage() {
       )}
 
       {!carregando && relatorio && (
-        <div className="space-y-6">
-          <div className="hidden print:flex items-center gap-3 mb-2">
+        <div ref={conteudoRef} className="space-y-6 bg-white">
+          <div className="flex items-center gap-3 mb-2 p-2">
             <img src="/logo.png" alt="Conexão Esporte" className="w-10 h-10 object-contain" />
             <div>
               <div className="font-bold text-brand-dark">Relatório Geral — Todos os Polos</div>
@@ -125,7 +139,7 @@ export function RelatorioGeralPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card title="Beneficiários por polo" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(2)}>
+            <Card title="Beneficiários por polo" className="animate-fade-in-up" style={staggerStyle(2)}>
               {dadosPizza.length === 0 ? (
                 <EmptyState message="Nenhum beneficiário ativo cadastrado." />
               ) : (
@@ -140,7 +154,7 @@ export function RelatorioGeralPage() {
               )}
             </Card>
 
-            <Card title="Ranking de polos por frequência" subtitle="% de presença no período selecionado" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(3)}>
+            <Card title="Ranking de polos por frequência" subtitle="% de presença no período selecionado" className="animate-fade-in-up" style={staggerStyle(3)}>
               {relatorio.ranking_polos.length === 0 ? (
                 <EmptyState message="Nenhum polo cadastrado." />
               ) : (
@@ -157,7 +171,7 @@ export function RelatorioGeralPage() {
             </Card>
           </div>
 
-          <Card title="Evolução da frequência geral por semana" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(4)}>
+          <Card title="Evolução da frequência geral por semana" className="animate-fade-in-up" style={staggerStyle(4)}>
             {relatorio.frequencia_por_semana.length === 0 ? (
               <EmptyState message="Nenhuma chamada lançada no período." />
             ) : (
@@ -173,7 +187,7 @@ export function RelatorioGeralPage() {
             )}
           </Card>
 
-          <Card title="Todos os polos" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(5)}>
+          <Card title="Todos os polos" className="animate-fade-in-up" style={staggerStyle(5)}>
             <div className="overflow-x-auto -mx-6">
               <table className="w-full text-sm">
                 <thead>

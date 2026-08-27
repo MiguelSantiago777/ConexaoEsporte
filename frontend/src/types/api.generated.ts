@@ -511,6 +511,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/frequencias/impeditivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar impeditivos de aula de uma turma no mês */
+        get: operations["listar_impeditivos_api_v1_frequencias_impeditivos_get"];
+        put?: never;
+        /**
+         * Registrar impeditivo de aula
+         * @description Marca que a turma inteira não teve aula numa data (feriado, ponto facultativo etc.) — vale para todos os beneficiários matriculados, diferente de uma falta individual.
+         */
+        post: operations["criar_impeditivo_api_v1_frequencias_impeditivos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/frequencias/impeditivos/{impeditivo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remover impeditivo de aula */
+        delete: operations["remover_impeditivo_api_v1_frequencias_impeditivos__impeditivo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/frequencias/ficha-chamada": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ficha de Chamada mensal (presença/falta/falta justificada/impeditivo por beneficiário)
+         * @description Agrega, para cada beneficiário matriculado ativo na turma, o status de cada data que a turma tem aula no mês (presença, falta, falta justificada, impeditivo ou sem marcação) e o percentual de frequência — usado tanto pela grade de edição quanto pelo relatório impresso.
+         */
+        get: operations["obter_ficha_chamada_api_v1_frequencias_ficha_chamada_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/relatorios-aula": {
         parameters: {
             query?: never;
@@ -1018,6 +1076,11 @@ export interface components {
             polo_id: string;
             /** Data Entrega */
             data_entrega?: string | null;
+            /**
+             * Entregue Por
+             * @description Nome de quem foi levar os materiais.
+             */
+            entregue_por?: string | null;
             /** Itens */
             itens?: components["schemas"]["ItemEntregaRequest"][];
         };
@@ -1037,6 +1100,8 @@ export interface components {
             data_entrega: string | null;
             /** Coordenador Nome */
             coordenador_nome: string | null;
+            /** Entregue Por */
+            entregue_por: string | null;
             /** Itens */
             itens: components["schemas"]["ItemEntregaRequest"][];
             /** Criado Por Id */
@@ -1048,6 +1113,8 @@ export interface components {
             data_entrega?: string | null;
             /** Coordenador Nome */
             coordenador_nome?: string | null;
+            /** Entregue Por */
+            entregue_por?: string | null;
             /** Itens */
             itens?: components["schemas"]["ItemEntregaRequest"][] | null;
         };
@@ -1068,6 +1135,41 @@ export interface components {
              * @default
              */
             executado: string;
+        };
+        /** FichaChamadaResponse */
+        FichaChamadaResponse: {
+            /**
+             * Turma Id
+             * Format: uuid
+             */
+            turma_id: string;
+            /** Polo Nome */
+            polo_nome: string;
+            /** Modalidade Nome */
+            modalidade_nome: string;
+            /** Professor Nome */
+            professor_nome: string | null;
+            /** Horario Inicio */
+            horario_inicio: string;
+            /** Horario Fim */
+            horario_fim: string;
+            /** Dias Semana */
+            dias_semana: string[];
+            /** Faixa Etaria Min */
+            faixa_etaria_min: number | null;
+            /** Faixa Etaria Max */
+            faixa_etaria_max: number | null;
+            /** Mes */
+            mes: number;
+            /** Ano */
+            ano: number;
+            /** Datas */
+            datas: string[];
+            /** Linhas */
+            linhas: components["schemas"]["LinhaFichaChamada"][];
+            /** Impeditivos */
+            impeditivos: components["schemas"]["ImpeditivoAulaResponse"][];
+            resumo: components["schemas"]["ResumoFichaChamada"];
         };
         /** FichaExecucaoCreateRequest */
         FichaExecucaoCreateRequest: {
@@ -1213,6 +1315,10 @@ export interface components {
             data: string;
             /** Presente */
             presente: boolean;
+            /** Falta Justificada */
+            falta_justificada: boolean;
+            /** Justificativa */
+            justificativa: string | null;
             /**
              * Registrado Por Id
              * Format: uuid
@@ -1223,6 +1329,45 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImpeditivoAulaCreateRequest */
+        ImpeditivoAulaCreateRequest: {
+            /**
+             * Turma Id
+             * Format: uuid
+             */
+            turma_id: string;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /** Justificativa */
+            justificativa: string;
+        };
+        /** ImpeditivoAulaResponse */
+        ImpeditivoAulaResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Turma Id
+             * Format: uuid
+             */
+            turma_id: string;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /** Justificativa */
+            justificativa: string;
+            /** Criado Por Id */
+            criado_por_id: string | null;
+            /** Criado Em */
+            criado_em: string | null;
         };
         /** ItemEntregaRequest */
         ItemEntregaRequest: {
@@ -1257,6 +1402,24 @@ export interface components {
             aulas_registradas: number;
             /** Fotos Evidencia */
             fotos_evidencia: number;
+        };
+        /** LinhaFichaChamada */
+        LinhaFichaChamada: {
+            /**
+             * Beneficiario Id
+             * Format: uuid
+             */
+            beneficiario_id: string;
+            /** Nome */
+            nome: string;
+            /** Idade */
+            idade: number | null;
+            /** Status Por Data */
+            status_por_data: {
+                [key: string]: string;
+            };
+            /** Frequencia Pct */
+            frequencia_pct: number;
         };
         /** MatriculaCreateRequest */
         MatriculaCreateRequest: {
@@ -1399,6 +1562,10 @@ export interface components {
             representante_legal_bairro?: string | null;
             /** Representante Legal Cidade */
             representante_legal_cidade?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
         };
         /** PoloResponse */
         PoloResponse: {
@@ -1461,6 +1628,10 @@ export interface components {
             representante_legal_bairro: string | null;
             /** Representante Legal Cidade */
             representante_legal_cidade: string | null;
+            /** Latitude */
+            latitude: number | null;
+            /** Longitude */
+            longitude: number | null;
         };
         /** PoloUpdateRequest */
         PoloUpdateRequest: {
@@ -1527,6 +1698,10 @@ export interface components {
             representante_legal_bairro?: string | null;
             /** Representante Legal Cidade */
             representante_legal_cidade?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
         };
         /** RankingPolo */
         RankingPolo: {
@@ -1556,6 +1731,13 @@ export interface components {
             beneficiario_id: string;
             /** Presente */
             presente: boolean;
+            /**
+             * Falta Justificada
+             * @default false
+             */
+            falta_justificada: boolean;
+            /** Justificativa */
+            justificativa?: string | null;
         };
         /** RelatorioAulaCreateRequest */
         RelatorioAulaCreateRequest: {
@@ -1647,6 +1829,21 @@ export interface components {
             frequencia_por_semana: components["schemas"]["SeriePonto"][];
             /** Frequencia Por Turma */
             frequencia_por_turma: components["schemas"]["SeriePonto"][];
+        };
+        /** ResumoFichaChamada */
+        ResumoFichaChamada: {
+            /** Presenca */
+            presenca: number;
+            /** Falta */
+            falta: number;
+            /** Falta Justificada */
+            falta_justificada: number;
+            /** Impeditivo */
+            impeditivo: number;
+            /** Sem Marcacao */
+            sem_marcacao: number;
+            /** Total */
+            total: number;
         };
         /**
          * SeriePonto
@@ -2903,6 +3100,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_impeditivos_api_v1_frequencias_impeditivos_get: {
+        parameters: {
+            query: {
+                turma_id: string;
+                mes: number;
+                ano: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpeditivoAulaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    criar_impeditivo_api_v1_frequencias_impeditivos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImpeditivoAulaCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpeditivoAulaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_impeditivo_api_v1_frequencias_impeditivos__impeditivo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                impeditivo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_ficha_chamada_api_v1_frequencias_ficha_chamada_get: {
+        parameters: {
+            query: {
+                turma_id: string;
+                mes: number;
+                ano: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FichaChamadaResponse"];
                 };
             };
             /** @description Validation Error */

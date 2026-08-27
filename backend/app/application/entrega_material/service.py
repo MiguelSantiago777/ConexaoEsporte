@@ -23,13 +23,15 @@ class EntregaMaterialService:
 
     def criar(
         self, polo_id: UUID, data_entrega: date | None, itens: list[dict], criado_por_id: UUID | None,
+        entregue_por: str | None = None,
     ) -> EntregaMaterial:
         polo = self.polo_repo.buscar_por_id(polo_id)
         if not polo:
             raise RecursoNaoEncontrado("Polo não encontrado.")
         entrega = EntregaMaterial(
             id=None, polo_id=polo_id, data_entrega=data_entrega,
-            coordenador_nome=polo.responsavel_nome, itens=itens, criado_por_id=criado_por_id,
+            coordenador_nome=polo.responsavel_nome, entregue_por=entregue_por,
+            itens=itens, criado_por_id=criado_por_id,
         )
         return self.repo.criar(entrega)
 

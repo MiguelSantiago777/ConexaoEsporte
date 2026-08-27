@@ -25,6 +25,7 @@ def _to_entity(m: PoloModel) -> Polo:
         representante_legal_endereco=m.representante_legal_endereco,
         representante_legal_bairro=m.representante_legal_bairro,
         representante_legal_cidade=m.representante_legal_cidade,
+        latitude=m.latitude, longitude=m.longitude,
     )
 
 
@@ -61,6 +62,7 @@ class PoloRepository:
             representante_legal_endereco=polo.representante_legal_endereco,
             representante_legal_bairro=polo.representante_legal_bairro,
             representante_legal_cidade=polo.representante_legal_cidade,
+            latitude=polo.latitude, longitude=polo.longitude,
         )
         self.db.add(m)
         self.db.commit()

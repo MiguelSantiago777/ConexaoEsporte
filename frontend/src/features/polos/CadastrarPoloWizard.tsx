@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import { EnderecoMapaField } from "./EnderecoMapaField";
 
 const FORM_VAZIO = {
   nome: "", codigo: "", endereco: "", horario_funcionamento: "",
@@ -34,6 +35,8 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
   const toast = useToast();
   const [etapa, setEtapa] = useState(1);
   const [form, setForm] = useState(FORM_VAZIO);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   function set<K extends keyof typeof FORM_VAZIO>(campo: K, valor: string) {
@@ -94,6 +97,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
         representante_legal_endereco: form.representante_legal_endereco || null,
         representante_legal_bairro: form.representante_legal_bairro || null,
         representante_legal_cidade: form.representante_legal_cidade || null,
+        latitude, longitude,
       });
       poloId = data.id;
     } catch (err: any) {
@@ -123,6 +127,8 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
     }
 
     setForm(FORM_VAZIO);
+    setLatitude(null);
+    setLongitude(null);
     setEtapa(1);
     onCadastrado();
     setSalvando(false);
@@ -159,6 +165,14 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
                 placeholder="ex.: Seg a Sex, 08h às 18h"
                 value={form.horario_funcionamento}
                 onChange={(e) => set("horario_funcionamento", e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <EnderecoMapaField
+                onEnderecoChange={(endereco) => set("endereco", endereco)}
+                latitude={latitude}
+                longitude={longitude}
+                onChange={(lat, lon) => { setLatitude(lat); setLongitude(lon); }}
               />
             </div>
           </div>

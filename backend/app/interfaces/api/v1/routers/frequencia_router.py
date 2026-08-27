@@ -4,7 +4,7 @@ from typing import Annotated
 from uuid import UUID
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
 from app.application.frequencia.evidencia_service import ChamadaEvidenciaService
@@ -21,7 +21,10 @@ from app.infrastructure.storage.armazenamento_documentos import armazenamento_ev
 from app.interfaces.api.v1.schemas.frequencia_schemas import (
     ChamadaCreateRequest,
     ChamadaEvidenciaResponse,
+    FichaChamadaResponse,
     FrequenciaResponse,
+    ImpeditivoAulaCreateRequest,
+    ImpeditivoAulaResponse,
 )
 
 router = APIRouter(prefix="/frequencias", tags=["Frequência"])
@@ -47,7 +50,9 @@ def lancar_chamada(body: ChamadaCreateRequest, usuario: QualquerPerfil, db: DbSe
     service = FrequenciaService(db)
     registros = service.registrar_chamada(
         turma_id=body.turma_id, data_ref=body.data,
-        presencas=[(p.beneficiario_id, p.presente) for p in body.presencas],
+        presencas=[
+            (p.beneficiario_id, p.presente, p.falta_justificada, p.justificativa) for p in body.presencas
+        ],
         registrado_por_id=usuario.id,
     )
     return [FrequenciaResponse.model_validate(r) for r in registros]
@@ -124,3 +129,67 @@ def baixar_evidencia(evidencia_id: UUID, usuario: QualquerPerfil, db: DbSession)
         media_type=evidencia.content_type or "application/octet-stream",
         headers={"Content-Disposition": content_disposition},
     )
+
+
+@router.post(
+    "/impeditivos",
+    response_model=ImpeditivoAulaResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar impeditivo de aula",
+    description="Marca que a turma inteira não teve aula numa data (feriado, ponto facultativo etc.) — "
+    "vale para todos os beneficiários matriculados, diferente de uma falta individual.",
+)
+def criar_impeditivo(
+    body: ImpeditivoAulaCreateRequest, usuario: QualquerPerfil, db: DbSession
+) -> ImpeditivoAulaResponse:
+    assert_acesso_a_turma(usuario, db, body.turma_id)
+    service = FrequenciaService(db)
+    criado = service.criar_impeditivo(
+        turma_id=body.turma_id, data_ref=body.data, justificativa=body.justificativa, criado_por_id=usuario.id,
+    )
+    return ImpeditivoAulaResponse.model_validate(criado)
+
+
+@router.get(
+    "/impeditivos",
+    response_model=list[ImpeditivoAulaResponse],
+    summary="Listar impeditivos de aula de uma turma no mês",
+)
+def listar_impeditivos(
+    turma_id: UUID, usuario: QualquerPerfil, db: DbSession,
+    mes: Annotated[int, Query(ge=1, le=12)], ano: Annotated[int, Query(ge=2000, le=2100)],
+) -> list[ImpeditivoAulaResponse]:
+    assert_acesso_a_turma(usuario, db, turma_id)
+    service = FrequenciaService(db)
+    return [ImpeditivoAulaResponse.model_validate(i) for i in service.listar_impeditivos(turma_id, mes, ano)]
+
+
+@router.delete(
+    "/impeditivos/{impeditivo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remover impeditivo de aula",
+)
+def remover_impeditivo(impeditivo_id: UUID, usuario: QualquerPerfil, db: DbSession) -> None:
+    service = FrequenciaService(db)
+    impeditivo = service.impeditivo_repo.buscar_por_id(impeditivo_id)
+    if not impeditivo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Impeditivo não encontrado.")
+    assert_acesso_a_turma(usuario, db, impeditivo.turma_id)
+    service.remover_impeditivo(impeditivo_id)
+
+
+@router.get(
+    "/ficha-chamada",
+    response_model=FichaChamadaResponse,
+    summary="Ficha de Chamada mensal (presença/falta/falta justificada/impeditivo por beneficiário)",
+    description="Agrega, para cada beneficiário matriculado ativo na turma, o status de cada data que a "
+    "turma tem aula no mês (presença, falta, falta justificada, impeditivo ou sem marcação) e o "
+    "percentual de frequência — usado tanto pela grade de edição quanto pelo relatório impresso.",
+)
+def obter_ficha_chamada(
+    turma_id: UUID, usuario: QualquerPerfil, db: DbSession,
+    mes: Annotated[int, Query(ge=1, le=12)], ano: Annotated[int, Query(ge=2000, le=2100)],
+) -> FichaChamadaResponse:
+    assert_acesso_a_turma(usuario, db, turma_id)
+    service = FrequenciaService(db)
+    return service.montar_ficha_chamada(turma_id, mes, ano)

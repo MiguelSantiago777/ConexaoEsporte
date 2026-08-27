@@ -91,6 +91,28 @@ body {
     background: #fff;
   }
 
+  /* As animações de entrada (fade-in-up, fade-in, page-in, toast-in) partem
+     de opacity:0 e dependem do tempo real de animação pra chegar a
+     opacity:1 — a impressão/PDF captura o layout sem necessariamente rodar
+     a animação, deixando o conteúdo (o card inteiro do relatório, no caso)
+     preso invisível ou cortado no meio da transição. Neutraliza tudo isso
+     na impressão: sem animação, direto no estado final visível. */
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-page-in,
+  .animate-toast-in {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  /* Containers com scroll horizontal (tabelas dos relatórios/listas) só
+     mostram o que cabe no viewport quando têm overflow — não existe scroll
+     no papel, então o resto do conteúdo simplesmente sumia/cortava. */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
   /* Corrige o gráfico (Recharts) vazando da página impressa — via CSS pura,
      sem depender de nenhum evento/timing de JavaScript (o que falhava
      especificamente no preview do diálogo de impressão).

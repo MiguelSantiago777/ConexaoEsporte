@@ -41,6 +41,10 @@ class Polo:
     representante_legal_bairro: str | None = None
     representante_legal_cidade: str | None = None
 
+    # Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
+    latitude: float | None = None
+    longitude: float | None = None
+
     def __post_init__(self) -> None:
         if not self.nome or not self.nome.strip():
             raise ValueError("Nome do Polo é obrigatório.")

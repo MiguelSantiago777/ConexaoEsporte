@@ -37,6 +37,7 @@ export function EntregasMateriaisPage() {
   const [exportando, setExportando] = useState<string | null>(null);
   const [poloId, setPoloId] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
+  const [entreguePor, setEntreguePor] = useState("");
   const [itens, setItens] = useState<ItemEntrega[]>([{ ...ITEM_VAZIO }]);
 
   useEffect(() => {
@@ -63,10 +64,12 @@ export function EntregasMateriaisPage() {
       await api.post("/entregas-materiais", {
         polo_id: poloId,
         data_entrega: dataEntrega || null,
+        entregue_por: entreguePor || null,
         itens: itens.filter((i) => i.descricao.trim()),
       });
       setPoloId(ehMaster ? "" : usuario?.polo_id ?? "");
       setDataEntrega("");
+      setEntreguePor("");
       setItens([{ ...ITEM_VAZIO }]);
       toast.success("Entrega de materiais registrada.");
       queryClient.invalidateQueries({ queryKey: ["entregas-materiais"] });
@@ -105,6 +108,12 @@ export function EntregasMateriaisPage() {
               {polos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </Select>
             <Input label="Data da entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+            <Input
+              label="Entregue por"
+              placeholder="Nome de quem foi levar os materiais"
+              value={entreguePor}
+              onChange={(e) => setEntreguePor(e.target.value)}
+            />
           </div>
 
           <div>
@@ -162,6 +171,7 @@ export function EntregasMateriaisPage() {
                 <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
                   <th className="py-2.5 px-6">Polo</th>
                   <th className="px-3">Data</th>
+                  <th className="px-3">Entregue por</th>
                   <th className="px-3">Coordenador</th>
                   <th className="px-3">Itens</th>
                   <th className="px-3 text-right pr-6">Ações</th>
@@ -172,6 +182,7 @@ export function EntregasMateriaisPage() {
                   <tr key={e.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
                     <td className="py-2.5 px-6 font-medium text-gray-800">{poloNome(e.polo_id)}</td>
                     <td className="px-3 text-gray-600">{e.data_entrega ? formatarData(e.data_entrega) : "—"}</td>
+                    <td className="px-3 text-gray-600">{e.entregue_por ?? "—"}</td>
                     <td className="px-3 text-gray-600">{e.coordenador_nome ?? "—"}</td>
                     <td className="px-3 text-gray-600">{e.itens.length}</td>
                     <td className="px-3 text-right pr-6">

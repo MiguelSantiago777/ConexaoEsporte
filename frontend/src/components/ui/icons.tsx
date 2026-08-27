@@ -96,6 +96,16 @@ export function CalendarCheckIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function CalendarOffIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="4" y="5" width="16" height="15" rx="1.5" strokeLinejoin="round" />
+      <path d="M4 9.5h16M8 3v3.5M16 3v3.5" strokeLinecap="round" />
+      <path d="M7.5 12.5l9 7M16.5 12.5l-9 7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function DocumentTextIcon({ className = "w-5 h-5" }: Props) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">

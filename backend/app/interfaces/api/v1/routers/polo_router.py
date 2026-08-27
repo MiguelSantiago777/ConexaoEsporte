@@ -66,6 +66,7 @@ def criar_polo(body: PoloCreateRequest, usuario: SomenteMaster, db: DbSession) -
         representante_legal_endereco=body.representante_legal_endereco,
         representante_legal_bairro=body.representante_legal_bairro,
         representante_legal_cidade=body.representante_legal_cidade,
+        latitude=body.latitude, longitude=body.longitude,
     )
     return PoloResponse.model_validate(criado)
 

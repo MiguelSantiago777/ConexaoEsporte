@@ -43,7 +43,7 @@ def listar_entregas(usuario: MasterOuGestor, db: DbSession, polo_id: UUID | None
 def criar_entrega(body: EntregaMaterialCreateRequest, usuario: MasterOuGestor, db: DbSession) -> EntregaMaterialResponse:
     assert_acesso_ao_polo(usuario, body.polo_id)
     criada = EntregaMaterialService(db).criar(
-        polo_id=body.polo_id, data_entrega=body.data_entrega,
+        polo_id=body.polo_id, data_entrega=body.data_entrega, entregue_por=body.entregue_por,
         itens=[item.model_dump() for item in body.itens], criado_por_id=usuario.id,
     )
     return EntregaMaterialResponse.model_validate(criada)

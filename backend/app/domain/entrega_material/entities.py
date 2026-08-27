@@ -12,6 +12,7 @@ class EntregaMaterial:
     polo_id: UUID
     data_entrega: date | None
     coordenador_nome: str | None
+    entregue_por: str | None = None
     itens: list[dict] = field(default_factory=list)  # [{"descricao": "...", "quantidade": "..."}]
     criado_por_id: UUID | None = None
     criado_em: object = None

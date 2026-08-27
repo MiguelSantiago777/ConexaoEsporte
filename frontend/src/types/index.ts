@@ -62,3 +62,24 @@ export type AjusteStatus = "NAO_SOLICITADO" | "APROVADO" | "NAO_APROVADO";
 export type FichaExecucao = components["schemas"]["FichaExecucaoResponse"];
 
 export type TokenResponse = components["schemas"]["TokenResponse"];
+
+// Frequência/Chamada — presença por beneficiário+turma+data, com falta
+// justificada opcional (texto livre) distinta de falta comum.
+export type Frequencia = components["schemas"]["FrequenciaResponse"];
+
+// Impeditivo de Aula — dia em que a turma inteira não teve aula (feriado
+// etc.), vale para todos os beneficiários matriculados naquela data.
+export type ImpeditivoAula = components["schemas"]["ImpeditivoAulaResponse"];
+
+// Ficha de Chamada mensal agregada — status_por_data não é estreitado no
+// schema do backend (é um dict de string→string) porque o valor é
+// calculado dinamicamente; este union é o conjunto real de status que o
+// backend emite.
+export type StatusDia = "PRESENTE" | "FALTA" | "FALTA_JUSTIFICADA" | "IMPEDITIVO" | "SEM_MARCACAO";
+export type LinhaFichaChamada = Omit<components["schemas"]["LinhaFichaChamada"], "status_por_data"> & {
+  status_por_data: Record<string, StatusDia>;
+};
+export type ResumoFichaChamada = components["schemas"]["ResumoFichaChamada"];
+export type FichaChamada = Omit<components["schemas"]["FichaChamadaResponse"], "linhas"> & {
+  linhas: LinhaFichaChamada[];
+};

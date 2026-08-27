@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bar,
@@ -20,13 +20,13 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
+import { exportarPdf } from "@/lib/exportarPdf";
 
 const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
 
@@ -66,11 +66,25 @@ export function RelatorioPoloPage() {
   const [dataFim, setDataFim] = useState(hoje());
   const [relatorio, setRelatorio] = useState<RelatorioPolo | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const conteudoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!poloId && polos.length > 0) setPoloId(polos[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polos]);
+
+  async function baixarPdf() {
+    if (!conteudoRef.current) return;
+    setExportando(true);
+    try {
+      await exportarPdf(conteudoRef.current, "relatorio-do-polo.pdf");
+    } catch {
+      toast.error("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   async function gerar() {
     if (!poloId) return;
@@ -100,11 +114,7 @@ export function RelatorioPoloPage() {
 
   return (
     <div className="space-y-6">
-      <div className="print:hidden">
-        <PageHeader title="Relatório do Polo" subtitle="Frequência, beneficiários por modalidade e desempenho por turma, com gráficos prontos para impressão." />
-      </div>
-
-      <Card className="print:hidden animate-fade-in-up" style={staggerStyle(0)}>
+      <Card className="animate-fade-in-up" style={staggerStyle(0)}>
         <div className="flex flex-col sm:flex-row gap-4 sm:items-end flex-wrap">
           {ehMaster && (
             <div className="sm:w-64">
@@ -122,7 +132,9 @@ export function RelatorioPoloPage() {
           </div>
           <Button onClick={gerar} disabled={!poloId || carregando}>{carregando ? "Gerando…" : "Gerar relatório"}</Button>
           {relatorio && (
-            <Button variant="secondary" onClick={() => window.print()}>Imprimir / salvar PDF</Button>
+            <Button variant="secondary" onClick={baixarPdf} disabled={exportando}>
+              {exportando ? "Gerando…" : "Baixar PDF"}
+            </Button>
           )}
         </div>
       </Card>
@@ -134,8 +146,8 @@ export function RelatorioPoloPage() {
       )}
 
       {!carregando && relatorio && (
-        <div className="space-y-6">
-          <div className="hidden print:flex items-center gap-3 mb-2">
+        <div ref={conteudoRef} className="space-y-6 bg-white">
+          <div className="flex items-center gap-3 mb-2 p-2">
             <img src="/logo.png" alt="Conexão Esporte" className="w-10 h-10 object-contain" />
             <div>
               <div className="font-bold text-brand-dark">Relatório do Polo — {relatorio.polo_nome}</div>
@@ -152,7 +164,7 @@ export function RelatorioPoloPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card title="Beneficiários por modalidade" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(2)}>
+            <Card title="Beneficiários por modalidade" className="animate-fade-in-up" style={staggerStyle(2)}>
               {dadosPizza.length === 0 ? (
                 <EmptyState message="Sem beneficiários ativos matriculados no período." />
               ) : (
@@ -167,7 +179,7 @@ export function RelatorioPoloPage() {
               )}
             </Card>
 
-            <Card title="Frequência por turma" subtitle="% de presença no período selecionado" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(3)}>
+            <Card title="Frequência por turma" subtitle="% de presença no período selecionado" className="animate-fade-in-up" style={staggerStyle(3)}>
               {relatorio.frequencia_por_turma.length === 0 ? (
                 <EmptyState message="Nenhuma chamada lançada no período." />
               ) : (
@@ -184,7 +196,7 @@ export function RelatorioPoloPage() {
             </Card>
           </div>
 
-          <Card title="Evolução da frequência por semana" className="animate-fade-in-up print:break-inside-avoid" style={staggerStyle(4)}>
+          <Card title="Evolução da frequência por semana" className="animate-fade-in-up" style={staggerStyle(4)}>
             {relatorio.frequencia_por_semana.length === 0 ? (
               <EmptyState message="Nenhuma chamada lançada no período." />
             ) : (

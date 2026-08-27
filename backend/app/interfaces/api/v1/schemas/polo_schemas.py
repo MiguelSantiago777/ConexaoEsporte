@@ -57,6 +57,10 @@ class PoloCreateRequest(BaseModel):
     representante_legal_bairro: str | None = Field(default=None, max_length=100)
     representante_legal_cidade: str | None = Field(default=None, max_length=100)
 
+    # Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
+    latitude: float | None = None
+    longitude: float | None = None
+
 
 class PoloUpdateRequest(BaseModel):
     nome: str | None = Field(default=None, min_length=2, max_length=150)
@@ -96,6 +100,10 @@ class PoloUpdateRequest(BaseModel):
     representante_legal_bairro: str | None = Field(default=None, max_length=100)
     representante_legal_cidade: str | None = Field(default=None, max_length=100)
 
+    # Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
+    latitude: float | None = None
+    longitude: float | None = None
+
 
 class PoloResponse(BaseModel):
     id: UUID
@@ -127,5 +135,7 @@ class PoloResponse(BaseModel):
     representante_legal_endereco: str | None
     representante_legal_bairro: str | None
     representante_legal_cidade: str | None
+    latitude: float | None
+    longitude: float | None
 
     model_config = {"from_attributes": True}

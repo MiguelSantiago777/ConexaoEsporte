@@ -8,7 +8,6 @@ import {
   BoxIcon,
   BuildingIcon,
   CalendarCheckIcon,
-  ChartBarIcon,
   ChartPieIcon,
   ClipboardIcon,
   DocumentTextIcon,
@@ -35,8 +34,7 @@ const MENU: ItemMenu[] = [
   { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], icon: ClipboardIcon },
   { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], icon: AcademicCapIcon },
   { label: "Entregas de Materiais", to: "/entregas-materiais", perfis: ["MASTER", "GESTOR_POLO"], icon: BoxIcon },
-  { label: "Relatório do Polo", to: "/relatorio-polo", perfis: ["MASTER", "GESTOR_POLO"], icon: ChartPieIcon },
-  { label: "Relatório Geral", to: "/relatorio-geral", perfis: ["MASTER"], icon: ChartBarIcon },
+  { label: "Relatórios", to: "/relatorios-gerenciais", perfis: ["MASTER", "GESTOR_POLO"], icon: ChartPieIcon },
   { label: "Frequência", to: "/frequencia", perfis: ["PROFESSOR"], icon: CalendarCheckIcon },
   { label: "Relatórios de Aula", to: "/relatorios", perfis: ["PROFESSOR"], icon: DocumentTextIcon },
 ];

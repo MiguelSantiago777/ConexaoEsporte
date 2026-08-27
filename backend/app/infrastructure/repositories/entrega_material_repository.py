@@ -11,7 +11,7 @@ from app.infrastructure.database.models import EntregaMaterialModel
 def _to_entity(m: EntregaMaterialModel) -> EntregaMaterial:
     return EntregaMaterial(
         id=m.id, polo_id=m.polo_id, data_entrega=m.data_entrega, coordenador_nome=m.coordenador_nome,
-        itens=m.itens or [], criado_por_id=m.criado_por_id, criado_em=m.criado_em,
+        entregue_por=m.entregue_por, itens=m.itens or [], criado_por_id=m.criado_por_id, criado_em=m.criado_em,
     )
 
 
@@ -32,7 +32,7 @@ class EntregaMaterialRepository:
     def criar(self, entrega: EntregaMaterial) -> EntregaMaterial:
         m = EntregaMaterialModel(
             polo_id=entrega.polo_id, data_entrega=entrega.data_entrega,
-            coordenador_nome=entrega.coordenador_nome, itens=entrega.itens,
+            coordenador_nome=entrega.coordenador_nome, entregue_por=entrega.entregue_por, itens=entrega.itens,
             criado_por_id=entrega.criado_por_id,
         )
         self.db.add(m)

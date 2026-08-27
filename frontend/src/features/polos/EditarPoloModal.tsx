@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/toast/ToastContext";
+import { EnderecoMapaField } from "./EnderecoMapaField";
 
 interface Props {
   polo: Polo | null;
@@ -40,6 +41,8 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
   const toast = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(FORM_VAZIO);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
 
   const [gestorId, setGestorId] = useState<string | null>(null);
   const [gestorForm, setGestorForm] = useState(GESTOR_FORM_VAZIO);
@@ -124,6 +127,8 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
         representante_legal_bairro: polo.representante_legal_bairro ?? "",
         representante_legal_cidade: polo.representante_legal_cidade ?? "",
       });
+      setLatitude(polo.latitude);
+      setLongitude(polo.longitude);
     }
   }, [polo]);
 
@@ -157,6 +162,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
         representante_legal_endereco: dadosForm.representante_legal_endereco || null,
         representante_legal_bairro: dadosForm.representante_legal_bairro || null,
         representante_legal_cidade: dadosForm.representante_legal_cidade || null,
+        latitude, longitude,
       });
     },
     onSuccess: () => onSalvo(),
@@ -192,6 +198,12 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
             placeholder="ex.: Seg a Sex, 08h às 18h"
             value={form.horario_funcionamento}
             onChange={(e) => set("horario_funcionamento", e.target.value)}
+          />
+          <EnderecoMapaField
+            onEnderecoChange={(endereco) => set("endereco", endereco)}
+            latitude={latitude}
+            longitude={longitude}
+            onChange={(lat, lon) => { setLatitude(lat); setLongitude(lon); }}
           />
           <Select label="Status" value={form.status} onChange={(e) => set("status", e.target.value as "ATIVO" | "INATIVO")}>
             <option value="ATIVO">ATIVO</option>

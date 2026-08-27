@@ -11,6 +11,7 @@ import { DonutChart } from "@/components/ui/charts/DonutChart";
 import { BarList } from "@/components/ui/charts/BarList";
 import { CATEGORICAL_PALETTE, COR_OUTROS } from "@/components/ui/charts/palette";
 import { staggerStyle } from "@/lib/animation";
+import { PolosMapaCard } from "./PolosMapaCard";
 
 const MAX_TURMAS_NO_GRAFICO = 8;
 const MAX_FATIAS_MODALIDADE = 4;
@@ -151,6 +152,8 @@ export function DashboardPage() {
               <BarList data={turmasExibidas} />
             </Card>
           </div>
+
+          <PolosMapaCard polos={polos} />
         </>
       )}
     </div>

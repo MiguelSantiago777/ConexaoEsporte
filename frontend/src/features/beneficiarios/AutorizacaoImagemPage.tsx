@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -11,6 +11,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { staggerStyle } from "@/lib/animation";
 import { maskCPF } from "@/lib/masks";
 import { formatarData } from "@/lib/format";
+import { exportarPdf } from "@/lib/exportarPdf";
+import { useToast } from "@/components/ui/toast/ToastContext";
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
@@ -18,10 +20,11 @@ function hoje() {
 
 /**
  * Gera um termo de autorização de uso de imagem pré-preenchido com os dados do
- * beneficiário e do responsável, pronto para impressão/exportação em PDF pelo
- * navegador (Ctrl+P → Salvar como PDF) e envio ao responsável para assinatura.
+ * beneficiário e do responsável, pronto para baixar como .pdf e enviar ao
+ * responsável para assinatura (impressa ou digitalizada).
  */
 export function AutorizacaoImagemPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { data: beneficiarios = [], isLoading: carregando } = useQuery({
     queryKey: ["beneficiarios"],
@@ -30,6 +33,20 @@ export function AutorizacaoImagemPage() {
   const beneficiario = beneficiarios.find((b) => b.id === id) ?? null;
   const [documentoResponsavel, setDocumentoResponsavel] = useState("");
   const [cidade, setCidade] = useState("");
+  const [exportando, setExportando] = useState(false);
+  const documentoRef = useRef<HTMLDivElement>(null);
+
+  async function baixarPdf() {
+    if (!documentoRef.current) return;
+    setExportando(true);
+    try {
+      await exportarPdf(documentoRef.current, "termo-autorizacao-uso-de-imagem.pdf");
+    } catch {
+      toast.error("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   if (carregando) {
     return <Spinner label="Carregando…" />;
@@ -51,14 +68,12 @@ export function AutorizacaoImagemPage() {
 
   return (
     <div className="space-y-6">
-      <div className="print:hidden">
-        <PageHeader
-          title="Autorização de uso de imagem"
-          subtitle={`Termo pré-preenchido para ${beneficiario.nome_completo}.`}
-        />
-      </div>
+      <PageHeader
+        title="Autorização de uso de imagem"
+        subtitle={`Termo pré-preenchido para ${beneficiario.nome_completo}.`}
+      />
 
-      <Card className="print:hidden animate-fade-in-up" style={staggerStyle(0)}>
+      <Card className="animate-fade-in-up" style={staggerStyle(0)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="CPF ou RG do responsável (para o documento)"
@@ -69,7 +84,7 @@ export function AutorizacaoImagemPage() {
           <Input label="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Cidade onde o termo é assinado" />
         </div>
         <div className="mt-4 flex gap-3">
-          <Button onClick={() => window.print()}>Baixar / imprimir documento</Button>
+          <Button onClick={baixarPdf} disabled={exportando}>{exportando ? "Gerando…" : "Baixar PDF"}</Button>
           <Link to="/beneficiarios">
             <Button variant="secondary" type="button">Voltar</Button>
           </Link>
@@ -81,7 +96,8 @@ export function AutorizacaoImagemPage() {
       </Card>
 
       <div
-        className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-10 print:shadow-none print:border-0 print:rounded-none print:p-0 max-w-2xl mx-auto leading-relaxed text-sm text-gray-800 animate-fade-in-up"
+        ref={documentoRef}
+        className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-10 max-w-2xl mx-auto leading-relaxed text-sm text-gray-800 animate-fade-in-up"
         style={staggerStyle(1)}
       >
         <div className="flex items-center gap-3 mb-8">

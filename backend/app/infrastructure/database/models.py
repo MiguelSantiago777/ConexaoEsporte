@@ -12,6 +12,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -91,6 +92,10 @@ class PoloModel(Base):
     representante_legal_endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
     representante_legal_bairro: Mapped[str | None] = mapped_column(String(100), nullable=True)
     representante_legal_cidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -218,7 +223,26 @@ class FrequenciaModel(Base):
     )
     data: Mapped[date] = mapped_column(Date, nullable=False)
     presente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    falta_justificada: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
     registrado_por_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("usuarios.id"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ImpeditivoAulaModel(Base):
+    """Dia em que a turma inteira não teve aula (feriado etc.) — vale para
+    todos os beneficiários matriculados naquela data."""
+
+    __tablename__ = "impeditivos_aula"
+    __table_args__ = (UniqueConstraint("turma_id", "data", name="uq_impeditivo_turma_dia"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    turma_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("turmas.id"), nullable=False)
+    data: Mapped[date] = mapped_column(Date, nullable=False)
+    justificativa: Mapped[str] = mapped_column(Text, nullable=False)
+    criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -310,6 +334,7 @@ class EntregaMaterialModel(Base):
     polo_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=False)
     data_entrega: Mapped[date | None] = mapped_column(Date, nullable=True)
     coordenador_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    entregue_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
     itens: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True

@@ -15,8 +15,7 @@ import { RelatoriosPage } from "@/features/relatorios/RelatoriosPage";
 import { FichasExecucaoPage } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { FichaExecucaoDetalhePage } from "@/features/fichas-execucao/FichaExecucaoDetalhePage";
 import { EntregasMateriaisPage } from "@/features/entregas-materiais/EntregasMateriaisPage";
-import { RelatorioPoloPage } from "@/features/relatorios-gerenciais/RelatorioPoloPage";
-import { RelatorioGeralPage } from "@/features/relatorios-gerenciais/RelatorioGeralPage";
+import { RelatoriosGerenciaisPage } from "@/features/relatorios-gerenciais/RelatoriosGerenciaisPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -36,7 +35,6 @@ export const router = createBrowserRouter([
               { path: "/polos", element: <PolosPage /> },
               { path: "/fichas-execucao", element: <FichasExecucaoPage /> },
               { path: "/fichas-execucao/:id", element: <FichaExecucaoDetalhePage /> },
-              { path: "/relatorio-geral", element: <RelatorioGeralPage /> },
             ],
           },
           // MASTER + GESTOR_POLO
@@ -49,7 +47,7 @@ export const router = createBrowserRouter([
               { path: "/beneficiarios/:id/autorizacao-imagem", element: <AutorizacaoImagemPage /> },
               { path: "/professores", element: <ProfessoresPage /> },
               { path: "/entregas-materiais", element: <EntregasMateriaisPage /> },
-              { path: "/relatorio-polo", element: <RelatorioPoloPage /> },
+              { path: "/relatorios-gerenciais", element: <RelatoriosGerenciaisPage /> },
             ],
           },
           // PROFESSOR

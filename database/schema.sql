@@ -71,6 +71,10 @@ CREATE TABLE IF NOT EXISTS polos (
     representante_legal_bairro   VARCHAR(100),
     representante_legal_cidade   VARCHAR(100),
 
+    -- Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
+    latitude                     DOUBLE PRECISION,
+    longitude                    DOUBLE PRECISION,
+
     criado_em                    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -282,6 +286,8 @@ CREATE TABLE IF NOT EXISTS frequencias (
     beneficiario_id     UUID NOT NULL REFERENCES beneficiarios(id) ON DELETE CASCADE,
     data                DATE NOT NULL,
     presente            BOOLEAN NOT NULL DEFAULT FALSE,
+    falta_justificada   BOOLEAN NOT NULL DEFAULT FALSE,
+    justificativa       TEXT,
     registrado_por_id   UUID NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT,
     criado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Um único registro de presença por beneficiário/turma/dia
@@ -290,6 +296,22 @@ CREATE TABLE IF NOT EXISTS frequencias (
 
 CREATE INDEX IF NOT EXISTS idx_frequencias_turma_data ON frequencias(turma_id, data);
 CREATE INDEX IF NOT EXISTS idx_frequencias_benef      ON frequencias(beneficiario_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: impeditivos_aula — dia em que a turma inteira não teve aula
+-- (feriado, ponto facultativo etc.), vale para todos os beneficiários.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS impeditivos_aula (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    turma_id        UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+    data            DATE NOT NULL,
+    justificativa   TEXT NOT NULL,
+    criado_por_id   UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_impeditivo_turma_dia UNIQUE (turma_id, data)
+);
+
+CREATE INDEX IF NOT EXISTS idx_impeditivos_turma_data ON impeditivos_aula(turma_id, data);
 
 -- ---------------------------------------------------------------------
 -- TABELA: relatorios_aula
@@ -408,6 +430,7 @@ CREATE TABLE IF NOT EXISTS entregas_materiais (
     polo_id         UUID NOT NULL REFERENCES polos(id) ON DELETE CASCADE,
     data_entrega    DATE,
     coordenador_nome VARCHAR(150),  -- snapshot do responsável do núcleo no momento da entrega
+    entregue_por    VARCHAR(150),  -- nome de quem foi fisicamente levar os materiais
     -- [{"descricao": "Bolas de futebol", "quantidade": "10"}, ...]
     itens           JSONB NOT NULL DEFAULT '[]'::jsonb,
     criado_por_id   UUID REFERENCES usuarios(id) ON DELETE SET NULL,

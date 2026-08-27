@@ -13,12 +13,14 @@ class ItemEntregaRequest(BaseModel):
 class EntregaMaterialCreateRequest(BaseModel):
     polo_id: UUID
     data_entrega: date | None = None
+    entregue_por: str | None = Field(default=None, max_length=150, description="Nome de quem foi levar os materiais.")
     itens: list[ItemEntregaRequest] = Field(default_factory=list, max_length=18)
 
 
 class EntregaMaterialUpdateRequest(BaseModel):
     data_entrega: date | None = None
     coordenador_nome: str | None = Field(default=None, max_length=150)
+    entregue_por: str | None = Field(default=None, max_length=150)
     itens: list[ItemEntregaRequest] | None = Field(default=None, max_length=18)
 
 
@@ -27,6 +29,7 @@ class EntregaMaterialResponse(BaseModel):
     polo_id: UUID
     data_entrega: date | None
     coordenador_nome: str | None
+    entregue_por: str | None
     itens: list[ItemEntregaRequest]
     criado_por_id: UUID | None
 

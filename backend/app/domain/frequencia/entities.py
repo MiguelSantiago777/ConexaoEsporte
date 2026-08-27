@@ -11,6 +11,22 @@ class RegistroFrequencia:
     data: date
     presente: bool
     registrado_por_id: UUID
+    falta_justificada: bool = False
+    justificativa: str | None = None
+
+
+@dataclass
+class ImpeditivoAula:
+    """Dia em que a turma inteira não teve aula (feriado, ponto facultativo
+    etc.) — diferente de falta individual, vale para todos os beneficiários
+    matriculados naquela data."""
+
+    id: UUID | None
+    turma_id: UUID
+    data: date
+    justificativa: str
+    criado_por_id: UUID | None = None
+    criado_em: datetime | None = None
 
 
 @dataclass
