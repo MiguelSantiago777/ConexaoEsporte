@@ -1,4 +1,5 @@
 """DTOs de Usuário (funcionários: MASTER, GESTOR_POLO, PROFESSOR)."""
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -35,5 +36,17 @@ class UsuarioResponse(BaseModel):
     ativo: bool
     telefone: str | None
     carga_horaria_semanal: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class UsuarioDocumentoResponse(BaseModel):
+    id: UUID
+    usuario_id: UUID
+    tipo: str
+    nome_arquivo: str
+    content_type: str | None
+    tamanho_bytes: int | None
+    criado_em: datetime | None
 
     model_config = {"from_attributes": True}

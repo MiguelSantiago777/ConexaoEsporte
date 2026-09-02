@@ -79,6 +79,17 @@ class LinhaFichaChamada(BaseModel):
     frequencia_pct: float
 
 
+class JustificativaFaltaItem(BaseModel):
+    """Uma falta justificada do mês — beneficiário, data e o texto da
+    justificativa (mesmo padrão de referência da tela 'Justificativas de
+    falta cadastradas')."""
+
+    beneficiario_id: UUID
+    beneficiario_nome: str
+    data: date
+    justificativa: str
+
+
 class ResumoFichaChamada(BaseModel):
     presenca: int
     falta: int
@@ -101,6 +112,9 @@ class FichaChamadaResponse(BaseModel):
     mes: int
     ano: int
     datas: list[date]
+    atualizado_em: datetime | None
+    atualizado_por_nome: str | None
     linhas: list[LinhaFichaChamada]
     impeditivos: list[ImpeditivoAulaResponse]
+    justificativas: list[JustificativaFaltaItem]
     resumo: ResumoFichaChamada

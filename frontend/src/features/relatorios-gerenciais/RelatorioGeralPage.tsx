@@ -3,11 +3,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,18 +14,21 @@ import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { RelatorioGeral } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { StatTile } from "@/components/ui/StatTile";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { DonutChart } from "@/components/ui/charts/DonutChart";
+import { CATEGORICAL_PALETTE, COR_OUTROS } from "@/components/ui/charts/palette";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 
-const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
+const MAX_FATIAS_POLO = 4;
 
 function primeiroDiaDoMes(): string {
   const hoje = new Date();
@@ -37,18 +37,6 @@ function primeiroDiaDoMes(): string {
 
 function hoje(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function KpiCard({ label, valor, sufixo }: { label: string; valor: number | string; sufixo?: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200/80 p-4 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</div>
-      <div className="text-2xl font-bold text-brand-dark mt-1">
-        {valor}
-        {sufixo && <span className="text-base font-medium text-gray-400">{sufixo}</span>}
-      </div>
-    </div>
-  );
 }
 
 /** Relatório consolidado entre TODOS os polos — exclusivo do MASTER. */
@@ -108,10 +96,14 @@ export function RelatorioGeralPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dadosPizza = useMemo(
-    () => relatorio?.beneficiarios_por_polo.map((s) => ({ name: s.label, value: s.valor })) ?? [],
-    [relatorio]
-  );
+  const porPolo = useMemo(() => {
+    const ordenado = [...(relatorio?.beneficiarios_por_polo ?? [])].sort((a, b) => b.valor - a.valor);
+    const principais = ordenado.slice(0, MAX_FATIAS_POLO);
+    const resto = ordenado.slice(MAX_FATIAS_POLO).reduce((acc, i) => acc + i.valor, 0);
+    const fatias = principais.map((item, i) => ({ label: item.label, value: item.valor, color: CATEGORICAL_PALETTE[i] }));
+    if (resto > 0) fatias.push({ label: "Outros polos", value: resto, color: COR_OUTROS });
+    return fatias;
+  }, [relatorio]);
 
   return (
     <div className="space-y-6">
@@ -153,26 +145,21 @@ export function RelatorioGeralPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fade-in-up" style={staggerStyle(1)}>
-            <KpiCard label="Polos" valor={relatorio.kpis.total_polos} />
-            <KpiCard label="Beneficiários ativos" valor={relatorio.kpis.total_beneficiarios_ativos} />
-            <KpiCard label="Turmas ativas" valor={relatorio.kpis.total_turmas_ativas} />
-            <KpiCard label="Frequência média geral" valor={relatorio.kpis.frequencia_media_pct} sufixo="%" />
+          <div className="flex flex-wrap justify-center gap-5 animate-fade-in-up" style={staggerStyle(1)}>
+            <StatTile compact label="Polos" value={relatorio.kpis.total_polos} />
+            <StatTile compact label="Beneficiários ativos" value={relatorio.kpis.total_beneficiarios_ativos} />
+            <StatTile compact label="Turmas ativas" value={relatorio.kpis.total_turmas_ativas} />
+            <StatTile compact label="Frequência média geral" value={`${relatorio.kpis.frequencia_media_pct}%`} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card title="Beneficiários por polo" className="animate-fade-in-up" style={staggerStyle(2)}>
-              {dadosPizza.length === 0 ? (
+              {porPolo.length === 0 ? (
                 <EmptyState message="Nenhum beneficiário ativo cadastrado." />
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(d) => `${d.name} (${d.value})`} isAnimationActive={false}>
-                      {dadosPizza.map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex justify-center">
+                  <DonutChart data={porPolo} />
+                </div>
               )}
             </Card>
 
@@ -181,7 +168,7 @@ export function RelatorioGeralPage() {
                 <EmptyState message="Nenhum polo cadastrado." />
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={relatorio.ranking_polos.map((r) => ({ label: r.polo_nome, valor: r.frequencia_media_pct }))} margin={{ left: -20 }}>
+                  <BarChart data={relatorio.ranking_polos.map((r) => ({ label: r.polo_nome, valor: r.frequencia_media_pct }))} margin={{ left: 0, right: 12, top: 4, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
@@ -198,7 +185,7 @@ export function RelatorioGeralPage() {
               <EmptyState message="Nenhuma chamada lançada no período." />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={relatorio.frequencia_por_semana} margin={{ left: -20 }}>
+                <LineChart data={relatorio.frequencia_por_semana} margin={{ left: 0, right: 12, top: 4, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
@@ -210,21 +197,34 @@ export function RelatorioGeralPage() {
           </Card>
 
           <Card title="Todos os polos" className="animate-fade-in-up" style={staggerStyle(5)}>
-            <div className="overflow-x-auto -mx-6">
+            {/* Celular: lista de cards. Telas sm+ (e a captura de PDF): tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {relatorio.ranking_polos.map((r) => (
+                <li key={r.polo_id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-800 truncate">{r.polo_nome}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{r.beneficiarios_ativos} beneficiários ativos</div>
+                  </div>
+                  <Badge variant={r.frequencia_media_pct >= 75 ? "accent" : "gray"}>{r.frequencia_media_pct}%</Badge>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                    <th className="py-2.5 px-6">Polo</th>
+                    <th className="py-2.5 px-8">Polo</th>
                     <th className="px-3">Beneficiários ativos</th>
-                    <th className="px-3">Frequência média</th>
+                    <th className="px-3 pr-8">Frequência média</th>
                   </tr>
                 </thead>
                 <tbody>
                   {relatorio.ranking_polos.map((r) => (
                     <tr key={r.polo_id} className="border-t border-gray-100">
-                      <td className="py-2.5 px-6 font-medium text-gray-800">{r.polo_nome}</td>
+                      <td className="py-2.5 px-8 font-medium text-gray-800">{r.polo_nome}</td>
                       <td className="px-3 text-gray-600">{r.beneficiarios_ativos}</td>
-                      <td className="px-3">
+                      <td className="px-3 pr-8">
                         <Badge variant={r.frequencia_media_pct >= 75 ? "accent" : "gray"}>{r.frequencia_media_pct}%</Badge>
                       </td>
                     </tr>

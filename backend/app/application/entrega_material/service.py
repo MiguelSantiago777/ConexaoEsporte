@@ -18,6 +18,9 @@ class EntregaMaterialService:
     def listar(self, polo_id: UUID | None = None) -> list[EntregaMaterial]:
         return self.repo.listar(polo_id=polo_id)
 
+    def listar_pagina(self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None) -> tuple[list[EntregaMaterial], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id)
+
     def buscar(self, entrega_id: UUID) -> EntregaMaterial | None:
         return self.repo.buscar_por_id(entrega_id)
 

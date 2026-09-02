@@ -1,6 +1,5 @@
 """Rotas de Polos. Tag Swagger: 'Polos'. Somente MASTER gerencia Polos."""
-from typing import Annotated
-from urllib.parse import quote
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -15,6 +14,8 @@ from app.core.dependencies import (
     require_perfis,
 )
 from app.domain.enums import PerfilUsuario
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
+from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.polo_schemas import PoloCreateRequest, PoloResponse, PoloUpdateRequest
 
 router = APIRouter(prefix="/polos", tags=["Polos"])
@@ -27,16 +28,30 @@ MasterOuGestor = Annotated[
 
 @router.get(
     "",
-    response_model=list[PoloResponse],
+    response_model=list[PoloResponse] | PaginaResponse[PoloResponse],
     summary="Listar polos",
-    description="MASTER vê todos os polos. GESTOR_POLO vê apenas o seu.",
+    description="MASTER vê todos os polos (informe `pagina` pra paginar — sem isso, devolve a lista "
+    "inteira, uso por telas que só precisam das opções, como um <select>). GESTOR_POLO vê apenas o seu.",
 )
-def listar_polos(usuario: CurrentUser, db: DbSession) -> list[PoloResponse]:
+def listar_polos(
+    usuario: CurrentUser, db: DbSession,
+    nome: str | None = None,
+    pagina: Annotated[int | None, Query(ge=1)] = None,
+    tamanho_pagina: Annotated[int, Query(ge=1, le=200)] = 20,
+) -> list[PoloResponse] | PaginaResponse[PoloResponse]:
     service = PoloService(db)
-    todos = service.listar()
+
     if usuario.perfil == PerfilUsuario.GESTOR_POLO:
-        todos = [p for p in todos if p.id == usuario.polo_id]
-    return [PoloResponse.model_validate(p) for p in todos]
+        todos = [p for p in service.listar() if p.id == usuario.polo_id]
+        return [PoloResponse.model_validate(p) for p in todos]
+
+    if pagina is None:
+        return [PoloResponse.model_validate(p) for p in service.listar()]
+
+    polos, total = service.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, nome=nome)
+    return PaginaResponse(
+        itens=[PoloResponse.model_validate(p) for p in polos], total=total, pagina=pagina, tamanho_pagina=tamanho_pagina
+    )
 
 
 @router.post(
@@ -102,17 +117,11 @@ def exportar_grade_horaria(
     usuario: MasterOuGestor,
     db: DbSession,
     planejamento_horas: Annotated[float, Query(ge=0)] = 0,
+    formato: Literal["docx", "pdf"] = "docx",
 ) -> Response:
     assert_acesso_ao_polo(usuario, polo_id)
     buffer = RelatorioService(db).gerar_grade_horaria(polo_id, planejamento_horas)
-    nome_arquivo = "Grade Horaria.docx"
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": content_disposition},
-    )
+    return resposta_relatorio(buffer, "Grade Horaria", "docx", formato)
 
 
 @router.get(
@@ -122,17 +131,12 @@ def exportar_grade_horaria(
     "beneficiários ativos do polo. RH vem do cadastro de usuários (GESTOR_POLO/PROFESSOR do polo, "
     "com telefone e carga horária preenchidos em Professores/Usuários).",
 )
-def exportar_planilha_nucleos(polo_id: UUID, usuario: MasterOuGestor, db: DbSession) -> Response:
+def exportar_planilha_nucleos(
+    polo_id: UUID, usuario: MasterOuGestor, db: DbSession, formato: Literal["xlsx", "pdf"] = "xlsx"
+) -> Response:
     assert_acesso_ao_polo(usuario, polo_id)
     buffer = RelatorioService(db).gerar_planilha_nucleos(polo_id)
-    nome_arquivo = "Planilha de Nucleos.xlsx"
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": content_disposition},
-    )
+    return resposta_relatorio(buffer, "Planilha de Nucleos", "xlsx", formato)
 
 
 @router.get(
@@ -141,14 +145,9 @@ def exportar_planilha_nucleos(polo_id: UUID, usuario: MasterOuGestor, db: DbSess
     description="Gera o termo preenchido com os dados pessoais do representante legal "
     "cadastrados no polo (nome, RG, CPF, endereço), pronto para assinatura.",
 )
-def exportar_termo_responsabilidade(polo_id: UUID, usuario: MasterOuGestor, db: DbSession) -> Response:
+def exportar_termo_responsabilidade(
+    polo_id: UUID, usuario: MasterOuGestor, db: DbSession, formato: Literal["docx", "pdf"] = "docx"
+) -> Response:
     assert_acesso_ao_polo(usuario, polo_id)
     buffer = RelatorioService(db).gerar_termo_responsabilidade(polo_id)
-    nome_arquivo = "Termo de Responsabilidade.docx"
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": content_disposition},
-    )
+    return resposta_relatorio(buffer, "Termo de Responsabilidade", "docx", formato)

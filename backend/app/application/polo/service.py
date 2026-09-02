@@ -15,6 +15,9 @@ class PoloService:
     def listar(self) -> list[Polo]:
         return self.repo.listar()
 
+    def listar_pagina(self, pagina: int, tamanho_pagina: int, nome: str | None = None) -> tuple[list[Polo], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, nome=nome)
+
     def buscar(self, polo_id: UUID) -> Polo | None:
         return self.repo.buscar_por_id(polo_id)
 

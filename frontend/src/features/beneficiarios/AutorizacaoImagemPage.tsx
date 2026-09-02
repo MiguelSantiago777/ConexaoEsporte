@@ -97,7 +97,7 @@ export function AutorizacaoImagemPage() {
 
       <div
         ref={documentoRef}
-        className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-10 max-w-2xl mx-auto leading-relaxed text-sm text-gray-800 animate-fade-in-up"
+        className="bg-white rounded-xl shadow-sm p-10 max-w-2xl mx-auto leading-relaxed text-sm text-gray-800 animate-fade-in-up"
         style={staggerStyle(1)}
       >
         <div className="flex items-center gap-3 mb-8">

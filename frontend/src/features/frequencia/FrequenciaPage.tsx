@@ -11,14 +11,15 @@ import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CameraIcon, CheckCircleIcon, AlertCircleIcon, CalendarOffIcon, CloseIcon } from "@/components/ui/icons";
+import { CameraIcon, CheckIcon, CloseIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { exportarXlsxMultiplasAbas } from "@/lib/exportarXlsx";
-import { STATUS_ESTILO, diaCurto, fichaChamadaParaAbas } from "./statusChamada";
+import { STATUS_ESTILO, dataBR, diaCurto, fichaChamadaParaAbas } from "./statusChamada";
 import { FichaChamadaImpressao } from "./FichaChamadaImpressao";
+import { DetalhesFichaPresenca } from "./DetalhesFichaPresenca";
 
 const MES_ATUAL = new Date().getMonth() + 1;
 const ANO_ATUAL = new Date().getFullYear();
@@ -188,9 +189,38 @@ export function FrequenciaPage() {
     return ficha?.impeditivos.find((i) => i.data === dataIso) ?? null;
   }
 
-  // --- Fotos da aula (por data específica — independente da grade do mês) ---
-  const [dataEvidencia, setDataEvidencia] = useState(new Date().toISOString().slice(0, 10));
+  // --- Impeditivo de aula — formulário sempre visível, independente da
+  // grade ter beneficiários matriculados (a grade some quando não há
+  // nenhum, mas o impeditivo continua valendo pra turma inteira). ---
+  const datasSemImpeditivo = (ficha?.datas ?? []).filter((d) => !impeditivoDeData(d));
+  const [novoImpeditivoData, setNovoImpeditivoData] = useState("");
+  const [novoImpeditivoTexto, setNovoImpeditivoTexto] = useState("Feriado, ponto facultativo ou data comemorativa");
+
+  useEffect(() => {
+    if (!datasSemImpeditivo.includes(novoImpeditivoData)) {
+      setNovoImpeditivoData(datasSemImpeditivo[0] ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ficha]);
+
+  function registrarNovoImpeditivo() {
+    if (!novoImpeditivoData || !novoImpeditivoTexto.trim()) return;
+    impeditivoMutation.mutate({ data: novoImpeditivoData, justificativa: novoImpeditivoTexto.trim() });
+  }
+
+  // --- Fotos da aula (por data específica — só nos dias que a turma tem
+  // aula no mês selecionado, pra não anexar foto numa data sem aula) ---
+  const [dataEvidencia, setDataEvidencia] = useState("");
   const [enviandoFotos, setEnviandoFotos] = useState(false);
+
+  useEffect(() => {
+    if (!ficha) return;
+    if (!ficha.datas.includes(dataEvidencia)) {
+      setDataEvidencia(ficha.datas[0] ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ficha]);
+
   const evidenciasQueryKey = ["frequencias", "evidencias", turmaId, dataEvidencia];
   const { data: evidencias = [] } = useQuery({
     queryKey: evidenciasQueryKey,
@@ -267,10 +297,9 @@ export function FrequenciaPage() {
 
       {turmaId && !carregandoFicha && ficha && (
         <Card
-          title="Chamada do mês"
-          subtitle={`${ficha.polo_nome} — ${ficha.modalidade_nome} — ${ficha.horario_inicio}–${ficha.horario_fim}${ficha.professor_nome ? ` — ${ficha.professor_nome}` : ""}`}
+          title="Detalhes da ficha de presença"
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={baixarXlsxFichaChamada} disabled={exportandoXlsx}>
                 {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
               </Button>
@@ -282,21 +311,23 @@ export function FrequenciaPage() {
           className="animate-fade-in-up"
           style={staggerStyle(1)}
         >
+          <DetalhesFichaPresenca ficha={ficha} />
+
           {ficha.linhas.length === 0 ? (
             <EmptyState message="Nenhum beneficiário matriculado ativo nesta turma." />
           ) : ficha.datas.length === 0 ? (
             <EmptyState message="A turma não tem nenhuma aula prevista neste mês." />
           ) : (
             <>
-              <p className="text-xs text-gray-400 mb-3">
-                Clique numa célula para alternar presença/falta. Clique no cabeçalho de uma data para marcar ou
+              <p className="text-xs text-gray-400 mt-4 mb-3 pt-4 border-t border-gray-100">
+                Clique no ✓ ou no ✗ pra marcar presença/falta. Clique no cabeçalho de uma data pra marcar ou
                 remover um impeditivo de aula (feriado etc., vale para a turma inteira).
               </p>
-              <div className="overflow-x-auto -mx-6">
+              <div className="overflow-x-auto -mx-5 sm:-mx-8">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                      <th className="py-2.5 px-6 sticky left-0 bg-brand-light">Beneficiário</th>
+                      <th className="py-2.5 px-8 sticky left-0 bg-brand-light">Beneficiário</th>
                       {ficha.datas.map((d) => {
                         const imp = impeditivoDeData(d);
                         return (
@@ -316,18 +347,48 @@ export function FrequenciaPage() {
                           </th>
                         );
                       })}
-                      <th className="px-3 text-right pr-6">Freq.</th>
+                      <th className="px-3 text-right pr-8">Freq.</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ficha.linhas.map((linha) => (
                       <tr key={linha.beneficiario_id} className="border-t border-gray-100">
-                        <td className="py-2 px-6 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap">
+                        <td className="py-2 px-8 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap">
                           {linha.nome}
                           {linha.idade !== null && <span className="text-gray-400 font-normal"> ({linha.idade})</span>}
                         </td>
                         {ficha.datas.map((d) => {
                           const status = linha.status_por_data[d];
+
+                          if (status === "SEM_MARCACAO") {
+                            return (
+                              <td key={d} className="px-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    title="Marcar presença"
+                                    onClick={() =>
+                                      marcarMutation.mutate({ beneficiarioId: linha.beneficiario_id, data: d, presente: true })
+                                    }
+                                    className="w-5 h-5 rounded-full border-2 border-emerald-300 text-emerald-400 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white transition-colors flex items-center justify-center shrink-0"
+                                  >
+                                    <CheckIcon className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Marcar falta"
+                                    onClick={() =>
+                                      marcarMutation.mutate({ beneficiarioId: linha.beneficiario_id, data: d, presente: false })
+                                    }
+                                    className="w-5 h-5 rounded-full border-2 border-red-300 text-red-400 hover:bg-red-500 hover:border-red-500 hover:text-white transition-colors flex items-center justify-center shrink-0"
+                                  >
+                                    <CloseIcon className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            );
+                          }
+
                           const estilo = STATUS_ESTILO[status];
                           return (
                             <td key={d} className="px-2 text-center">
@@ -337,7 +398,7 @@ export function FrequenciaPage() {
                                   title={estilo.titulo}
                                   onClick={() => alternarPresenca(linha.beneficiario_id, d, status)}
                                   disabled={status === "IMPEDITIVO"}
-                                  className={`${estilo.className} disabled:cursor-default hover:opacity-70 transition-opacity`}
+                                  className="disabled:cursor-default hover:opacity-70 transition-opacity"
                                 >
                                   {estilo.icon}
                                 </button>
@@ -355,39 +416,19 @@ export function FrequenciaPage() {
                             </td>
                           );
                         })}
-                        <td className="px-3 text-right pr-6 font-medium text-gray-700">{linha.frequencia_pct}%</td>
+                        <td className="px-3 text-right pr-8 font-medium text-gray-700">{linha.frequencia_pct}%</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {ficha.impeditivos.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Impeditivos de aula do mês</h3>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    {ficha.impeditivos.map((i) => (
-                      <li key={i.id} className="flex items-center justify-between gap-3">
-                        <span>{diaCurto(i.data)}/{ficha.mes.toString().padStart(2, "0")} — {i.justificativa}</span>
-                        <button
-                          type="button"
-                          onClick={() => removerImpeditivoMutation.mutate(i.id)}
-                          className="text-xs text-gray-400 hover:text-red-600"
-                        >
-                          remover
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
-                <span className="flex items-center gap-1"><CheckCircleIcon className="w-4 h-4 text-accent-dark" /> Presença: {ficha.resumo.presenca}</span>
-                <span className="flex items-center gap-1"><CloseIcon className="w-4 h-4 text-red-500" /> Falta: {ficha.resumo.falta}</span>
-                <span className="flex items-center gap-1"><AlertCircleIcon className="w-4 h-4 text-blue-500" /> Falta justificada: {ficha.resumo.falta_justificada}</span>
-                <span className="flex items-center gap-1"><CalendarOffIcon className="w-4 h-4 text-amber-500" /> Impeditivo: {ficha.resumo.impeditivo}</span>
-                <span className="flex items-center gap-1 text-gray-300">— Sem marcação: {ficha.resumo.sem_marcacao}</span>
+              <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-gray-600">
+                <span className="flex items-center gap-1.5">{STATUS_ESTILO.PRESENTE.icon} Presença: {ficha.resumo.presenca}</span>
+                <span className="flex items-center gap-1.5">{STATUS_ESTILO.FALTA.icon} Falta: {ficha.resumo.falta}</span>
+                <span className="flex items-center gap-1.5">{STATUS_ESTILO.FALTA_JUSTIFICADA.icon} Falta justificada: {ficha.resumo.falta_justificada}</span>
+                <span className="flex items-center gap-1.5">{STATUS_ESTILO.IMPEDITIVO.icon} Impeditivo: {ficha.resumo.impeditivo}</span>
+                <span className="flex items-center gap-1.5">{STATUS_ESTILO.SEM_MARCACAO.icon} Sem marcação: {ficha.resumo.sem_marcacao}</span>
               </div>
             </>
           )}
@@ -400,29 +441,111 @@ export function FrequenciaPage() {
         </div>
       )}
 
-      {turmaId && (
+      {turmaId && ficha && (
         <Card
-          title="Fotos da aula"
-          subtitle="Anexe uma ou mais fotos comprovando que a aula de uma data específica realmente aconteceu."
+          title="Impeditivo de aula"
+          subtitle="Marque um dia em que a turma inteira não teve aula (feriado, ponto facultativo etc.) — vale para todos os beneficiários matriculados nessa data."
           className="animate-fade-in-up print:hidden"
           style={staggerStyle(2)}
         >
-          <div className="sm:w-48 mb-4">
-            <Input label="Data" type="date" value={dataEvidencia} onChange={(e) => setDataEvidencia(e.target.value)} />
-          </div>
-          <div className="flex flex-wrap gap-3 items-center">
-            {evidencias.map((ev) => <EvidenciaThumb key={ev.id} evidencia={ev} />)}
-            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 cursor-pointer hover:border-brand hover:text-brand transition-colors shrink-0">
-              <CameraIcon className="w-6 h-6" />
-              <span className="text-[10px] font-medium">{enviandoFotos ? "Enviando…" : "Adicionar"}</span>
-              <input type="file" accept="image/*" multiple className="hidden" disabled={enviandoFotos} onChange={enviarFotos} />
-            </label>
-          </div>
+          {ficha.datas.length === 0 ? (
+            <EmptyState message="A turma não tem nenhuma aula prevista neste mês." />
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+              <div className="sm:w-40">
+                <Select
+                  label="Data"
+                  value={novoImpeditivoData}
+                  onChange={(e) => setNovoImpeditivoData(e.target.value)}
+                  disabled={datasSemImpeditivo.length === 0}
+                >
+                  {datasSemImpeditivo.length === 0 && <option value="">Todas as datas já têm impeditivo</option>}
+                  {datasSemImpeditivo.map((d) => (
+                    <option key={d} value={d}>{dataBR(d)}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Input
+                  label="Justificativa"
+                  value={novoImpeditivoTexto}
+                  onChange={(e) => setNovoImpeditivoTexto(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={registrarNovoImpeditivo}
+                disabled={!novoImpeditivoData || !novoImpeditivoTexto.trim() || impeditivoMutation.isPending}
+              >
+                {impeditivoMutation.isPending ? "Salvando…" : "Marcar impeditivo"}
+              </Button>
+            </div>
+          )}
+
+          {ficha.impeditivos.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Impeditivos de aula do mês</h3>
+              <ul className="text-sm text-gray-600 space-y-1">
+                {ficha.impeditivos.map((i) => (
+                  <li key={i.id} className="flex items-center justify-between gap-3">
+                    <span>{dataBR(i.data)} — {i.justificativa}</span>
+                    <button
+                      type="button"
+                      onClick={() => removerImpeditivoMutation.mutate(i.id)}
+                      className="text-xs text-gray-400 hover:text-red-600 shrink-0"
+                    >
+                      remover
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {turmaId && ficha && (
+        <Card
+          title="Fotos da aula"
+          subtitle="Anexe uma ou mais fotos comprovando que a aula de uma data específica realmente aconteceu — só nos dias em que a turma tem aula."
+          className="animate-fade-in-up print:hidden"
+          style={staggerStyle(3)}
+        >
+          {ficha.datas.length === 0 ? (
+            <EmptyState message="A turma não tem nenhuma aula prevista neste mês." />
+          ) : (
+            <>
+              <div className="sm:w-48 mb-4">
+                <Select label="Data" value={dataEvidencia} onChange={(e) => setDataEvidencia(e.target.value)}>
+                  {ficha.datas.map((d) => (
+                    <option key={d} value={d}>{dataBR(d)}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-3 items-center">
+                {evidencias.map((ev) => <EvidenciaThumb key={ev.id} evidencia={ev} />)}
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 cursor-pointer hover:border-brand hover:text-brand transition-colors shrink-0">
+                  <CameraIcon className="w-6 h-6" />
+                  <span className="text-[10px] font-medium">{enviandoFotos ? "Enviando…" : "Adicionar"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    title="Você pode selecionar várias fotos de uma vez"
+                    className="hidden"
+                    disabled={enviandoFotos}
+                    onChange={enviarFotos}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">Dica: segure Ctrl (ou Cmd, no Mac) pra selecionar várias fotos de uma vez no seletor de arquivos.</p>
+            </>
+          )}
         </Card>
       )}
 
       {turmaId && (
-        <Card title="Exportar Lista de Presença" subtitle="Gera o arquivo .xlsx do mês, no layout oficial, com a frequência já lançada." className="animate-fade-in-up print:hidden" style={staggerStyle(3)}>
+        <Card title="Exportar Lista de Presença" subtitle="Gera o arquivo .xlsx do mês, no layout oficial, com a frequência já lançada." className="animate-fade-in-up print:hidden" style={staggerStyle(4)}>
           <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
             <div className="sm:w-32">
               <Input label="Mês" type="number" min={1} max={12} value={mesExportacao} onChange={(e) => setMesExportacao(Number(e.target.value))} />
@@ -451,7 +574,7 @@ export function FrequenciaPage() {
                 autoFocus
               />
             </label>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button onClick={confirmarJustificativa} disabled={!textoJustificativa.trim() || marcarMutation.isPending}>
                 {marcarMutation.isPending ? "Salvando…" : "Confirmar"}
               </Button>
@@ -478,7 +601,7 @@ export function FrequenciaPage() {
                 autoFocus
               />
             </label>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button onClick={confirmarImpeditivo} disabled={!textoImpeditivo.trim() || impeditivoMutation.isPending}>
                 {impeditivoMutation.isPending ? "Salvando…" : "Confirmar"}
               </Button>

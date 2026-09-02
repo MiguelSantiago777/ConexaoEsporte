@@ -2,14 +2,17 @@ import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Modalidade, Polo, Turma, Usuario } from "@/types";
+import type { Modalidade, Pagina, Polo, Turma, Usuario } from "@/types";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { FileInput } from "@/components/ui/FileInput";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Paginacao } from "@/components/ui/Paginacao";
 import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,10 +20,17 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { EditarProfessorModal } from "./EditarProfessorModal";
 
+const TAMANHO_PAGINA = 10;
+
 const FORM_INICIAL = {
   nome: "", email: "", senha: "", polo_id: "", modalidade_id: "", turma_id: "",
   telefone: "", carga_horaria_semanal: "",
 };
+
+const ARQUIVOS_INICIAL = { foto: null, documento: null, contrato: null } as Record<
+  "foto" | "documento" | "contrato",
+  File | null
+>;
 
 export function ProfessoresPage() {
   const { usuario } = useAuth();
@@ -28,11 +38,17 @@ export function ProfessoresPage() {
   const queryClient = useQueryClient();
   const ehMaster = usuario?.perfil === "MASTER";
 
-  const { data: usuarios = [], isLoading: carregando } = useQuery({
-    queryKey: ["usuarios"],
-    queryFn: () => api.get<Usuario[]>("/usuarios").then((r) => r.data),
+  const [pagina, setPagina] = useState(1);
+  const professoresQueryKey = ["usuarios", "professores", "pagina", pagina];
+  const { data: paginaProfessores, isLoading: carregando } = useQuery({
+    queryKey: professoresQueryKey,
+    queryFn: () =>
+      api
+        .get<Pagina<Usuario>>("/usuarios", { params: { perfil: "PROFESSOR", pagina, tamanho_pagina: TAMANHO_PAGINA } })
+        .then((r) => r.data),
   });
-  const professores = usuarios.filter((u) => u.perfil === "PROFESSOR");
+  const professores = paginaProfessores?.itens ?? [];
+  const totalProfessores = paginaProfessores?.total ?? 0;
 
   const { data: polos = [] } = useQuery({
     queryKey: ["polos"],
@@ -49,6 +65,7 @@ export function ProfessoresPage() {
   });
 
   const [form, setForm] = useState(FORM_INICIAL);
+  const [arquivos, setArquivos] = useState(ARQUIVOS_INICIAL);
   const [salvando, setSalvando] = useState(false);
   const [professorEditando, setProfessorEditando] = useState<Usuario | null>(null);
 
@@ -82,6 +99,26 @@ export function ProfessoresPage() {
     [turmas, poloEfetivo, form.modalidade_id]
   );
 
+  async function enviarAnexos(professorId: string) {
+    const mapaTipo = { foto: "FOTO", documento: "DOCUMENTO", contrato: "CONTRATO" } as const;
+    const selecionados = (Object.entries(arquivos) as [keyof typeof arquivos, File | null][]).filter(([, f]) => f);
+    if (selecionados.length === 0) return;
+    try {
+      await Promise.all(
+        selecionados.map(([campo, arquivo]) => {
+          const dados = new FormData();
+          dados.append("tipo", mapaTipo[campo]);
+          dados.append("arquivo", arquivo as File);
+          return api.post(`/usuarios/${professorId}/documentos`, dados);
+        })
+      );
+    } catch {
+      toast.warning(
+        "Professor cadastrado, mas não foi possível enviar os anexos agora. Anexe novamente mais tarde na edição do professor."
+      );
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.modalidade_id || !form.turma_id) {
@@ -99,6 +136,7 @@ export function ProfessoresPage() {
         telefone: form.telefone || null,
         carga_horaria_semanal: form.carga_horaria_semanal || null,
       });
+      await enviarAnexos(criado.id);
       try {
         await api.patch(`/turmas/${form.turma_id}`, { professor_id: criado.id });
         toast.success("Professor cadastrado e vinculado à turma com sucesso.");
@@ -110,6 +148,7 @@ export function ProfessoresPage() {
         );
       }
       setForm(FORM_INICIAL);
+      setArquivos(ARQUIVOS_INICIAL);
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     } catch (err: any) {
@@ -211,6 +250,31 @@ export function ProfessoresPage() {
             value={form.carga_horaria_semanal}
             onChange={(e) => setForm({ ...form, carga_horaria_semanal: e.target.value })}
           />
+          <div className="sm:col-span-2 border-t border-gray-100 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-brand/70 mb-3">
+              Anexos (opcional — também é possível anexar depois, na edição do professor)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FileInput
+                label="Foto"
+                accept="image/*"
+                file={arquivos.foto}
+                onChange={(file) => setArquivos({ ...arquivos, foto: file })}
+              />
+              <FileInput
+                label="Documento"
+                accept="image/*,application/pdf"
+                file={arquivos.documento}
+                onChange={(file) => setArquivos({ ...arquivos, documento: file })}
+              />
+              <FileInput
+                label="Contrato"
+                accept="image/*,application/pdf"
+                file={arquivos.contrato}
+                onChange={(file) => setArquivos({ ...arquivos, contrato: file })}
+              />
+            </div>
+          </div>
           <div className="sm:col-span-2">
             <Button type="submit" disabled={salvando}>
               {salvando ? "Cadastrando…" : "Cadastrar professor"}
@@ -220,69 +284,134 @@ export function ProfessoresPage() {
       </Card>
       <Card
         title="Professores"
-        actions={<Badge variant="accent">{professores.length}</Badge>}
+        actions={<Badge variant="accent">{totalProfessores}</Badge>}
         className="animate-fade-in-up"
         style={staggerStyle(1)}
       >
         {carregando ? (
           <Spinner label="Carregando professores…" />
-        ) : professores.length === 0 ? (
+        ) : totalProfessores === 0 ? (
           <EmptyState message="Nenhum professor cadastrado ainda." />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Nome</th>
-                  <th className="px-3">Email</th>
-                  {ehMaster && <th className="px-3">Polo</th>}
-                  <th className="px-3">Telefone</th>
-                  <th className="px-3">Carga horária</th>
-                  <th className="px-3">Situação</th>
-                  <th className="px-3 text-right pr-6">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {professores.map((p) => (
-                  <tr key={p.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">{p.nome}</td>
-                    <td className="px-3 text-gray-600">{p.email}</td>
-                    {ehMaster && <td className="px-3 text-gray-600">{nomePolo(p.polo_id)}</td>}
-                    <td className="px-3 text-gray-600">{p.telefone ?? "—"}</td>
-                    <td className="px-3 text-gray-600">{p.carga_horaria_semanal ?? "—"}</td>
-                    <td className="px-3">
-                      <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
-                    </td>
-                    <td className="px-3 text-right pr-6">
+          <>
+            {/* Celular: lista de cards. Telas sm+: tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {professores.map((p) => (
+                <li key={p.id} className="py-3.5">
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      nome={p.nome}
+                      documentosUrl={`/usuarios/${p.id}/documentos`}
+                      arquivoUrlBase="/usuarios/documentos"
+                      tipoFoto="FOTO"
+                      size={40}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-800 truncate">{p.nome}</span>
+                        <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 truncate">{p.email}</div>
+                      {ehMaster && <div className="text-xs text-gray-500 mt-0.5 truncate">{nomePolo(p.polo_id)}</div>}
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {p.telefone ?? "—"} · {p.carga_horaria_semanal ?? "—"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-5 mt-3 pl-[52px]">
+                    <button
+                      type="button"
+                      title="Editar"
+                      onClick={() => setProfessorEditando(p)}
+                      className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
+                    >
+                      <PencilIcon className="w-[18px] h-[18px]" />
+                    </button>
+                    {ehMaster && (
                       <button
                         type="button"
-                        title="Editar"
-                        onClick={() => setProfessorEditando(p)}
-                        className="text-gray-400 hover:text-brand transition-colors"
+                        title="Desativar"
+                        onClick={() => excluirProfessor(p)}
+                        className="text-gray-400 hover:text-red-600 transition-colors -m-1.5 p-1.5"
                       >
-                        <PencilIcon />
+                        <TrashIcon className="w-[18px] h-[18px]" />
                       </button>
-                      {ehMaster && (
-                        <button
-                          type="button"
-                          title="Desativar"
-                          onClick={() => excluirProfessor(p)}
-                          className="text-gray-400 hover:text-red-600 transition-colors ml-3"
-                        >
-                          <TrashIcon />
-                        </button>
-                      )}
-                    </td>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Nome</th>
+                    <th className="px-3">Email</th>
+                    {ehMaster && <th className="px-3">Polo</th>}
+                    <th className="px-3">Telefone</th>
+                    <th className="px-3">Carga horária</th>
+                    <th className="px-3">Situação</th>
+                    <th className="px-3 text-right pr-8">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {professores.map((p) => (
+                    <tr key={p.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            nome={p.nome}
+                            documentosUrl={`/usuarios/${p.id}/documentos`}
+                            arquivoUrlBase="/usuarios/documentos"
+                            tipoFoto="FOTO"
+                          />
+                          <span>{p.nome}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 text-gray-600">{p.email}</td>
+                      {ehMaster && <td className="px-3 text-gray-600">{nomePolo(p.polo_id)}</td>}
+                      <td className="px-3 text-gray-600">{p.telefone ?? "—"}</td>
+                      <td className="px-3 text-gray-600">{p.carga_horaria_semanal ?? "—"}</td>
+                      <td className="px-3">
+                        <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+                      </td>
+                      <td className="px-3 text-right pr-8">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            title="Editar"
+                            onClick={() => setProfessorEditando(p)}
+                            className="text-gray-400 hover:text-brand transition-colors"
+                          >
+                            <PencilIcon />
+                          </button>
+                          {ehMaster && (
+                            <button
+                              type="button"
+                              title="Desativar"
+                              onClick={() => excluirProfessor(p)}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <TrashIcon />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
+        <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalProfessores} onChange={setPagina} />
       </Card>
 
       <EditarProfessorModal
         professor={professorEditando}
+        polos={polos}
+        ehMaster={ehMaster}
         onClose={() => setProfessorEditando(null)}
         onSalvo={() => {
           setProfessorEditando(null);

@@ -15,6 +15,7 @@ class Turma:
     coordenador_nome: str | None = None
     monitor_nome: str | None = None
     periodicidade: str | None = None  # ex.: "Semanal", "Fim de Semana" — usado na Lista de Presença
+    ativo: bool = True
 
     def __post_init__(self) -> None:
         if self.limite_vagas <= 0:

@@ -4,11 +4,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,11 +15,14 @@ import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { Polo, RelatorioPolo } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { StatTile } from "@/components/ui/StatTile";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DonutChart } from "@/components/ui/charts/DonutChart";
+import { CATEGORICAL_PALETTE, COR_OUTROS } from "@/components/ui/charts/palette";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { useAuth } from "@/features/auth/AuthContext";
 import { staggerStyle } from "@/lib/animation";
@@ -30,7 +30,7 @@ import { formatarData } from "@/lib/format";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 
-const CORES = ["#00417d", "#fcba27", "#0f5c33", "#8a6008", "#5b6b7a", "#0891b2", "#c2410c", "#7c3aed"];
+const MAX_FATIAS_MODALIDADE = 4;
 
 function primeiroDiaDoMes(): string {
   const hoje = new Date();
@@ -39,18 +39,6 @@ function primeiroDiaDoMes(): string {
 
 function hoje(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function KpiCard({ label, valor, sufixo }: { label: string; valor: number | string; sufixo?: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200/80 p-4 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</div>
-      <div className="text-2xl font-bold text-brand-dark mt-1">
-        {valor}
-        {sufixo && <span className="text-base font-medium text-gray-400">{sufixo}</span>}
-      </div>
-    </div>
-  );
 }
 
 export function RelatorioPoloPage() {
@@ -125,10 +113,14 @@ export function RelatorioPoloPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poloId]);
 
-  const dadosPizza = useMemo(
-    () => relatorio?.beneficiarios_por_modalidade.map((s) => ({ name: s.label, value: s.valor })) ?? [],
-    [relatorio]
-  );
+  const porModalidade = useMemo(() => {
+    const ordenado = [...(relatorio?.beneficiarios_por_modalidade ?? [])].sort((a, b) => b.valor - a.valor);
+    const principais = ordenado.slice(0, MAX_FATIAS_MODALIDADE);
+    const resto = ordenado.slice(MAX_FATIAS_MODALIDADE).reduce((acc, i) => acc + i.valor, 0);
+    const fatias = principais.map((item, i) => ({ label: item.label, value: item.valor, color: CATEGORICAL_PALETTE[i] }));
+    if (resto > 0) fatias.push({ label: "Outras modalidades", value: resto, color: COR_OUTROS });
+    return fatias;
+  }, [relatorio]);
 
   return (
     <div className="space-y-6">
@@ -178,27 +170,22 @@ export function RelatorioPoloPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 animate-fade-in-up" style={staggerStyle(1)}>
-            <KpiCard label="Beneficiários ativos" valor={relatorio.kpis.beneficiarios_ativos} />
-            <KpiCard label="Turmas ativas" valor={relatorio.kpis.turmas_ativas} />
-            <KpiCard label="Frequência média" valor={relatorio.kpis.frequencia_media_pct} sufixo="%" />
-            <KpiCard label="Aulas registradas" valor={relatorio.kpis.aulas_registradas} />
-            <KpiCard label="Fotos de evidência" valor={relatorio.kpis.fotos_evidencia} />
+          <div className="flex flex-wrap justify-center gap-5 animate-fade-in-up" style={staggerStyle(1)}>
+            <StatTile compact label="Beneficiários ativos" value={relatorio.kpis.beneficiarios_ativos} />
+            <StatTile compact label="Turmas ativas" value={relatorio.kpis.turmas_ativas} />
+            <StatTile compact label="Frequência média" value={`${relatorio.kpis.frequencia_media_pct}%`} />
+            <StatTile compact label="Aulas registradas" value={relatorio.kpis.aulas_registradas} />
+            <StatTile compact label="Fotos de evidência" value={relatorio.kpis.fotos_evidencia} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card title="Beneficiários por modalidade" className="animate-fade-in-up" style={staggerStyle(2)}>
-              {dadosPizza.length === 0 ? (
+              {porModalidade.length === 0 ? (
                 <EmptyState message="Sem beneficiários ativos matriculados no período." />
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={dadosPizza} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(d) => `${d.name} (${d.value})`} isAnimationActive={false}>
-                      {dadosPizza.map((_, i) => <Cell key={i} fill={CORES[i % CORES.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex justify-center">
+                  <DonutChart data={porModalidade} />
+                </div>
               )}
             </Card>
 
@@ -207,7 +194,7 @@ export function RelatorioPoloPage() {
                 <EmptyState message="Nenhuma chamada lançada no período." />
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={relatorio.frequencia_por_turma} margin={{ left: -20 }}>
+                  <BarChart data={relatorio.frequencia_por_turma} margin={{ left: 0, right: 12, top: 4, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
@@ -224,7 +211,7 @@ export function RelatorioPoloPage() {
               <EmptyState message="Nenhuma chamada lançada no período." />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={relatorio.frequencia_por_semana} margin={{ left: -20 }}>
+                <LineChart data={relatorio.frequencia_por_semana} margin={{ left: 0, right: 12, top: 4, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />

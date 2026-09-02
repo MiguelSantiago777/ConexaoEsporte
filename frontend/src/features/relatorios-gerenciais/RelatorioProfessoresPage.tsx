@@ -100,7 +100,7 @@ export function RelatorioProfessoresPage() {
               </span>
             </label>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={baixarXlsx} disabled={ativos.length === 0 || exportandoXlsx}>
               {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
             </Button>
@@ -128,38 +128,58 @@ export function RelatorioProfessoresPage() {
         ) : ativos.length === 0 ? (
           <EmptyState message={incluirDemitidos ? "Nenhum professor cadastrado." : "Nenhum professor ativo cadastrado."} />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Nome</th>
-                  <th className="px-3">Email</th>
-                  <th className="px-3">Telefone</th>
-                  <th className="px-3">Polo</th>
-                  <th className="px-3">Carga horária</th>
-                  {incluirDemitidos && <th className="px-3">Situação</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {ativos.map((p) => (
-                  <tr key={p.id} className="border-t border-gray-100">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">
-                      {usoExterno ? mascararNomeLGPD(p.nome) : p.nome}
-                    </td>
-                    <td className="px-3 text-gray-600">{p.email}</td>
-                    <td className="px-3 text-gray-600">{p.telefone ?? "—"}</td>
-                    <td className="px-3 text-gray-600">{poloNome(p.polo_id)}</td>
-                    <td className="px-3 text-gray-600">{p.carga_horaria_semanal ?? "—"}</td>
+          <>
+            {/* Celular: lista de cards. Telas sm+ (e a captura de PDF): tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {ativos.map((p) => (
+                <li key={p.id} className="py-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-800">{usoExterno ? mascararNomeLGPD(p.nome) : p.nome}</span>
                     {incluirDemitidos && (
-                      <td className="px-3">
-                        <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Demitido"}</Badge>
-                      </td>
+                      <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Demitido"}</Badge>
                     )}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">{p.email}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {poloNome(p.polo_id)} · {p.telefone ?? "—"} · {p.carga_horaria_semanal ?? "—"}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Nome</th>
+                    <th className="px-3">Email</th>
+                    <th className="px-3">Telefone</th>
+                    <th className="px-3">Polo</th>
+                    <th className={`px-3 ${incluirDemitidos ? "" : "pr-8"}`}>Carga horária</th>
+                    {incluirDemitidos && <th className="px-3 pr-8">Situação</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {ativos.map((p) => (
+                    <tr key={p.id} className="border-t border-gray-100">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">
+                        {usoExterno ? mascararNomeLGPD(p.nome) : p.nome}
+                      </td>
+                      <td className="px-3 text-gray-600">{p.email}</td>
+                      <td className="px-3 text-gray-600">{p.telefone ?? "—"}</td>
+                      <td className="px-3 text-gray-600">{poloNome(p.polo_id)}</td>
+                      <td className={`px-3 text-gray-600 ${incluirDemitidos ? "" : "pr-8"}`}>{p.carga_horaria_semanal ?? "—"}</td>
+                      {incluirDemitidos && (
+                        <td className="px-3 pr-8">
+                          <Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Demitido"}</Badge>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
       </div>

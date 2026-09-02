@@ -20,6 +20,7 @@ from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 from app.interfaces.api.v1.schemas.frequencia_schemas import (
     FichaChamadaResponse,
     ImpeditivoAulaResponse,
+    JustificativaFaltaItem,
     LinhaFichaChamada,
     ResumoFichaChamada,
 )
@@ -111,11 +112,21 @@ class FrequenciaService:
         registros = self.repo.listar_por_turma_e_periodo(turma_id, inicio_mes, fim_mes)
         registros_por_chave = {(r.beneficiario_id, r.data): r for r in registros}
 
+        atualizado_em = None
+        atualizado_por_nome = None
+        registros_com_data = [r for r in registros if r.criado_em is not None]
+        if registros_com_data:
+            ultimo_registro = max(registros_com_data, key=lambda r: r.criado_em)
+            atualizado_em = ultimo_registro.criado_em
+            responsavel = self.usuario_repo.buscar_por_id(ultimo_registro.registrado_por_id)
+            atualizado_por_nome = responsavel.nome if responsavel else None
+
         impeditivos = self.impeditivo_repo.listar_por_turma_e_periodo(turma_id, inicio_mes, fim_mes)
         datas_impeditivo = {i.data for i in impeditivos}
         dias_letivos = len([d for d in datas if d not in datas_impeditivo])
 
         linhas: list[LinhaFichaChamada] = []
+        justificativas: list[JustificativaFaltaItem] = []
         contagem: Counter = Counter()
         for b, idade in zip(beneficiarios, idades):
             status_por_data: dict[str, str] = {}
@@ -132,6 +143,13 @@ class FrequenciaService:
                         presentes += 1
                     elif registro.falta_justificada:
                         status = "FALTA_JUSTIFICADA"
+                        if registro.justificativa:
+                            justificativas.append(
+                                JustificativaFaltaItem(
+                                    beneficiario_id=b.id, beneficiario_nome=b.nome_completo,
+                                    data=d, justificativa=registro.justificativa,
+                                )
+                            )
                     else:
                         status = "FALTA"
                 status_por_data[d.isoformat()] = status
@@ -160,7 +178,9 @@ class FrequenciaService:
             faixa_etaria_min=min(idades) if idades else None,
             faixa_etaria_max=max(idades) if idades else None,
             mes=mes, ano=ano, datas=datas,
+            atualizado_em=atualizado_em, atualizado_por_nome=atualizado_por_nome,
             linhas=linhas,
             impeditivos=[ImpeditivoAulaResponse.model_validate(i) for i in impeditivos],
+            justificativas=justificativas,
             resumo=resumo,
         )

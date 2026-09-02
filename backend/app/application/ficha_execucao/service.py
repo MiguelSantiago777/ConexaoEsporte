@@ -23,6 +23,9 @@ class FichaExecucaoService:
     def listar(self, polo_id: UUID | None = None) -> list[FichaExecucao]:
         return self.repo.listar(polo_id=polo_id)
 
+    def listar_pagina(self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None) -> tuple[list[FichaExecucao], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id)
+
     def buscar(self, ficha_id: UUID) -> FichaExecucao | None:
         return self.repo.buscar_por_id(ficha_id)
 

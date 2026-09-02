@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { Modalidade } from "@/types";
@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
+import { EditarModalidadeModal } from "./EditarModalidadeModal";
 
 export function ModalidadesPage() {
   const toast = useToast();
@@ -22,6 +24,7 @@ export function ModalidadesPage() {
   });
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({ nome: "", descricao: "" });
+  const [modalidadeEditando, setModalidadeEditando] = useState<Modalidade | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -36,6 +39,20 @@ export function ModalidadesPage() {
     } finally {
       setSalvando(false);
     }
+  }
+
+  const removerMutation = useMutation({
+    mutationFn: (m: Modalidade) => api.delete(`/modalidades/${m.id}`),
+    onSuccess: () => {
+      toast.success("Modalidade removida.");
+      queryClient.invalidateQueries({ queryKey: ["modalidades"] });
+    },
+    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover modalidade.")),
+  });
+
+  function removerModalidade(m: Modalidade) {
+    if (!window.confirm(`Remover a modalidade "${m.nome}"?`)) return;
+    removerMutation.mutate(m);
   }
 
   return (
@@ -63,14 +80,44 @@ export function ModalidadesPage() {
         ) : (
           <ul className="divide-y divide-gray-100">
             {modalidades.map((m) => (
-              <li key={m.id} className="py-3 flex items-baseline gap-2">
-                <span className="font-medium text-gray-800">{m.nome}</span>
-                {m.descricao && <span className="text-gray-500 text-sm">— {m.descricao}</span>}
+              <li key={m.id} className="py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex items-baseline gap-2">
+                  <span className="font-medium text-gray-800">{m.nome}</span>
+                  {m.descricao && <span className="text-gray-500 text-sm truncate">— {m.descricao}</span>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    title="Editar"
+                    onClick={() => setModalidadeEditando(m)}
+                    className="text-gray-400 hover:text-brand transition-colors"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    type="button"
+                    title="Remover"
+                    onClick={() => removerModalidade(m)}
+                    className="text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </Card>
+
+      <EditarModalidadeModal
+        modalidade={modalidadeEditando}
+        onClose={() => setModalidadeEditando(null)}
+        onSalvo={() => {
+          setModalidadeEditando(null);
+          toast.success("Alterações salvas.");
+          queryClient.invalidateQueries({ queryKey: ["modalidades"] });
+        }}
+      />
     </div>
   );
 }

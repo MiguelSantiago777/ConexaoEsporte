@@ -1,10 +1,6 @@
 import type { FichaChamada } from "@/types";
+import { DetalhesFichaPresenca } from "./DetalhesFichaPresenca";
 import { STATUS_ESTILO, dataBR, diaCurto } from "./statusChamada";
-
-const MESES = [
-  "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-];
 
 const BARRA_COR: Record<string, string> = {
   presenca: "bg-emerald-500",
@@ -34,7 +30,7 @@ export function FichaChamadaImpressao({ ficha }: { ficha: FichaChamada }) {
   const total = ficha.resumo.total || 1;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200/80 p-6">
+    <div className="bg-white rounded-xl p-8 shadow-sm">
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b-4 border-brand">
         <img src="/logo.png" alt="Conexão Esporte" className="w-10 h-10 object-contain" />
         <div className="text-right text-xs text-gray-500">
@@ -48,21 +44,11 @@ export function FichaChamadaImpressao({ ficha }: { ficha: FichaChamada }) {
         Ficha de Chamada <span className="font-normal text-sm text-gray-500 normal-case">(com marcações)</span>
       </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
-        <div className="space-y-1">
-          <div><span className="text-gray-400 uppercase text-xs tracking-wide">Mês de referência:</span> {MESES[ficha.mes]}/{ficha.ano}</div>
-          <div><span className="text-gray-400 uppercase text-xs tracking-wide">Polo:</span> {ficha.polo_nome}</div>
-          <div><span className="text-gray-400 uppercase text-xs tracking-wide">Turma:</span> {ficha.modalidade_nome} ({ficha.horario_inicio}–{ficha.horario_fim})</div>
-          <div className="mt-2 inline-block bg-brand-light text-brand-dark font-bold text-sm px-3 py-1.5 rounded-lg">
-            {ficha.linhas.length} beneficiário{ficha.linhas.length === 1 ? "" : "s"} ativo{ficha.linhas.length === 1 ? "" : "s"}
-          </div>
-        </div>
-        <div className="space-y-1 sm:text-right">
-          <div><span className="text-gray-400 uppercase text-xs tracking-wide">Dias e horários:</span> {ficha.dias_semana.join(", ")} — {ficha.horario_inicio}–{ficha.horario_fim}</div>
-          {ficha.faixa_etaria_min !== null && ficha.faixa_etaria_max !== null && (
-            <div><span className="text-gray-400 uppercase text-xs tracking-wide">Faixa etária:</span> De {ficha.faixa_etaria_min} a {ficha.faixa_etaria_max} anos</div>
-          )}
-          <div><span className="text-gray-400 uppercase text-xs tracking-wide">Equipe responsável:</span> {ficha.professor_nome ?? "—"}</div>
+      <div className="mb-4">
+        <h2 className="text-sm font-bold text-brand-dark mb-2">Detalhes da ficha de presença</h2>
+        <DetalhesFichaPresenca ficha={ficha} />
+        <div className="mt-3 inline-block bg-brand-light text-brand-dark font-bold text-sm px-3 py-1.5 rounded-lg">
+          {ficha.linhas.length} beneficiário{ficha.linhas.length === 1 ? "" : "s"} ativo{ficha.linhas.length === 1 ? "" : "s"}
         </div>
       </div>
 
@@ -128,6 +114,32 @@ export function FichaChamadaImpressao({ ficha }: { ficha: FichaChamada }) {
                 <tr key={imp.id} className="border-t border-gray-100">
                   <td className="py-1.5 px-2 text-gray-600">{dataBR(imp.data)}</td>
                   <td className="px-2 text-gray-600">{imp.justificativa}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {ficha.justificativas.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Justificativas de falta ({ficha.justificativas.length})
+          </h3>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left uppercase tracking-wide text-gray-400 bg-gray-50">
+                <th className="py-1.5 px-2">Beneficiário</th>
+                <th className="px-2">Data</th>
+                <th className="px-2">Justificativa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ficha.justificativas.map((j, i) => (
+                <tr key={`${j.beneficiario_id}-${j.data}-${i}`} className="border-t border-gray-100">
+                  <td className="py-1.5 px-2 text-gray-800 font-medium whitespace-nowrap">{j.beneficiario_nome}</td>
+                  <td className="px-2 text-gray-600">{dataBR(j.data)}</td>
+                  <td className="px-2 text-gray-600">{j.justificativa}</td>
                 </tr>
               ))}
             </tbody>

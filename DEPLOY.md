@@ -146,10 +146,6 @@ PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app -d conexao_espor
 > com a senha conhecida `senha123`. O primeiro usuário MASTER real é criado
 > no passo 3 com o script `criar_usuario_master.py`.
 >
-> **Não rode `database/rls_policies.sql`.** Aquelas políticas dependem do
-> PostgREST do Supabase (que não existe aqui) e bloqueariam o acesso do
-> próprio backend. O controle de acesso por perfil/polo já é feito na API.
-
 ---
 
 ## 3. Backend (FastAPI)
@@ -178,6 +174,15 @@ sudo -u conexao python3 -m venv .venv
 sudo -u conexao .venv/bin/pip install --upgrade pip
 sudo -u conexao .venv/bin/pip install -r requirements.txt
 ```
+
+> **Exportação de relatórios em PDF:** além das dependências acima, a
+> exportação em PDF (`?formato=pdf` nas rotas de relatórios) chama o
+> LibreOffice headless (`soffice`) por trás dos panos para converter o
+> `.xlsx`/`.docx` gerado — sem ele, só os formatos originais funcionam.
+> Instale a versão "sem interface" (bem mais leve que o pacote completo):
+> ```bash
+> sudo apt install -y libreoffice-calc libreoffice-writer
+> ```
 
 ### 3.1 Sem Git — subindo o código via WinSCP + PuTTY
 
@@ -220,10 +225,13 @@ ls /opt/conexao-esporte
 # deve mostrar: backend  frontend  database  deploy  DEPLOY.md  README.md ...
 ```
 
-Crie o `.env` de produção a partir do exemplo:
+Crie o `.env` de produção a partir do exemplo, já restringindo a leitura só
+ao usuário `conexao` (o servidor tem outro app rodando, então outras contas
+locais podem existir):
 
 ```bash
 sudo -u conexao cp .env.example .env
+sudo chmod 600 .env
 sudo -u conexao nano .env
 ```
 
@@ -380,6 +388,8 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Senhas com hash bcrypt (custo 12) — já implementado no backend.
 - [x] Senha mínima de 8 caracteres na criação/troca de senha (`usuario_schemas.py`, `auth_schemas.py`).
 - [x] `JWT_SECRET_KEY` forte e exclusivo de produção (`openssl rand -hex 32`); a app recusa subir com o valor padrão quando `ENVIRONMENT=production`.
+- [x] `DATABASE_URL` com usuário/senha dedicados (nunca `postgres`/`postgres`); a app recusa subir com essa credencial padrão quando `ENVIRONMENT=production` (mesma trava do JWT, ver `app/core/config.py`).
+- [x] `backend/.env` com permissão `600` (leitura restrita ao usuário `conexao`) — o servidor tem outras contas locais rodando outro app.
 - [x] Autenticação via Bearer JWT puro (`HTTPBearer`) em todas as rotas protegidas.
 - [x] Rate limiting em `/auth/login` e `PATCH /auth/senha` (10 tentativas/minuto por IP) — ver `app/core/rate_limit.py`.
 - [x] Security headers em toda resposta (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security` quando HTTPS) — ver middleware em `app/main.py`.

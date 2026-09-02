@@ -187,6 +187,49 @@ def test_falta_justificada_aparece_na_ficha_e_conta_para_o_percentual(client, ce
     assert linha_b1["status_por_data"][dia1] == "PRESENTE"
     assert linha_b1["frequencia_pct"] == round(100 / len(segundas), 2)
 
+    assert len(ficha["justificativas"]) == 1
+    assert ficha["justificativas"][0]["beneficiario_id"] == cenario["b2"]["id"]
+    assert ficha["justificativas"][0]["data"] == dia2
+    assert ficha["justificativas"][0]["justificativa"] == "Atestado médico"
+
+
+def test_ficha_chamada_traz_atualizado_em_e_por(client, cenario):
+    segundas = _segundas_feiras(2026, 3)
+    headers = {"Authorization": f"Bearer {cenario['token_prof']}"}
+
+    client.post(
+        "/api/v1/frequencias/chamada",
+        json={
+            "turma_id": cenario["turma"]["id"], "data": segundas[0],
+            "presencas": [{"beneficiario_id": cenario["b1"]["id"], "presente": True}],
+        },
+        headers=headers,
+    )
+    ficha = client.get(
+        "/api/v1/frequencias/ficha-chamada",
+        params={"turma_id": cenario["turma"]["id"], "mes": 3, "ano": 2026},
+        headers=headers,
+    ).json()
+    assert ficha["atualizado_em"] is not None
+    assert ficha["atualizado_por_nome"] == cenario["professor"]["nome"]
+
+    # Reenviar (edição) atualiza o "atualizado_por" pra quem editou por último.
+    token_gestor = cenario["token_gestor"]
+    client.post(
+        "/api/v1/frequencias/chamada",
+        json={
+            "turma_id": cenario["turma"]["id"], "data": segundas[0],
+            "presencas": [{"beneficiario_id": cenario["b1"]["id"], "presente": False}],
+        },
+        headers={"Authorization": f"Bearer {token_gestor}"},
+    )
+    ficha2 = client.get(
+        "/api/v1/frequencias/ficha-chamada",
+        params={"turma_id": cenario["turma"]["id"], "mes": 3, "ano": 2026},
+        headers=headers,
+    ).json()
+    assert ficha2["atualizado_por_nome"] == "Gestor A"
+
 
 def test_lancar_chamada_em_data_com_impeditivo_e_rejeitado(client, cenario):
     dia = _segundas_feiras(2026, 3)[0]

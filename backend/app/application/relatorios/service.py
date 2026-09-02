@@ -14,11 +14,13 @@ from app.application.relatorios.planilha_nucleos_export_service import (
     RHItem,
     exportar_planilha_nucleos,
 )
+from app.application.relatorios.cabecalho_convenio import texto_cabecalho
 from app.application.relatorios.termo_entrega_export_service import ItemEntrega, exportar_termo_entrega
 from app.application.relatorios.termo_responsabilidade_export_service import exportar_termo_responsabilidade
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RecursoNaoEncontrado
 from app.infrastructure.repositories.beneficiario_repository import BeneficiarioRepository
+from app.infrastructure.repositories.configuracao_geral_repository import ConfiguracaoGeralRepository
 from app.infrastructure.repositories.entrega_material_repository import EntregaMaterialRepository
 from app.infrastructure.repositories.frequencia_repository import FrequenciaRepository
 from app.infrastructure.repositories.matricula_repository import MatriculaRepository
@@ -46,6 +48,7 @@ class RelatorioService:
         self.frequencia_repo = FrequenciaRepository(db)
         self.beneficiario_repo = BeneficiarioRepository(db)
         self.entrega_material_repo = EntregaMaterialRepository(db)
+        self._cabecalho_convenio = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
 
     def gerar_lista_presenca(self, turma_id: UUID, mes: int, ano: int):
         turma = self.turma_repo.buscar_por_id(turma_id)
@@ -82,6 +85,7 @@ class RelatorioService:
             mes=mes, ano=ano,
             beneficiarios=beneficiarios,
             presencas=presencas,
+            cabecalho_convenio=self._cabecalho_convenio,
         )
 
     def gerar_grade_horaria(self, polo_id: UUID, planejamento_horas: float):
@@ -102,7 +106,10 @@ class RelatorioService:
             for t in turmas_polo
         ]
 
-        return exportar_grade_horaria(polo_nome=polo.nome, turmas=turmas, planejamento_horas=planejamento_horas)
+        return exportar_grade_horaria(
+            polo_nome=polo.nome, turmas=turmas, planejamento_horas=planejamento_horas,
+            cabecalho_convenio=self._cabecalho_convenio,
+        )
 
     def gerar_planilha_nucleos(self, polo_id: UUID):
         polo = self.polo_repo.buscar_por_id(polo_id)
@@ -145,6 +152,7 @@ class RelatorioService:
             polo_endereco=polo.endereco or "",
             rh=rh,
             beneficiarios=beneficiarios,
+            cabecalho_convenio=self._cabecalho_convenio,
         )
 
     def gerar_termo_entrega(self, entrega_id: UUID):
@@ -158,6 +166,7 @@ class RelatorioService:
             polo_nome=polo.nome if polo else "",
             coordenador_nome=entrega.coordenador_nome or "",
             itens=itens,
+            cabecalho_convenio=self._cabecalho_convenio,
         )
 
     def gerar_termo_responsabilidade(self, polo_id: UUID):
@@ -172,4 +181,5 @@ class RelatorioService:
             endereco=polo.representante_legal_endereco or "",
             bairro=polo.representante_legal_bairro or "",
             cidade=polo.representante_legal_cidade or "",
+            cabecalho_convenio=self._cabecalho_convenio,
         )

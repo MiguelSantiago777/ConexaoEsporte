@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.ficha_execucao.entities import FichaExecucao
 from app.infrastructure.database.models import FichaExecucaoModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: FichaExecucaoModel) -> FichaExecucao:
@@ -35,6 +36,15 @@ class FichaExecucaoRepository:
         if polo_id:
             stmt = stmt.where(FichaExecucaoModel.polo_id == polo_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None,
+    ) -> tuple[list[FichaExecucao], int]:
+        stmt = select(FichaExecucaoModel).order_by(FichaExecucaoModel.criado_em.desc())
+        if polo_id:
+            stmt = stmt.where(FichaExecucaoModel.polo_id == polo_id)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
 
     def buscar_por_id(self, ficha_id: UUID) -> FichaExecucao | None:
         m = self.db.get(FichaExecucaoModel, ficha_id)

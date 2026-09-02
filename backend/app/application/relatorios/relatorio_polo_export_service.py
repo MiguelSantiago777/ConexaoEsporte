@@ -6,11 +6,12 @@ import io
 import openpyxl
 from openpyxl.chart import BarChart, LineChart, PieChart, Reference
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
 from app.application.relatorios.xlsx_estilo import AZUL_MARCA, DOURADO_MARCA, cabecalho_documento, escrever_tabela
 from app.interfaces.api.v1.schemas.dashboard_schemas import RelatorioPoloResponse
 
 
-def exportar_relatorio_polo(relatorio: RelatorioPoloResponse) -> io.BytesIO:
+def exportar_relatorio_polo(relatorio: RelatorioPoloResponse, cabecalho_convenio: str | None = None) -> io.BytesIO:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Relatório do Polo"
@@ -19,6 +20,7 @@ def exportar_relatorio_polo(relatorio: RelatorioPoloResponse) -> io.BytesIO:
         ws,
         f"Relatório do Polo — {relatorio.polo_nome}",
         f"Período: {relatorio.data_inicio.strftime('%d/%m/%Y')} a {relatorio.data_fim.strftime('%d/%m/%Y')}",
+        com_logo=True,
     )
 
     kpis = escrever_tabela(
@@ -113,6 +115,7 @@ def exportar_relatorio_polo(relatorio: RelatorioPoloResponse) -> io.BytesIO:
         serie.graphicalProperties.line.width = 25000
         ws_semana.add_chart(linha_chart, f"D{tabela_semana.linha_cabecalho}")
 
+    aplicar_cabecalho_xlsx(wb, cabecalho_convenio, ajustar_paginacao=True)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

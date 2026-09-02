@@ -90,7 +90,7 @@ export function RelatorioBeneficiariosPage() {
               Uso externo <span className="text-gray-400">— mascara nome e CPF (LGPD)</span>
             </span>
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={baixarXlsx} disabled={ativos.length === 0 || exportandoXlsx}>
               {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
             </Button>
@@ -118,44 +118,71 @@ export function RelatorioBeneficiariosPage() {
         ) : ativos.length === 0 ? (
           <EmptyState message="Nenhum beneficiário ativo cadastrado." />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Nome</th>
-                  <th className="px-3">CPF</th>
-                  <th className="px-3">Nascimento</th>
-                  <th className="px-3">Polo</th>
-                  <th className="px-3">Responsável</th>
-                  <th className="px-3">Contato</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ativos.map((b) => (
-                  <tr key={b.id} className="border-t border-gray-100">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">
-                      {usoExterno ? mascararNomeLGPD(b.nome_completo) : b.nome_completo}
-                    </td>
-                    <td className="px-3 text-gray-600">
-                      {usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento)}
-                    </td>
-                    <td className="px-3 text-gray-600">{formatarData(b.data_nascimento)}</td>
-                    <td className="px-3 text-gray-600">{poloNome(b.polo_id)}</td>
-                    <td className="px-3 text-gray-600">
+          <>
+            {/* Celular: lista de cards. Telas sm+ (e a captura de PDF/Excel): tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {ativos.map((b) => (
+                <li key={b.id} className="py-3">
+                  <div className="font-medium text-gray-800">
+                    {usoExterno ? mascararNomeLGPD(b.nome_completo) : b.nome_completo}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento)} · {formatarData(b.data_nascimento)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">{poloNome(b.polo_id)}</div>
+                  {(b.responsavel_legal_nome || b.responsavel_legal_telefone_1) && (
+                    <div className="text-xs text-gray-500 mt-0.5">
                       {b.responsavel_legal_nome
                         ? usoExterno
                           ? mascararNomeLGPD(b.responsavel_legal_nome)
                           : b.responsavel_legal_nome
                         : "—"}
-                    </td>
-                    <td className="px-3 text-gray-600">
-                      {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
-                    </td>
+                      {b.responsavel_legal_telefone_1 ? ` · ${maskTelefone(b.responsavel_legal_telefone_1)}` : ""}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Nome</th>
+                    <th className="px-3">CPF</th>
+                    <th className="px-3">Nascimento</th>
+                    <th className="px-3">Polo</th>
+                    <th className="px-3">Responsável</th>
+                    <th className="px-3 pr-8">Contato</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {ativos.map((b) => (
+                    <tr key={b.id} className="border-t border-gray-100">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">
+                        {usoExterno ? mascararNomeLGPD(b.nome_completo) : b.nome_completo}
+                      </td>
+                      <td className="px-3 text-gray-600">
+                        {usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento)}
+                      </td>
+                      <td className="px-3 text-gray-600">{formatarData(b.data_nascimento)}</td>
+                      <td className="px-3 text-gray-600">{poloNome(b.polo_id)}</td>
+                      <td className="px-3 text-gray-600">
+                        {b.responsavel_legal_nome
+                          ? usoExterno
+                            ? mascararNomeLGPD(b.responsavel_legal_nome)
+                            : b.responsavel_legal_nome
+                          : "—"}
+                      </td>
+                      <td className="px-3 pr-8 text-gray-600">
+                        {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
       </div>

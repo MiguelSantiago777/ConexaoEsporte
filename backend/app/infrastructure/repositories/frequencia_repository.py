@@ -2,7 +2,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ def _to_entity(m: FrequenciaModel) -> RegistroFrequencia:
         id=m.id, turma_id=m.turma_id, beneficiario_id=m.beneficiario_id,
         data=m.data, presente=m.presente, registrado_por_id=m.registrado_por_id,
         falta_justificada=m.falta_justificada, justificativa=m.justificativa,
+        criado_em=m.criado_em,
     )
 
 
@@ -35,6 +36,10 @@ class FrequenciaRepository:
                 set_={
                     "presente": r.presente, "registrado_por_id": r.registrado_por_id,
                     "falta_justificada": r.falta_justificada, "justificativa": r.justificativa,
+                    # Reenviar a mesma data é uma edição, não uma criação nova —
+                    # atualiza `criado_em` pra refletir a última alteração (usado
+                    # em "Atualizada em/por" na Ficha de Chamada).
+                    "criado_em": func.now(),
                 },
             ).returning(FrequenciaModel)
             m = self.db.execute(stmt).scalar_one()

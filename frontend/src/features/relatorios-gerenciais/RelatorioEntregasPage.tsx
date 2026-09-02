@@ -65,7 +65,7 @@ export function RelatorioEntregasPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="animate-fade-in-up flex justify-end gap-2" style={staggerStyle(0)}>
+      <Card className="animate-fade-in-up flex flex-wrap justify-end gap-2" style={staggerStyle(0)}>
         <Button variant="secondary" onClick={baixarXlsx} disabled={entregas.length === 0 || exportandoXlsx}>
           {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
         </Button>
@@ -94,34 +94,54 @@ export function RelatorioEntregasPage() {
         ) : entregas.length === 0 ? (
           <EmptyState message="Nenhuma entrega registrada ainda." />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Polo</th>
-                  <th className="px-3">Data</th>
-                  <th className="px-3">Entregue por</th>
-                  <th className="px-3">Recebido por</th>
-                  <th className="px-3">Itens</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entregas.map((e) => (
-                  <tr key={e.id} className="border-t border-gray-100">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">{poloNome(e.polo_id)}</td>
-                    <td className="px-3 text-gray-600">{e.data_entrega ? formatarData(e.data_entrega) : "—"}</td>
-                    <td className="px-3 text-gray-600">{e.entregue_por ?? "—"}</td>
-                    <td className="px-3 text-gray-600">{e.coordenador_nome ?? "—"}</td>
-                    <td className="px-3 text-gray-600">
-                      {e.itens.length === 0
-                        ? "—"
-                        : e.itens.map((item) => `${item.descricao} (${item.quantidade})`).join(", ")}
-                    </td>
+          <>
+            {/* Celular: lista de cards. Telas sm+ (e a captura de PDF): tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {entregas.map((e) => (
+                <li key={e.id} className="py-3">
+                  <div className="font-medium text-gray-800">{poloNome(e.polo_id)}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {e.data_entrega ? formatarData(e.data_entrega) : "—"} · Entregue por {e.entregue_por ?? "—"}
+                    {e.coordenador_nome ? ` · Recebido por ${e.coordenador_nome}` : ""}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {e.itens.length === 0
+                      ? "Sem itens"
+                      : e.itens.map((item) => `${item.descricao} (${item.quantidade})`).join(", ")}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Polo</th>
+                    <th className="px-3">Data</th>
+                    <th className="px-3">Entregue por</th>
+                    <th className="px-3">Recebido por</th>
+                    <th className="px-3 pr-8">Itens</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {entregas.map((e) => (
+                    <tr key={e.id} className="border-t border-gray-100">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">{poloNome(e.polo_id)}</td>
+                      <td className="px-3 text-gray-600">{e.data_entrega ? formatarData(e.data_entrega) : "—"}</td>
+                      <td className="px-3 text-gray-600">{e.entregue_por ?? "—"}</td>
+                      <td className="px-3 text-gray-600">{e.coordenador_nome ?? "—"}</td>
+                      <td className="px-3 pr-8 text-gray-600">
+                        {e.itens.length === 0
+                          ? "—"
+                          : e.itens.map((item) => `${item.descricao} (${item.quantidade})`).join(", ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
       </div>

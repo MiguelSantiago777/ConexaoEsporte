@@ -19,6 +19,7 @@ interface DocumentoAnexo {
 }
 
 const TIPO_LABEL: Record<string, string> = {
+  foto: "Foto",
   certidao_nascimento_ou_identidade: "Certidão de nascimento ou identidade",
   identidade_responsavel: "Identidade do responsável",
   comprovante_residencia: "Comprovante de residência",

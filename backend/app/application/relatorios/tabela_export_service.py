@@ -7,10 +7,13 @@ import io
 
 import openpyxl
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
 from app.application.relatorios.xlsx_estilo import escrever_tabela
 
 
-def exportar_tabelas(abas: list[tuple[str, list[str], list[list]]], titulo: str | None = None) -> io.BytesIO:
+def exportar_tabelas(
+    abas: list[tuple[str, list[str], list[list]]], titulo: str | None = None, cabecalho_convenio: str | None = None
+) -> io.BytesIO:
     """`abas`: lista de (nome_da_aba, colunas, linhas)."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -21,6 +24,7 @@ def exportar_tabelas(abas: list[tuple[str, list[str], list[list]]], titulo: str 
         aba_titulo = titulo if len(abas) == 1 else None
         escrever_tabela(ws, colunas, linhas, linha_inicial=linha_inicial, titulo=aba_titulo)
 
+    aplicar_cabecalho_xlsx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

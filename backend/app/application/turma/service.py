@@ -19,6 +19,14 @@ class TurmaService:
         turmas = self.repo.listar(polo_id=polo_id, professor_id=professor_id)
         return [self._com_vagas(t) for t in turmas]
 
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, professor_id: UUID | None = None,
+    ) -> tuple[list[dict], int]:
+        turmas, total = self.repo.listar_pagina(
+            pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id, professor_id=professor_id
+        )
+        return [self._com_vagas(t) for t in turmas], total
+
     def buscar(self, turma_id: UUID) -> dict | None:
         t = self.repo.buscar_por_id(turma_id)
         return self._com_vagas(t) if t else None
@@ -67,5 +75,5 @@ class TurmaService:
             "horario_fim": turma.horario_fim, "dias_semana": turma.dias_semana,
             "limite_vagas": turma.limite_vagas, "vagas_ocupadas": ocupadas,
             "coordenador_nome": turma.coordenador_nome, "monitor_nome": turma.monitor_nome,
-            "periodicidade": turma.periodicidade,
+            "periodicidade": turma.periodicidade, "ativo": turma.ativo,
         }

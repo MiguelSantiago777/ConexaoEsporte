@@ -27,6 +27,16 @@ class ChamadaEvidenciaRepository:
         )
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
+    def listar_por_turmas(self, turma_ids: list[UUID]) -> list[ChamadaEvidencia]:
+        if not turma_ids:
+            return []
+        stmt = (
+            select(ChamadaEvidenciaModel)
+            .where(ChamadaEvidenciaModel.turma_id.in_(turma_ids))
+            .order_by(ChamadaEvidenciaModel.criado_em.desc())
+        )
+        return [_to_entity(m) for m in self.db.scalars(stmt)]
+
     def buscar_por_id(self, evidencia_id: UUID) -> ChamadaEvidencia | None:
         m = self.db.get(ChamadaEvidenciaModel, evidencia_id)
         return _to_entity(m) if m else None

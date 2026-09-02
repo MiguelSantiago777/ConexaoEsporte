@@ -17,7 +17,7 @@ class ModalidadeRepository:
         self.db = db
 
     def listar(self) -> list[Modalidade]:
-        return [_to_entity(m) for m in self.db.scalars(select(ModalidadeModel))]
+        return [_to_entity(m) for m in self.db.scalars(select(ModalidadeModel).order_by(ModalidadeModel.nome))]
 
     def buscar_por_id(self, modalidade_id: UUID) -> Modalidade | None:
         m = self.db.get(ModalidadeModel, modalidade_id)
@@ -29,3 +29,22 @@ class ModalidadeRepository:
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)
+
+    def atualizar(self, modalidade_id: UUID, **campos) -> Modalidade | None:
+        m = self.db.get(ModalidadeModel, modalidade_id)
+        if not m:
+            return None
+        for k, v in campos.items():
+            if v is not None:
+                setattr(m, k, v)
+        self.db.commit()
+        self.db.refresh(m)
+        return _to_entity(m)
+
+    def remover(self, modalidade_id: UUID) -> bool:
+        m = self.db.get(ModalidadeModel, modalidade_id)
+        if not m:
+            return False
+        self.db.delete(m)
+        self.db.commit()
+        return True

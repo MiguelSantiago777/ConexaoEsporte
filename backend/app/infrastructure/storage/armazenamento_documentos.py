@@ -44,3 +44,7 @@ armazenamento_documentos = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR)
 # Fotos de evidência de aula (chamada) — mesma implementação, pasta separada
 # dos documentos de beneficiário.
 armazenamento_evidencias = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_EVIDENCIAS)
+# Anexos do cadastro de professor (foto, documentos, contrato).
+armazenamento_usuario_documentos = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_USUARIOS)
+# Repositório de Anexos Gerais por polo.
+armazenamento_anexos_gerais = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_ANEXOS_GERAIS)

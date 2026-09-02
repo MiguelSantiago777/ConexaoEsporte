@@ -134,6 +134,7 @@ class TurmaModel(Base):
     coordenador_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
     monitor_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
     periodicidade: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     polo: Mapped["PoloModel"] = relationship(back_populates="turmas")
@@ -244,6 +245,62 @@ class ImpeditivoAulaModel(Base):
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class UsuarioDocumentoModel(Base):
+    """Anexos do cadastro de professor: foto, documentos e contrato."""
+
+    __tablename__ = "usuario_documentos"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False
+    )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False)  # FOTO | DOCUMENTO | CONTRATO
+    nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)
+    caminho_arquivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enviado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AnexoGeralModel(Base):
+    """Repositório livre de documentos por polo, não ligados a um professor
+    ou beneficiário específico (apólices, contratos de aluguel, atas etc.)."""
+
+    __tablename__ = "anexos_gerais"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    polo_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id", ondelete="CASCADE"), nullable=False)
+    titulo: Mapped[str] = mapped_column(String(150), nullable=False)
+    nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)
+    caminho_arquivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enviado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ConfiguracaoGeralModel(Base):
+    """Registro único (singleton) com dados globais do projeto/convênio,
+    exibidos no rodapé de todos os relatórios exportados."""
+
+    __tablename__ = "configuracao_geral"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome_projeto: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    numero_convenio: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    data_inicio_projeto: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_fim_projeto: Mapped[date | None] = mapped_column(Date, nullable=True)
+    atualizado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class ChamadaEvidenciaModel(Base):

@@ -2,13 +2,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Modalidade, Polo, Turma, Usuario } from "@/types";
+import type { Modalidade, Pagina, Polo, Turma, Usuario } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Paginacao } from "@/components/ui/Paginacao";
+import { TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
@@ -19,16 +21,30 @@ import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage"
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
 const MES_ATUAL = new Date().getMonth() + 1;
 const ANO_ATUAL = new Date().getFullYear();
+const TAMANHO_PAGINA = 10;
 
 export function TurmasPage() {
   const { usuario } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const { data: turmas = [], isLoading: carregando } = useQuery({
+  // Lista completa (sem paginação) — usada só pelo <select> de exportação de
+  // Lista de Presença abaixo, que precisa de todas as opções.
+  const { data: turmasParaExportar = [] } = useQuery({
     queryKey: ["turmas"],
     queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
   });
+
+  const [pagina, setPagina] = useState(1);
+  const turmasQueryKey = ["turmas", "pagina", pagina];
+  const { data: paginaTurmas, isLoading: carregando } = useQuery({
+    queryKey: turmasQueryKey,
+    queryFn: () =>
+      api.get<Pagina<Turma>>("/turmas", { params: { pagina, tamanho_pagina: TAMANHO_PAGINA } }).then((r) => r.data),
+  });
+  const turmas = paginaTurmas?.itens ?? [];
+  const totalTurmas = paginaTurmas?.total ?? 0;
+
   const { data: polos = [] } = useQuery({
     queryKey: ["polos"],
     queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
@@ -73,6 +89,26 @@ export function TurmasPage() {
 
   function atribuirProfessor(turmaId: string, professorId: string) {
     atribuirProfessorMutation.mutate({ turmaId, professorId });
+  }
+
+  const excluirTurmaMutation = useMutation({
+    mutationFn: (turmaId: string) => api.patch(`/turmas/${turmaId}`, { ativo: false }),
+    onSuccess: () => {
+      toast.success("Turma excluída.");
+      queryClient.invalidateQueries({ queryKey: ["turmas"] });
+    },
+    onError: (err: any) => {
+      toast.error(mensagemErroApi(err, "Erro ao excluir a turma."));
+    },
+  });
+
+  function excluirTurma(t: Turma) {
+    const aviso =
+      t.vagas_ocupadas > 0
+        ? `Esta turma tem ${t.vagas_ocupadas} beneficiário(s) matriculado(s). Excluir a turma remove-a das listas, mas o histórico de frequência é mantido. Excluir mesmo assim?`
+        : "Excluir esta turma? Ela deixa de aparecer nas listas do sistema.";
+    if (!window.confirm(aviso)) return;
+    excluirTurmaMutation.mutate(t.id);
   }
 
   function toggleDia(dia: string) {
@@ -188,7 +224,7 @@ export function TurmasPage() {
           <div className="sm:col-span-2">
             <Select label="Turma" value={exportForm.turma_id} onChange={(e) => setExportForm({ ...exportForm, turma_id: e.target.value })} required>
               <option value="">— Selecione —</option>
-              {turmas.map((t) => (
+              {turmasParaExportar.map((t) => (
                 <option key={t.id} value={t.id}>{poloNome(t.polo_id)} — {modalidadeNome(t.modalidade_id)} ({t.horario_inicio}–{t.horario_fim})</option>
               ))}
             </Select>
@@ -204,60 +240,123 @@ export function TurmasPage() {
       </Card>
       <Card
         title="Turmas"
-        actions={<Badge variant="accent">{turmas.length}</Badge>}
+        actions={<Badge variant="accent">{totalTurmas}</Badge>}
         className="animate-fade-in-up"
         style={staggerStyle(2)}
       >
         {carregando ? (
           <Spinner label="Carregando turmas…" />
-        ) : turmas.length === 0 ? (
+        ) : totalTurmas === 0 ? (
           <EmptyState message="Nenhuma turma cadastrada ainda." />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Polo</th>
-                  <th className="px-3">Modalidade</th>
-                  <th className="px-3">Horário</th>
-                  <th className="px-3">Dias</th>
-                  <th className="px-3">Vagas</th>
-                  <th className="px-3">Professor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {turmas.map((t) => (
-                  <tr key={t.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">{poloNome(t.polo_id)}</td>
-                    <td className="px-3 text-gray-600">{modalidadeNome(t.modalidade_id)}</td>
-                    <td className="px-3 text-gray-600">{t.horario_inicio}–{t.horario_fim}</td>
-                    <td className="px-3 text-gray-600">{t.dias_semana.join(", ")}</td>
-                    <td className="px-3"><Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge></td>
-                    <td className="px-3">
-                      <select
-                        className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white hover:border-gray-400 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none disabled:opacity-50"
-                        value={t.professor_id ?? ""}
-                        disabled={
-                          atribuirProfessorMutation.isPending && atribuirProfessorMutation.variables?.turmaId === t.id
-                        }
-                        onChange={(e) => atribuirProfessor(t.id, e.target.value)}
+          <>
+            {/* Celular: lista de cards. Telas sm+: tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {turmas.map((t) => (
+                <li key={t.id} className="py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-800 truncate">{poloNome(t.polo_id)}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{modalidadeNome(t.modalidade_id)}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {t.horario_inicio}–{t.horario_fim} · {t.dias_semana.join(", ")}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge>
+                      <button
+                        type="button"
+                        title="Excluir"
+                        onClick={() => excluirTurma(t)}
+                        disabled={excluirTurmaMutation.isPending && excluirTurmaMutation.variables === t.id}
+                        className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 -m-1.5 p-1.5"
                       >
-                        <option value="">— Sem professor —</option>
-                        {professores
-                          .filter((p) => p.polo_id === t.polo_id)
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.nome}
-                            </option>
-                          ))}
-                      </select>
-                    </td>
+                        <TrashIcon className="w-[18px] h-[18px]" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2.5">
+                    <select
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white hover:border-gray-400 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none disabled:opacity-50"
+                      value={t.professor_id ?? ""}
+                      disabled={
+                        atribuirProfessorMutation.isPending && atribuirProfessorMutation.variables?.turmaId === t.id
+                      }
+                      onChange={(e) => atribuirProfessor(t.id, e.target.value)}
+                    >
+                      <option value="">— Sem professor —</option>
+                      {professores
+                        .filter((p) => p.polo_id === t.polo_id)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nome}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Polo</th>
+                    <th className="px-3">Modalidade</th>
+                    <th className="px-3">Horário</th>
+                    <th className="px-3">Dias</th>
+                    <th className="px-3">Vagas</th>
+                    <th className="px-3">Professor</th>
+                    <th className="px-3 text-right pr-8">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {turmas.map((t) => (
+                    <tr key={t.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">{poloNome(t.polo_id)}</td>
+                      <td className="px-3 text-gray-600">{modalidadeNome(t.modalidade_id)}</td>
+                      <td className="px-3 text-gray-600">{t.horario_inicio}–{t.horario_fim}</td>
+                      <td className="px-3 text-gray-600">{t.dias_semana.join(", ")}</td>
+                      <td className="px-3"><Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge></td>
+                      <td className="px-3">
+                        <select
+                          className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white hover:border-gray-400 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none disabled:opacity-50"
+                          value={t.professor_id ?? ""}
+                          disabled={
+                            atribuirProfessorMutation.isPending && atribuirProfessorMutation.variables?.turmaId === t.id
+                          }
+                          onChange={(e) => atribuirProfessor(t.id, e.target.value)}
+                        >
+                          <option value="">— Sem professor —</option>
+                          {professores
+                            .filter((p) => p.polo_id === t.polo_id)
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nome}
+                              </option>
+                            ))}
+                        </select>
+                      </td>
+                      <td className="px-3 text-right pr-8">
+                        <button
+                          type="button"
+                          title="Excluir"
+                          onClick={() => excluirTurma(t)}
+                          disabled={excluirTurmaMutation.isPending && excluirTurmaMutation.variables === t.id}
+                          className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
+        <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalTurmas} onChange={setPagina} />
       </Card>
     </div>
   );

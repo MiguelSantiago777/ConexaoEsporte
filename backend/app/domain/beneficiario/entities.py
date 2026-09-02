@@ -53,6 +53,7 @@ class Beneficiario:
 
 # Tipos de documento aceitos no upload de anexos do beneficiário.
 TIPOS_DOCUMENTO_BENEFICIARIO = (
+    "foto",
     "certidao_nascimento_ou_identidade",
     "identidade_responsavel",
     "comprovante_residencia",

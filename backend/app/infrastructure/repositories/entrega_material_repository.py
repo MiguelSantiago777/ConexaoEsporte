@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.entrega_material.entities import EntregaMaterial
 from app.infrastructure.database.models import EntregaMaterialModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: EntregaMaterialModel) -> EntregaMaterial:
@@ -24,6 +25,15 @@ class EntregaMaterialRepository:
         if polo_id:
             stmt = stmt.where(EntregaMaterialModel.polo_id == polo_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None,
+    ) -> tuple[list[EntregaMaterial], int]:
+        stmt = select(EntregaMaterialModel).order_by(EntregaMaterialModel.criado_em.desc())
+        if polo_id:
+            stmt = stmt.where(EntregaMaterialModel.polo_id == polo_id)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
 
     def buscar_por_id(self, entrega_id: UUID) -> EntregaMaterial | None:
         m = self.db.get(EntregaMaterialModel, entrega_id)

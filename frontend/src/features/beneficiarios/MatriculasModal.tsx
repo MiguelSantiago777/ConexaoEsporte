@@ -89,7 +89,7 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
 
   return (
     <Modal open={!!beneficiario} onClose={onClose} title={`Matrículas — ${beneficiario.nome_completo}`}>
-      <form onSubmit={matricular} className="flex items-end gap-3 mb-5">
+      <form onSubmit={matricular} className="flex flex-col sm:flex-row sm:items-end gap-3 mb-5">
         <div className="flex-1">
           <Select label="Matricular em nova turma" value={turmaId} onChange={(e) => setTurmaId(e.target.value)}>
             <option value="">— Selecione —</option>

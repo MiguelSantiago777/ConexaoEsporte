@@ -22,6 +22,8 @@ from pathlib import Path
 
 import openpyxl
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
+
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "infrastructure" / "templates" / "planilha_nucleos.xlsx"
 
 PRIMEIRA_LINHA_RH = 9
@@ -54,6 +56,7 @@ def exportar_planilha_nucleos(
     polo_endereco: str,
     rh: list[RHItem],
     beneficiarios: list[BeneficiarioNucleoItem],
+    cabecalho_convenio: str | None = None,
 ) -> io.BytesIO:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb["Planilha1"]
@@ -77,6 +80,7 @@ def exportar_planilha_nucleos(
         ws[f"E{linha}"] = beneficiario.idade
         ws[f"H{linha}"] = beneficiario.modalidades
 
+    aplicar_cabecalho_xlsx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

@@ -5,8 +5,7 @@ Diferente das rotas `/exportar` (que devolvem .xlsx/.docx para a Portaria nº
 próprio navegador cuida da impressão/PDF (Ctrl+P).
 """
 from datetime import date
-from typing import Annotated
-from urllib.parse import quote
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -14,26 +13,19 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.application.relatorios.dashboard_service import DashboardService
 from app.application.relatorios.relatorio_geral_export_service import exportar_relatorio_geral
 from app.application.relatorios.relatorio_polo_export_service import exportar_relatorio_polo
+from app.application.relatorios.cabecalho_convenio import texto_cabecalho
 from app.application.relatorios.tabela_export_service import exportar_tabelas
 from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, assert_acesso_ao_polo, require_perfis
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RecursoNaoEncontrado
+from app.infrastructure.repositories.configuracao_geral_repository import ConfiguracaoGeralRepository
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
 from app.interfaces.api.v1.schemas.dashboard_schemas import RelatorioGeralResponse, RelatorioPoloResponse
 from app.interfaces.api.v1.schemas.tabela_export_schemas import TabelaExportRequest
 
 router = APIRouter(prefix="/relatorios", tags=["Relatórios Gerenciais"])
 
 SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
-
-
-def _resposta_xlsx(buffer, nome_arquivo: str) -> Response:
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": content_disposition},
-    )
 
 
 @router.get(
@@ -73,36 +65,45 @@ def relatorio_geral(
     summary="Exportar o Relatório do Polo em .xlsx, com gráficos nativos",
 )
 def exportar_relatorio_polo_endpoint(
-    polo_id: UUID, data_inicio: date, data_fim: date, usuario: CurrentUser, db: DbSession
+    polo_id: UUID, data_inicio: date, data_fim: date, usuario: CurrentUser, db: DbSession,
+    formato: Literal["xlsx", "pdf"] = "xlsx",
 ) -> Response:
     assert_acesso_ao_polo(usuario, polo_id)
     try:
         relatorio = DashboardService(db).relatorio_polo(polo_id, data_inicio, data_fim)
     except RecursoNaoEncontrado as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    buffer = exportar_relatorio_polo(relatorio)
-    return _resposta_xlsx(buffer, f"relatorio-do-polo-{relatorio.polo_nome}.xlsx")
+    cabecalho = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
+    buffer = exportar_relatorio_polo(relatorio, cabecalho_convenio=cabecalho)
+    return resposta_relatorio(buffer, f"relatorio-do-polo-{relatorio.polo_nome}", "xlsx", formato)
 
 
 @router.get(
     "/geral/exportar",
     summary="Exportar o Relatório Geral em .xlsx, com gráficos nativos (somente MASTER)",
 )
-def exportar_relatorio_geral_endpoint(data_inicio: date, data_fim: date, usuario: SomenteMaster, db: DbSession) -> Response:
+def exportar_relatorio_geral_endpoint(
+    data_inicio: date, data_fim: date, usuario: SomenteMaster, db: DbSession,
+    formato: Literal["xlsx", "pdf"] = "xlsx",
+) -> Response:
     relatorio = DashboardService(db).relatorio_geral(data_inicio, data_fim)
-    buffer = exportar_relatorio_geral(relatorio)
-    return _resposta_xlsx(buffer, "relatorio-geral.xlsx")
+    cabecalho = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
+    buffer = exportar_relatorio_geral(relatorio, cabecalho_convenio=cabecalho)
+    return resposta_relatorio(buffer, "relatorio-geral", "xlsx", formato)
 
 
 @router.post(
     "/exportar-xlsx",
-    summary="Exportar tabela(s) genéricas em .xlsx estilizado",
+    summary="Exportar tabela(s) genéricas em .xlsx estilizado (ou .pdf)",
     description="Recebe tabela(s) já prontas — o frontend já aplicou filtros/máscaras (LGPD etc.) da própria "
     "tela — e devolve um .xlsx com cabeçalho na cor da marca, bordas e largura de coluna automática. "
     "Não lê nada do banco: só formata o que já chegou.",
 )
-def exportar_xlsx_generico(body: TabelaExportRequest, usuario: CurrentUser) -> Response:
+def exportar_xlsx_generico(
+    body: TabelaExportRequest, usuario: CurrentUser, db: DbSession, formato: Literal["xlsx", "pdf"] = "xlsx"
+) -> Response:
     abas = [(aba.nome, aba.colunas, aba.linhas) for aba in body.abas]
-    buffer = exportar_tabelas(abas, titulo=body.titulo)
-    nome_arquivo = f"{(body.titulo or body.abas[0].nome).lower().replace(' ', '-')}.xlsx"
-    return _resposta_xlsx(buffer, nome_arquivo)
+    cabecalho = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
+    buffer = exportar_tabelas(abas, titulo=body.titulo, cabecalho_convenio=cabecalho)
+    nome_arquivo = (body.titulo or body.abas[0].nome).lower().replace(" ", "-")
+    return resposta_relatorio(buffer, nome_arquivo, "xlsx", formato)

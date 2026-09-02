@@ -15,6 +15,8 @@ from pathlib import Path
 
 import docx
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_docx
+
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "infrastructure" / "templates" / "termo_entrega_materiais.docx"
 
 MAX_ITENS = 18
@@ -35,7 +37,9 @@ def _substituir_paragrafo(paragrafo, texto: str) -> None:
         paragrafo.add_run(texto)
 
 
-def exportar_termo_entrega(*, polo_nome: str, coordenador_nome: str, itens: list[ItemEntrega]) -> io.BytesIO:
+def exportar_termo_entrega(
+    *, polo_nome: str, coordenador_nome: str, itens: list[ItemEntrega], cabecalho_convenio: str | None = None
+) -> io.BytesIO:
     wb = docx.Document(TEMPLATE_PATH)
 
     for paragrafo in wb.paragraphs:
@@ -50,6 +54,7 @@ def exportar_termo_entrega(*, polo_nome: str, coordenador_nome: str, itens: list
         tabela.cell(linha, 0).text = item.descricao
         tabela.cell(linha, 1).text = item.quantidade
 
+    aplicar_cabecalho_docx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

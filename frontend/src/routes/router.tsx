@@ -16,6 +16,8 @@ import { FichasExecucaoPage } from "@/features/fichas-execucao/FichasExecucaoPag
 import { FichaExecucaoDetalhePage } from "@/features/fichas-execucao/FichaExecucaoDetalhePage";
 import { EntregasMateriaisPage } from "@/features/entregas-materiais/EntregasMateriaisPage";
 import { RelatoriosGerenciaisPage } from "@/features/relatorios-gerenciais/RelatoriosGerenciaisPage";
+import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
+import { AnexosGeraisPage } from "@/features/anexos-gerais/AnexosGeraisPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -35,6 +37,7 @@ export const router = createBrowserRouter([
               { path: "/polos", element: <PolosPage /> },
               { path: "/fichas-execucao", element: <FichasExecucaoPage /> },
               { path: "/fichas-execucao/:id", element: <FichaExecucaoDetalhePage /> },
+              { path: "/configuracoes", element: <ConfiguracoesPage /> },
             ],
           },
           // MASTER + GESTOR_POLO
@@ -48,6 +51,7 @@ export const router = createBrowserRouter([
               { path: "/professores", element: <ProfessoresPage /> },
               { path: "/entregas-materiais", element: <EntregasMateriaisPage /> },
               { path: "/relatorios-gerenciais", element: <RelatoriosGerenciaisPage /> },
+              { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
             ],
           },
           // PROFESSOR

@@ -22,6 +22,11 @@ class BeneficiarioService:
     def listar(self, polo_id: UUID | None = None, turma_id: UUID | None = None) -> list[Beneficiario]:
         return self.repo.listar(polo_id=polo_id, turma_id=turma_id)
 
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, nome: str | None = None,
+    ) -> tuple[list[Beneficiario], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id, nome=nome)
+
     def buscar(self, beneficiario_id: UUID) -> Beneficiario | None:
         return self.repo.buscar_por_id(beneficiario_id)
 

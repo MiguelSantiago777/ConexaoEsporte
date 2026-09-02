@@ -12,22 +12,18 @@ import { staggerStyle } from "@/lib/animation";
 const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
-// O projeto opera no estado do Rio de Janeiro — o mapa sempre abre parado
-// nessa região (em vez de centralizar pela média dos polos cadastrados, que
-// muda a cada polo novo e deixa a visão inicial imprevisível).
+
 const CENTRO_RJ: [number, number] = [-22.25, -42.66];
 const ZOOM_CARD = 7;
 const ZOOM_MODAL = 8;
 
-// O Leaflet às vezes calcula o centro errado se o mapa é inicializado
-// dentro de um container recém-inserido no DOM (caso do modal) — força
-// recentralizar assim que o mapa está de fato pronto e com tamanho real.
+
 function ForcarCentro({ centro, zoom }: { centro: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
     map.invalidateSize();
     map.setView(centro, zoom);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [map]);
   return null;
 }
@@ -47,10 +43,7 @@ function PinsDoMapa({ polos }: { polos: Polo[] }) {
   );
 }
 
-/** Mapa com um pino por polo (endereço geocodificado no cadastro/edição do
- * polo) — expandir em tela cheia e exportar como imagem PNG. A exportação
- * sempre captura a versão expandida (maior e mais legível), mesmo que o
- * card pequeno seja o que está visível na hora do clique. */
+
 export function PolosMapaCard({ polos }: { polos: Polo[] }) {
   const toast = useToast();
   const [expandido, setExpandido] = useState(false);
@@ -67,9 +60,7 @@ export function PolosMapaCard({ polos }: { polos: Polo[] }) {
     try {
       if (!jaEstavaExpandido) {
         setExpandido(true);
-        // Dá tempo do modal montar, do ForcarCentro corrigir a posição do
-        // mapa (o Leaflet às vezes centraliza errado num container recém
-        // inserido no DOM) e dos tiles corretos carregarem antes de capturar.
+
         await new Promise((r) => setTimeout(r, 900));
       }
       if (!modalMapaRef.current) {
@@ -104,7 +95,7 @@ export function PolosMapaCard({ polos }: { polos: Polo[] }) {
       <Card
         title="Mapa de Polos"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => setExpandido(true)}>Expandir</Button>
             <Button variant="secondary" onClick={exportarImagem} disabled={exportando}>
               {exportando ? "Gerando…" : "Exportar imagem"}

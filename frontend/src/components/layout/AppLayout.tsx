@@ -1,4 +1,4 @@
-import { ComponentType } from "react";
+import { ComponentType, useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { Perfil } from "@/types";
@@ -10,10 +10,14 @@ import {
   CalendarCheckIcon,
   ChartPieIcon,
   ClipboardIcon,
+  CloseIcon,
   DocumentTextIcon,
   HomeIcon,
   KeyIcon,
   LogoutIcon,
+  MenuIcon,
+  PaperclipIcon,
+  SettingsIcon,
   TrophyIcon,
   UsersIcon,
 } from "@/components/ui/icons";
@@ -35,6 +39,8 @@ const MENU: ItemMenu[] = [
   { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], icon: AcademicCapIcon },
   { label: "Entregas de Materiais", to: "/entregas-materiais", perfis: ["MASTER", "GESTOR_POLO"], icon: BoxIcon },
   { label: "Relatórios", to: "/relatorios-gerenciais", perfis: ["MASTER", "GESTOR_POLO"], icon: ChartPieIcon },
+  { label: "Anexos Gerais", to: "/anexos-gerais", perfis: ["MASTER", "GESTOR_POLO"], icon: PaperclipIcon },
+  { label: "Configurações", to: "/configuracoes", perfis: ["MASTER"], icon: SettingsIcon },
   { label: "Frequência", to: "/frequencia", perfis: ["PROFESSOR"], icon: CalendarCheckIcon },
   { label: "Relatórios de Aula", to: "/relatorios", perfis: ["PROFESSOR"], icon: DocumentTextIcon },
 ];
@@ -55,6 +61,7 @@ export function AppLayout() {
   const { usuario, sair } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [menuAberto, setMenuAberto] = useState(false);
 
   const itensVisiveis = MENU.filter((i) => usuario && i.perfis.includes(usuario.perfil));
 
@@ -63,14 +70,64 @@ export function AppLayout() {
     navigate("/login");
   }
 
+  // Fecha o menu mobile (off-canvas) automaticamente ao trocar de rota —
+  // senão ele ficaria aberto por cima da tela seguinte.
+  useEffect(() => {
+    setMenuAberto(false);
+  }, [location.pathname]);
+
+  // Trava o scroll do body enquanto o menu mobile está aberto — sem isso, a
+  // página por trás do menu ainda rola durante o arrasto (o corpo não tem
+  // altura travada em 100vh, só min-height), e junto com o recolhimento da
+  // barra de endereço do navegador no celular isso faz o menu (position:
+  // fixed) parecer "descolar" da tela em vez de ficar parado por cima.
+  // Restaura a posição de rolagem exata ao fechar.
+  useEffect(() => {
+    if (!menuAberto) return;
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    const original = { overflow: style.overflow, position: style.position, top: style.top, width: style.width };
+    style.overflow = "hidden";
+    style.position = "fixed";
+    style.top = `-${scrollY}px`;
+    style.width = "100%";
+    return () => {
+      style.overflow = original.overflow;
+      style.position = original.position;
+      style.top = original.top;
+      style.width = original.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [menuAberto]);
+
   return (
-    <div className="min-h-screen flex print:block">
-      <aside className="w-64 bg-brand-dark text-white flex flex-col shrink-0 print:hidden">
+    <div className="min-h-screen lg:flex print:block">
+      {menuAberto && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] lg:hidden print:hidden"
+          onClick={() => setMenuAberto(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-brand-dark bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.07),transparent_45%)] text-white flex flex-col shrink-0 print:hidden transition-transform duration-200 ease-out lg:static lg:translate-x-0 ${
+          menuAberto ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="p-5 flex items-center gap-3 border-b border-white/10">
           <img src="/logo.png" alt="Conexão Esporte" className="w-10 h-10 object-contain shrink-0" />
-          <span className="text-lg font-bold tracking-tight leading-tight">Conexão Esporte</span>
+          <span className="font-display text-lg font-semibold tracking-tight leading-tight flex-1">Conexão Esporte</span>
+          <button
+            type="button"
+            onClick={() => setMenuAberto(false)}
+            aria-label="Fechar menu"
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          >
+            <CloseIcon />
+          </button>
         </div>
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto overscroll-contain">
           {itensVisiveis.map((i) => {
             const Icon = i.icon;
             return (
@@ -79,10 +136,10 @@ export function AppLayout() {
                 to={i.to}
                 end={i.to === "/"}
                 className={({ isActive }) =>
-                  `group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                  `group flex items-center gap-2.5 pl-[10px] pr-3 py-2.5 lg:py-2 rounded-r-lg border-l-2 text-sm transition-all duration-150 ${
                     isActive
-                      ? "bg-white text-brand-dark font-semibold shadow-sm"
-                      : "text-white/75 hover:bg-white/10 hover:text-white"
+                      ? "border-accent bg-white/[0.08] text-white font-semibold"
+                      : "border-transparent text-white/75 hover:bg-white/10 hover:text-white"
                   }`
                 }
               >
@@ -90,7 +147,7 @@ export function AppLayout() {
                   <>
                     <Icon
                       className={`w-[18px] h-[18px] shrink-0 transition-colors ${
-                        isActive ? "text-accent-dark" : "text-white/60 group-hover:text-white"
+                        isActive ? "text-accent" : "text-white/60 group-hover:text-white"
                       }`}
                     />
                     <span className="truncate">{i.label}</span>
@@ -126,14 +183,30 @@ export function AppLayout() {
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto print:overflow-visible">
-        {/* key={pathname} força o React a remontar este container a cada troca
-            de rota, o que reinicia a animação de entrada (senão ela só tocaria
-            uma vez, no primeiro carregamento). */}
-        <div key={location.pathname} className="max-w-6xl mx-auto p-8 print:p-10 print:max-w-none animate-page-in">
-          <Outlet />
-        </div>
-      </main>
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-brand-dark text-white print:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuAberto(true)}
+            aria-label="Abrir menu"
+            className="w-9 h-9 -ml-1.5 flex items-center justify-center rounded-lg text-white/85 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          >
+            <MenuIcon className="w-5 h-5" />
+          </button>
+          <img src="/logo.png" alt="Conexão Esporte" className="w-7 h-7 object-contain shrink-0" />
+          <span className="font-display text-base font-semibold tracking-tight truncate">Conexão Esporte</span>
+        </header>
+
+        <main className="flex-1 overflow-auto print:overflow-visible">
+          {/* key={pathname} força o React a remontar este container a cada troca
+              de rota, o que reinicia a animação de entrada (senão ela só tocaria
+              uma vez, no primeiro carregamento). */}
+          <div key={location.pathname} className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 print:p-10 print:max-w-none animate-page-in">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

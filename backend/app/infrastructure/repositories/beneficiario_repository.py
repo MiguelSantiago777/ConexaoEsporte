@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.beneficiario.entities import Beneficiario
 from app.infrastructure.database.models import BeneficiarioModel, MatriculaModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: BeneficiarioModel) -> Beneficiario:
@@ -36,6 +37,21 @@ class BeneficiarioRepository:
         if polo_id:
             stmt = stmt.where(BeneficiarioModel.polo_id == polo_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None,
+        nome: str | None = None, apenas_ativos: bool = True,
+    ) -> tuple[list[Beneficiario], int]:
+        stmt = select(BeneficiarioModel)
+        if apenas_ativos:
+            stmt = stmt.where(BeneficiarioModel.ativo.is_(True))
+        if polo_id:
+            stmt = stmt.where(BeneficiarioModel.polo_id == polo_id)
+        if nome:
+            stmt = stmt.where(BeneficiarioModel.nome_completo.ilike(f"%{nome}%"))
+        stmt = stmt.order_by(BeneficiarioModel.nome_completo)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
 
     def buscar_por_id(self, beneficiario_id: UUID) -> Beneficiario | None:
         m = self.db.get(BeneficiarioModel, beneficiario_id)

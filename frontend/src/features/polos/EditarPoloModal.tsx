@@ -319,7 +319,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={salvarMutation.isPending}>
             {salvarMutation.isPending ? "Salvando…" : "Salvar alterações"}
           </Button>

@@ -205,6 +205,18 @@ export function BoxIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function PaperclipIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path
+        d="M17 7l-7.5 7.5a2.5 2.5 0 003.54 3.54L20.5 10.5a4.5 4.5 0 00-6.36-6.36L6.5 11.36a6.5 6.5 0 009.19 9.19"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function CameraIcon({ className = "w-5 h-5" }: Props) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -232,10 +244,54 @@ export function ChartBarIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function SettingsIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="3" />
+      <path
+        d="M19.4 13.5a1.7 1.7 0 00.34 1.87l.06.06a2.06 2.06 0 11-2.91 2.91l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.03 1.56V19.6a2.06 2.06 0 01-4.12 0v-.1a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2.06 2.06 0 11-2.91-2.91l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1.03H4.4a2.06 2.06 0 010-4.12h.1a1.7 1.7 0 001.56-1.11 1.7 1.7 0 00-.34-1.87l-.06-.06a2.06 2.06 0 112.91-2.91l.06.06a1.7 1.7 0 001.87.34h.08a1.7 1.7 0 001.03-1.56V4.4a2.06 2.06 0 014.12 0v.1a1.7 1.7 0 001.03 1.56h.08a1.7 1.7 0 001.87-.34l.06-.06a2.06 2.06 0 112.91 2.91l-.06.06a1.7 1.7 0 00-.34 1.87v.08a1.7 1.7 0 001.56 1.03h.19a2.06 2.06 0 010 4.12h-.1a1.7 1.7 0 00-1.56 1.03z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function CloseIcon({ className = "w-4 h-4" }: Props) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Só o glifo de check, sem círculo — pra usar dentro de um badge colorido
+ * (ver `statusChamada.tsx`). Diferente de `CheckCircleIcon`, que já vem com
+ * o próprio contorno circular. */
+export function CheckIcon({ className = "w-4 h-4" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2">
+      <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Só o glifo de exclamação, sem círculo — pra usar dentro de um badge
+ * colorido (marcação pendente/impeditivo). */
+export function ExclamationIcon({ className = "w-4 h-4" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2">
+      <path d="M10 5.5v6" strokeLinecap="round" />
+      <circle cx="10" cy="14.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Hambúrguer — abre o menu lateral na barra superior mobile. */
+export function MenuIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 5.5h14M3 10h14M3 14.5h14" strokeLinecap="round" />
     </svg>
   );
 }

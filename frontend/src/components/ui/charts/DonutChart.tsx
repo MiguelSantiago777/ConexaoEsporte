@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 interface Fatia {
   label: string;
   value: number;
@@ -9,6 +11,16 @@ export function DonutChart({ data, size = 160, thickness = 24 }: { data: Fatia[]
   const raio = (size - thickness) / 2;
   const circunferencia = 2 * Math.PI * raio;
 
+  // Começa com as fatias recolhidas (todas em stroke-dashoffset = 0, ou seja
+  // "escondidas" na posição do próprio início do círculo) e revela cada uma
+  // até seu offset final via transição CSS — só depois do primeiro paint,
+  // pra transição realmente disparar em vez de já nascer no estado final.
+  const [revelado, setRevelado] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setRevelado(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   let offsetAcumulado = 0;
 
   return (
@@ -19,11 +31,12 @@ export function DonutChart({ data, size = 160, thickness = 24 }: { data: Fatia[]
           {total > 0 &&
             data
               .filter((d) => d.value > 0)
-              .map((d) => {
+              .map((d, i) => {
                 const fracao = d.value / total;
                 const comprimento = fracao * circunferencia;
                 const dasharray = `${comprimento} ${circunferencia - comprimento}`;
-                const dashoffset = -offsetAcumulado;
+                const dashoffsetFinal = -offsetAcumulado;
+                const dashoffsetEscondido = -(offsetAcumulado + comprimento);
                 offsetAcumulado += comprimento;
                 return (
                   <circle
@@ -35,7 +48,8 @@ export function DonutChart({ data, size = 160, thickness = 24 }: { data: Fatia[]
                     stroke={d.color}
                     strokeWidth={thickness}
                     strokeDasharray={dasharray}
-                    strokeDashoffset={dashoffset}
+                    strokeDashoffset={revelado ? dashoffsetFinal : dashoffsetEscondido}
+                    style={{ transition: `stroke-dashoffset 1.6s cubic-bezier(0.16,1,0.3,1) ${i * 160}ms` }}
                   >
                     <title>{`${d.label}: ${d.value} (${Math.round(fracao * 100)}%)`}</title>
                   </circle>

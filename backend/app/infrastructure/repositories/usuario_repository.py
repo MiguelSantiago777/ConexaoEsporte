@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.domain.enums import PerfilUsuario
 from app.domain.usuario.entities import Usuario
 from app.infrastructure.database.models import UsuarioModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: UsuarioModel) -> Usuario:
@@ -34,6 +35,18 @@ class UsuarioRepository:
         if polo_id:
             stmt = stmt.where(UsuarioModel.polo_id == polo_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, perfil: PerfilUsuario | None = None,
+    ) -> tuple[list[Usuario], int]:
+        stmt = select(UsuarioModel)
+        if polo_id:
+            stmt = stmt.where(UsuarioModel.polo_id == polo_id)
+        if perfil:
+            stmt = stmt.where(UsuarioModel.perfil == perfil.value)
+        stmt = stmt.order_by(UsuarioModel.nome)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
 
     def criar(self, usuario: Usuario) -> Usuario:
         m = UsuarioModel(

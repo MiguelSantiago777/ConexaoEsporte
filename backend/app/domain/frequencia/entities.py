@@ -13,6 +13,7 @@ class RegistroFrequencia:
     registrado_por_id: UUID
     falta_justificada: bool = False
     justificativa: str | None = None
+    criado_em: datetime | None = None
 
 
 @dataclass

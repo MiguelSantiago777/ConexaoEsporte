@@ -95,7 +95,7 @@ export interface paths {
         };
         /**
          * Listar usuários
-         * @description MASTER lista todos. GESTOR_POLO lista apenas os do seu polo.
+         * @description MASTER lista todos. GESTOR_POLO lista apenas os do seu polo. Filtre por `perfil` (ex.: PROFESSOR) e informe `pagina` pra paginar — sem `pagina`, devolve a lista inteira.
          */
         get: operations["listar_usuarios_api_v1_usuarios_get"];
         put?: never;
@@ -130,6 +130,64 @@ export interface paths {
         patch: operations["atualizar_usuario_api_v1_usuarios__usuario_id__patch"];
         trace?: never;
     };
+    "/api/v1/usuarios/{usuario_id}/documentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar anexos do professor */
+        get: operations["listar_documentos_usuario_api_v1_usuarios__usuario_id__documentos_get"];
+        put?: never;
+        /**
+         * Enviar anexo do professor (foto, documento ou contrato)
+         * @description Envia um arquivo por chamada (multipart/form-data). Tipos aceitos: PDF, JPG, PNG, WEBP — até 10MB cada. Chame novamente para anexar mais de um documento do mesmo tipo.
+         */
+        post: operations["enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usuarios/documentos/{documento_id}/arquivo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Baixar um anexo do professor
+         * @description Retorna o arquivo binário (PDF/imagem). Acesso restrito ao polo do professor dono do anexo.
+         */
+        get: operations["baixar_documento_usuario_api_v1_usuarios_documentos__documento_id__arquivo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usuarios/documentos/{documento_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remover um anexo do professor */
+        delete: operations["remover_documento_usuario_api_v1_usuarios_documentos__documento_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/polos": {
         parameters: {
             query?: never;
@@ -139,7 +197,7 @@ export interface paths {
         };
         /**
          * Listar polos
-         * @description MASTER vê todos os polos. GESTOR_POLO vê apenas o seu.
+         * @description MASTER vê todos os polos (informe `pagina` pra paginar — sem isso, devolve a lista inteira, uso por telas que só precisam das opções, como um <select>). GESTOR_POLO vê apenas o seu.
          */
         get: operations["listar_polos_api_v1_polos_get"];
         put?: never;
@@ -249,6 +307,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/modalidades/{modalidade_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remover modalidade
+         * @description Disponível para MASTER e GESTOR_POLO. Recusa a remoção se existir alguma turma cadastrada com essa modalidade.
+         */
+        delete: operations["remover_modalidade_api_v1_modalidades__modalidade_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar modalidade
+         * @description Disponível para MASTER e GESTOR_POLO.
+         */
+        patch: operations["editar_modalidade_api_v1_modalidades__modalidade_id__patch"];
+        trace?: never;
+    };
     "/api/v1/turmas": {
         parameters: {
             query?: never;
@@ -258,7 +340,7 @@ export interface paths {
         };
         /**
          * Listar turmas
-         * @description MASTER vê todas. GESTOR_POLO vê as do seu polo. PROFESSOR vê apenas as suas.
+         * @description MASTER vê todas. GESTOR_POLO vê as do seu polo. PROFESSOR vê apenas as suas. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
          */
         get: operations["listar_turmas_api_v1_turmas_get"];
         put?: never;
@@ -301,8 +383,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Exportar Lista de Presença mensal da turma em .xlsx
-         * @description Gera o arquivo preenchido no layout oficial do modelo, com a grade de presença (P/A) do mês a partir dos registros de frequência já lançados. MASTER e GESTOR_POLO exportam qualquer turma do seu escopo; PROFESSOR só a(s) sua(s).
+         * Exportar Lista de Presença mensal da turma em .xlsx ou .pdf
+         * @description Gera o arquivo preenchido no layout oficial do modelo, com a grade de presença (P/A) do mês a partir dos registros de frequência já lançados. MASTER e GESTOR_POLO exportam qualquer turma do seu escopo; PROFESSOR só a(s) sua(s). `formato=pdf` converte via LibreOffice, preservando o layout.
          */
         get: operations["exportar_lista_presenca_api_v1_turmas__turma_id__lista_presenca_exportar_get"];
         put?: never;
@@ -322,7 +404,7 @@ export interface paths {
         };
         /**
          * Listar beneficiários
-         * @description MASTER vê todos. GESTOR_POLO vê os do seu polo. PROFESSOR vê os das suas turmas (informe `turma_id`).
+         * @description MASTER vê todos (filtrando opcionalmente por `polo_id`). GESTOR_POLO vê os do seu polo. PROFESSOR vê os das suas turmas (informe `turma_id`). Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
          */
         get: operations["listar_beneficiarios_api_v1_beneficiarios_get"];
         put?: never;
@@ -616,7 +698,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar Fichas de Execução (somente MASTER) */
+        /**
+         * Listar Fichas de Execução (somente MASTER)
+         * @description Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
+         */
         get: operations["listar_fichas_api_v1_fichas_execucao_get"];
         put?: never;
         /**
@@ -677,7 +762,7 @@ export interface paths {
         };
         /**
          * Listar Entregas de Materiais
-         * @description MASTER vê todas. GESTOR_POLO vê apenas as do seu polo.
+         * @description MASTER vê todas. GESTOR_POLO vê apenas as do seu polo. Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
          */
         get: operations["listar_entregas_api_v1_entregas_materiais_get"];
         put?: never;
@@ -767,6 +852,162 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/relatorios/polo/{polo_id}/exportar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar o Relatório do Polo em .xlsx, com gráficos nativos */
+        get: operations["exportar_relatorio_polo_endpoint_api_v1_relatorios_polo__polo_id__exportar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/relatorios/geral/exportar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar o Relatório Geral em .xlsx, com gráficos nativos (somente MASTER) */
+        get: operations["exportar_relatorio_geral_endpoint_api_v1_relatorios_geral_exportar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/relatorios/exportar-xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exportar tabela(s) genéricas em .xlsx estilizado (ou .pdf)
+         * @description Recebe tabela(s) já prontas — o frontend já aplicou filtros/máscaras (LGPD etc.) da própria tela — e devolve um .xlsx com cabeçalho na cor da marca, bordas e largura de coluna automática. Não lê nada do banco: só formata o que já chegou.
+         */
+        post: operations["exportar_xlsx_generico_api_v1_relatorios_exportar_xlsx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/anexos-gerais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Anexos Gerais
+         * @description MASTER vê os de qualquer polo (filtrando por `polo_id`). GESTOR_POLO vê apenas os do seu polo.
+         */
+        get: operations["listar_anexos_api_v1_anexos_gerais_get"];
+        put?: never;
+        /**
+         * Enviar Anexo Geral
+         * @description Envia um arquivo (multipart/form-data) para o repositório livre de documentos do polo. Tipos aceitos: PDF, JPG, PNG, WEBP — até 10MB.
+         */
+        post: operations["enviar_anexo_api_v1_anexos_gerais_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/anexos-gerais/consolidado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar todos os documentos anexados (visão consolidada)
+         * @description Reúne, numa única listagem somente leitura e ordenada do mais recente ao mais antigo: os Anexos Gerais enviados pelos polos/gestores de polo, as fotos de evidência de chamada e as observações de relatório de aula que os professores registram ao lançar a chamada. MASTER vê todos os polos (filtrando opcionalmente por `polo_id`). GESTOR_POLO vê apenas o seu.
+         */
+        get: operations["listar_consolidado_api_v1_anexos_gerais_consolidado_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/anexos-gerais/{anexo_id}/arquivo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Baixar um Anexo Geral
+         * @description Retorna o arquivo binário. Acesso restrito ao polo dono do anexo.
+         */
+        get: operations["baixar_anexo_api_v1_anexos_gerais__anexo_id__arquivo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/anexos-gerais/{anexo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remover um Anexo Geral */
+        delete: operations["remover_anexo_api_v1_anexos_gerais__anexo_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/configuracao-geral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obter a Configuração Geral (somente MASTER) */
+        get: operations["obter_configuracao_api_v1_configuracao_geral_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar a Configuração Geral (somente MASTER)
+         * @description Número de convênio e datas de início/fim do projeto — passam a aparecer no rodapé de todos os relatórios exportados pelo sistema. Pode ser alterado a qualquer momento.
+         */
+        patch: operations["atualizar_configuracao_api_v1_configuracao_geral_patch"];
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -788,6 +1029,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AbaExportRequest */
+        AbaExportRequest: {
+            /**
+             * Nome
+             * @description Vira o nome da aba no Excel.
+             */
+            nome: string;
+            /** Colunas */
+            colunas: string[];
+            /** Linhas */
+            linhas?: (string | number | null)[][];
+        };
         /** AlterarSenhaRequest */
         AlterarSenhaRequest: {
             /** Senha Atual */
@@ -797,6 +1050,29 @@ export interface components {
              * @example nova-senha-forte-456
              */
             nova_senha: string;
+        };
+        /** AnexoGeralResponse */
+        AnexoGeralResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Titulo */
+            titulo: string;
+            /** Nome Arquivo */
+            nome_arquivo: string;
+            /** Content Type */
+            content_type: string | null;
+            /** Tamanho Bytes */
+            tamanho_bytes: number | null;
+            /** Criado Em */
+            criado_em: string | null;
         };
         /** AtividadeComparativoItem */
         AtividadeComparativoItem: {
@@ -958,8 +1234,32 @@ export interface components {
             /** Ativo */
             ativo?: boolean | null;
         };
+        /** Body_enviar_anexo_api_v1_anexos_gerais_post */
+        Body_enviar_anexo_api_v1_anexos_gerais_post: {
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Titulo */
+            titulo: string;
+            /** Arquivo */
+            arquivo: string;
+        };
+        /** Body_enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post */
+        Body_enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post: {
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "FOTO" | "DOCUMENTO" | "CONTRATO";
+            /** Arquivo */
+            arquivo: string;
+        };
         /** Body_enviar_documentos_api_v1_beneficiarios__beneficiario_id__documentos_post */
         Body_enviar_documentos_api_v1_beneficiarios__beneficiario_id__documentos_post: {
+            /** Foto */
+            foto?: string | null;
             /** Certidao Nascimento Ou Identidade */
             certidao_nascimento_ou_identidade?: string | null;
             /** Identidade Responsavel */
@@ -990,7 +1290,10 @@ export interface components {
             grant_type?: string | null;
             /** Username */
             username: string;
-            /** Password */
+            /**
+             * Password
+             * Format: password
+             */
             password: string;
             /**
              * Scope
@@ -999,7 +1302,10 @@ export interface components {
             scope: string;
             /** Client Id */
             client_id?: string | null;
-            /** Client Secret */
+            /**
+             * Client Secret
+             * Format: password
+             */
             client_secret?: string | null;
         };
         /**
@@ -1066,6 +1372,79 @@ export interface components {
              * @default
              */
             observacao: string;
+        };
+        /** ConfiguracaoGeralResponse */
+        ConfiguracaoGeralResponse: {
+            /** Nome Projeto */
+            nome_projeto: string | null;
+            /** Numero Convenio */
+            numero_convenio: string | null;
+            /** Data Inicio Projeto */
+            data_inicio_projeto: string | null;
+            /** Data Fim Projeto */
+            data_fim_projeto: string | null;
+            /** Atualizado Por Id */
+            atualizado_por_id: string | null;
+            /** Atualizado Em */
+            atualizado_em: string | null;
+        };
+        /** ConfiguracaoGeralUpdateRequest */
+        ConfiguracaoGeralUpdateRequest: {
+            /** Nome Projeto */
+            nome_projeto?: string | null;
+            /** Numero Convenio */
+            numero_convenio?: string | null;
+            /** Data Inicio Projeto */
+            data_inicio_projeto?: string | null;
+            /** Data Fim Projeto */
+            data_fim_projeto?: string | null;
+        };
+        /**
+         * DocumentoConsolidadoResponse
+         * @description Item da visão consolidada e somente leitura de tudo que foi anexado
+         *     pelos polos (Anexos Gerais), pelos gestores de polo, ou pelos professores
+         *     ao lançar a chamada (fotos de evidência e observações do relatório de
+         *     aula).
+         */
+        DocumentoConsolidadoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "ANEXO_GERAL" | "EVIDENCIA_CHAMADA" | "OBSERVACAO_AULA";
+            /** Titulo */
+            titulo: string;
+            /** Descricao */
+            descricao?: string | null;
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Polo Nome */
+            polo_nome: string;
+            /** Turma Nome */
+            turma_nome?: string | null;
+            /** Autor Nome */
+            autor_nome?: string | null;
+            /**
+             * Data Evento
+             * Format: date
+             */
+            data_evento: string;
+            /** Criado Em */
+            criado_em?: string | null;
+            /** Nome Arquivo */
+            nome_arquivo?: string | null;
+            /** Content Type */
+            content_type?: string | null;
+            /** Possui Arquivo */
+            possui_arquivo: boolean;
         };
         /** EntregaMaterialCreateRequest */
         EntregaMaterialCreateRequest: {
@@ -1165,10 +1544,16 @@ export interface components {
             ano: number;
             /** Datas */
             datas: string[];
+            /** Atualizado Em */
+            atualizado_em: string | null;
+            /** Atualizado Por Nome */
+            atualizado_por_nome: string | null;
             /** Linhas */
             linhas: components["schemas"]["LinhaFichaChamada"][];
             /** Impeditivos */
             impeditivos: components["schemas"]["ImpeditivoAulaResponse"][];
+            /** Justificativas */
+            justificativas: components["schemas"]["JustificativaFaltaItem"][];
             resumo: components["schemas"]["ResumoFichaChamada"];
         };
         /** FichaExecucaoCreateRequest */
@@ -1379,6 +1764,28 @@ export interface components {
              */
             quantidade: string;
         };
+        /**
+         * JustificativaFaltaItem
+         * @description Uma falta justificada do mês — beneficiário, data e o texto da
+         *     justificativa (mesmo padrão de referência da tela 'Justificativas de
+         *     falta cadastradas').
+         */
+        JustificativaFaltaItem: {
+            /**
+             * Beneficiario Id
+             * Format: uuid
+             */
+            beneficiario_id: string;
+            /** Beneficiario Nome */
+            beneficiario_nome: string;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /** Justificativa */
+            justificativa: string;
+        };
         /** KPIsGeral */
         KPIsGeral: {
             /** Total Polos */
@@ -1479,6 +1886,79 @@ export interface components {
             nome: string;
             /** Descricao */
             descricao: string | null;
+        };
+        /** ModalidadeUpdateRequest */
+        ModalidadeUpdateRequest: {
+            /** Nome */
+            nome?: string | null;
+            /** Descricao */
+            descricao?: string | null;
+        };
+        /** PaginaResponse[BeneficiarioResponse] */
+        PaginaResponse_BeneficiarioResponse_: {
+            /** Itens */
+            itens: components["schemas"]["BeneficiarioResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[EntregaMaterialResponse] */
+        PaginaResponse_EntregaMaterialResponse_: {
+            /** Itens */
+            itens: components["schemas"]["EntregaMaterialResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[FichaExecucaoResponse] */
+        PaginaResponse_FichaExecucaoResponse_: {
+            /** Itens */
+            itens: components["schemas"]["FichaExecucaoResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[PoloResponse] */
+        PaginaResponse_PoloResponse_: {
+            /** Itens */
+            itens: components["schemas"]["PoloResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[TurmaResponse] */
+        PaginaResponse_TurmaResponse_: {
+            /** Itens */
+            itens: components["schemas"]["TurmaResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[UsuarioResponse] */
+        PaginaResponse_UsuarioResponse_: {
+            /** Itens */
+            itens: components["schemas"]["UsuarioResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
         };
         /**
          * PerfilUsuario
@@ -1855,6 +2335,13 @@ export interface components {
             /** Valor */
             valor: number;
         };
+        /** TabelaExportRequest */
+        TabelaExportRequest: {
+            /** Titulo */
+            titulo?: string | null;
+            /** Abas */
+            abas: components["schemas"]["AbaExportRequest"][];
+        };
         /** TermoAditivoItem */
         TermoAditivoItem: {
             /**
@@ -1968,6 +2455,11 @@ export interface components {
             monitor_nome?: string | null;
             /** Periodicidade */
             periodicidade?: string | null;
+            /**
+             * Ativo
+             * @default true
+             */
+            ativo: boolean;
         };
         /** TurmaUpdateRequest */
         TurmaUpdateRequest: {
@@ -1987,6 +2479,8 @@ export interface components {
             monitor_nome?: string | null;
             /** Periodicidade */
             periodicidade?: string | null;
+            /** Ativo */
+            ativo?: boolean | null;
         };
         /** UsuarioCreateRequest */
         UsuarioCreateRequest: {
@@ -2012,6 +2506,29 @@ export interface components {
              * @example 20h
              */
             carga_horaria_semanal?: string | null;
+        };
+        /** UsuarioDocumentoResponse */
+        UsuarioDocumentoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Usuario Id
+             * Format: uuid
+             */
+            usuario_id: string;
+            /** Tipo */
+            tipo: string;
+            /** Nome Arquivo */
+            nome_arquivo: string;
+            /** Content Type */
+            content_type: string | null;
+            /** Tamanho Bytes */
+            tamanho_bytes: number | null;
+            /** Criado Em */
+            criado_em: string | null;
         };
         /** UsuarioLogadoResponse */
         UsuarioLogadoResponse: {
@@ -2084,6 +2601,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -2213,7 +2734,11 @@ export interface operations {
     };
     listar_usuarios_api_v1_usuarios_get: {
         parameters: {
-            query?: never;
+            query?: {
+                perfil?: components["schemas"]["PerfilUsuario"] | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2226,7 +2751,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UsuarioResponse"][];
+                    "application/json": components["schemas"]["UsuarioResponse"][] | components["schemas"]["PaginaResponse_UsuarioResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2299,9 +2833,139 @@ export interface operations {
             };
         };
     };
-    listar_polos_api_v1_polos_get: {
+    listar_documentos_usuario_api_v1_usuarios__usuario_id__documentos_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                usuario_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioDocumentoResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                usuario_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioDocumentoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_documento_usuario_api_v1_usuarios_documentos__documento_id__arquivo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documento_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_documento_usuario_api_v1_usuarios_documentos__documento_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documento_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_polos_api_v1_polos_get: {
+        parameters: {
+            query?: {
+                nome?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2314,7 +2978,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PoloResponse"][];
+                    "application/json": components["schemas"]["PoloResponse"][] | components["schemas"]["PaginaResponse_PoloResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2391,6 +3064,7 @@ export interface operations {
         parameters: {
             query?: {
                 planejamento_horas?: number;
+                formato?: "docx" | "pdf";
             };
             header?: never;
             path: {
@@ -2422,7 +3096,9 @@ export interface operations {
     };
     exportar_planilha_nucleos_api_v1_polos__polo_id__planilha_nucleos_exportar_get: {
         parameters: {
-            query?: never;
+            query?: {
+                formato?: "xlsx" | "pdf";
+            };
             header?: never;
             path: {
                 polo_id: string;
@@ -2453,7 +3129,9 @@ export interface operations {
     };
     exportar_termo_responsabilidade_api_v1_polos__polo_id__termo_responsabilidade_exportar_get: {
         parameters: {
-            query?: never;
+            query?: {
+                formato?: "docx" | "pdf";
+            };
             header?: never;
             path: {
                 polo_id: string;
@@ -2535,9 +3213,76 @@ export interface operations {
             };
         };
     };
-    listar_turmas_api_v1_turmas_get: {
+    remover_modalidade_api_v1_modalidades__modalidade_id__delete: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                modalidade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_modalidade_api_v1_modalidades__modalidade_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modalidade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModalidadeUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModalidadeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_turmas_api_v1_turmas_get: {
+        parameters: {
+            query?: {
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2550,7 +3295,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TurmaResponse"][];
+                    "application/json": components["schemas"]["TurmaResponse"][] | components["schemas"]["PaginaResponse_TurmaResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2628,6 +3382,7 @@ export interface operations {
             query: {
                 mes: number;
                 ano: number;
+                formato?: "xlsx" | "pdf";
             };
             header?: never;
             path: {
@@ -2661,6 +3416,10 @@ export interface operations {
         parameters: {
             query?: {
                 turma_id?: string | null;
+                polo_id?: string | null;
+                nome?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
             };
             header?: never;
             path?: never;
@@ -2674,7 +3433,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BeneficiarioResponse"][];
+                    "application/json": components["schemas"]["BeneficiarioResponse"][] | components["schemas"]["PaginaResponse_BeneficiarioResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3309,6 +4068,8 @@ export interface operations {
         parameters: {
             query?: {
                 polo_id?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
             };
             header?: never;
             path?: never;
@@ -3322,7 +4083,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FichaExecucaoResponse"][];
+                    "application/json": components["schemas"]["FichaExecucaoResponse"][] | components["schemas"]["PaginaResponse_FichaExecucaoResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3437,7 +4198,9 @@ export interface operations {
     };
     exportar_ficha_api_v1_fichas_execucao__ficha_id__exportar_get: {
         parameters: {
-            query?: never;
+            query?: {
+                formato?: "xlsx" | "pdf";
+            };
             header?: never;
             path: {
                 ficha_id: string;
@@ -3470,6 +4233,8 @@ export interface operations {
         parameters: {
             query?: {
                 polo_id?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
             };
             header?: never;
             path?: never;
@@ -3483,7 +4248,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EntregaMaterialResponse"][];
+                    "application/json": components["schemas"]["EntregaMaterialResponse"][] | components["schemas"]["PaginaResponse_EntregaMaterialResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -3598,7 +4363,9 @@ export interface operations {
     };
     exportar_entrega_api_v1_entregas_materiais__entrega_id__exportar_get: {
         parameters: {
-            query?: never;
+            query?: {
+                formato?: "docx" | "pdf";
+            };
             header?: never;
             path: {
                 entrega_id: string;
@@ -3680,6 +4447,317 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RelatorioGeralResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exportar_relatorio_polo_endpoint_api_v1_relatorios_polo__polo_id__exportar_get: {
+        parameters: {
+            query: {
+                data_inicio: string;
+                data_fim: string;
+                formato?: "xlsx" | "pdf";
+            };
+            header?: never;
+            path: {
+                polo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exportar_relatorio_geral_endpoint_api_v1_relatorios_geral_exportar_get: {
+        parameters: {
+            query: {
+                data_inicio: string;
+                data_fim: string;
+                formato?: "xlsx" | "pdf";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exportar_xlsx_generico_api_v1_relatorios_exportar_xlsx_post: {
+        parameters: {
+            query?: {
+                formato?: "xlsx" | "pdf";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TabelaExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_anexos_api_v1_anexos_gerais_get: {
+        parameters: {
+            query?: {
+                polo_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnexoGeralResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enviar_anexo_api_v1_anexos_gerais_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviar_anexo_api_v1_anexos_gerais_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnexoGeralResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_consolidado_api_v1_anexos_gerais_consolidado_get: {
+        parameters: {
+            query?: {
+                polo_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoConsolidadoResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_anexo_api_v1_anexos_gerais__anexo_id__arquivo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_anexo_api_v1_anexos_gerais__anexo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obter_configuracao_api_v1_configuracao_geral_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoGeralResponse"] | null;
+                };
+            };
+        };
+    };
+    atualizar_configuracao_api_v1_configuracao_geral_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfiguracaoGeralUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoGeralResponse"];
                 };
             };
             /** @description Validation Error */

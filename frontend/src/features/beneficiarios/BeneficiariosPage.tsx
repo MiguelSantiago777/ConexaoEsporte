@@ -1,15 +1,17 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Beneficiario, Modalidade, Polo, Turma } from "@/types";
+import type { Beneficiario, Modalidade, Pagina, Polo, Turma } from "@/types";
+import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Paginacao } from "@/components/ui/Paginacao";
 import { FileInput } from "@/components/ui/FileInput";
 import { PencilIcon, TrashIcon, TrophyIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
@@ -22,6 +24,8 @@ import { TIPOS_RELACAO } from "./constants";
 import { DocumentosModal } from "./DocumentosModal";
 import { EditarBeneficiarioModal } from "./EditarBeneficiarioModal";
 import { MatriculasModal } from "./MatriculasModal";
+
+const TAMANHO_PAGINA = 10;
 
 const FORM_INICIAL = {
   nome_completo: "",
@@ -44,12 +48,14 @@ const FORM_INICIAL = {
 };
 
 type CampoDocumento =
+  | "foto"
   | "certidao_nascimento_ou_identidade"
   | "identidade_responsavel"
   | "comprovante_residencia"
   | "comprovante_escolar";
 
 const DOCUMENTOS_CONFIG: { campo: CampoDocumento; label: string }[] = [
+  { campo: "foto", label: "Foto" },
   { campo: "certidao_nascimento_ou_identidade", label: "Certidão de nascimento ou identidade do beneficiário" },
   { campo: "identidade_responsavel", label: "Identidade do responsável" },
   { campo: "comprovante_residencia", label: "Comprovante de residência" },
@@ -57,6 +63,7 @@ const DOCUMENTOS_CONFIG: { campo: CampoDocumento; label: string }[] = [
 ];
 
 const ARQUIVOS_INICIAL: Record<CampoDocumento, File | null> = {
+  foto: null,
   certidao_nascimento_ou_identidade: null,
   identidade_responsavel: null,
   comprovante_residencia: null,
@@ -75,10 +82,6 @@ export function BeneficiariosPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const { data: beneficiarios = [], isLoading: carregando } = useQuery({
-    queryKey: ["beneficiarios"],
-    queryFn: () => api.get<Beneficiario[]>("/beneficiarios").then((r) => r.data),
-  });
   const { data: turmas = [] } = useQuery({
     queryKey: ["turmas"],
     queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
@@ -96,10 +99,41 @@ export function BeneficiariosPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [arquivos, setArquivos] = useState<Record<CampoDocumento, File | null>>(ARQUIVOS_INICIAL);
   const [filtroNome, setFiltroNome] = useState("");
+  const [filtroNomeDebounced, setFiltroNomeDebounced] = useState("");
   const [filtroPolo, setFiltroPolo] = useState("");
+  const [pagina, setPagina] = useState(1);
   const [beneficiarioDocumentos, setBeneficiarioDocumentos] = useState<Beneficiario | null>(null);
   const [beneficiarioEditando, setBeneficiarioEditando] = useState<Beneficiario | null>(null);
   const [beneficiarioMatriculas, setBeneficiarioMatriculas] = useState<Beneficiario | null>(null);
+
+  // Só refaz a busca 300ms depois de parar de digitar — sem isso, cada tecla
+  // dispara uma chamada nova ao servidor.
+  useEffect(() => {
+    const t = setTimeout(() => setFiltroNomeDebounced(filtroNome), 300);
+    return () => clearTimeout(t);
+  }, [filtroNome]);
+
+  // Muda o filtro, mas continua na página 3? Sem isso, ficaria numa página
+  // que pode nem existir mais pro novo resultado.
+  useEffect(() => {
+    setPagina(1);
+  }, [filtroNomeDebounced, filtroPolo]);
+
+  const beneficiariosQueryKey = ["beneficiarios", "pagina", pagina, filtroNomeDebounced, filtroPolo];
+  const { data: paginaBeneficiarios, isLoading: carregando } = useQuery({
+    queryKey: beneficiariosQueryKey,
+    queryFn: () =>
+      api
+        .get<Pagina<Beneficiario>>("/beneficiarios", {
+          params: {
+            pagina, tamanho_pagina: TAMANHO_PAGINA,
+            nome: filtroNomeDebounced || undefined, polo_id: filtroPolo || undefined,
+          },
+        })
+        .then((r) => r.data),
+  });
+  const beneficiariosFiltrados = paginaBeneficiarios?.itens ?? [];
+  const totalBeneficiarios = paginaBeneficiarios?.total ?? 0;
 
   function poloNome(id: string | null) {
     return polos.find((p) => p.id === id)?.nome ?? "—";
@@ -108,17 +142,6 @@ export function BeneficiariosPage() {
   const turmasDoFormulario = useMemo(
     () => turmas.filter((t) => t.polo_id === form.polo_id && t.modalidade_id === form.modalidade_id),
     [turmas, form.polo_id, form.modalidade_id]
-  );
-
-  const beneficiariosFiltrados = useMemo(
-    () =>
-      beneficiarios.filter((b) => {
-        if (!b.ativo) return false;
-        const nomeOk = !filtroNome || b.nome_completo.toLowerCase().includes(filtroNome.toLowerCase());
-        const poloOk = !filtroPolo || b.polo_id === filtroPolo;
-        return nomeOk && poloOk;
-      }),
-    [beneficiarios, filtroNome, filtroPolo]
   );
 
   const removerMutation = useMutation({
@@ -375,7 +398,7 @@ export function BeneficiariosPage() {
                 <FileInput
                   key={campo}
                   label={label}
-                  accept="image/*,application/pdf"
+                  accept={campo === "foto" ? "image/*" : "image/*,application/pdf"}
                   file={arquivos[campo]}
                   onChange={(file) => setArquivos({ ...arquivos, [campo]: file })}
                 />
@@ -401,8 +424,7 @@ export function BeneficiariosPage() {
 
       <Card
         title="Beneficiários cadastrados"
-        subtitle={filtroNome || filtroPolo ? `${beneficiariosFiltrados.length} de ${beneficiarios.length}` : undefined}
-        actions={<Badge variant="accent">{beneficiariosFiltrados.length}</Badge>}
+        actions={<Badge variant="accent">{totalBeneficiarios}</Badge>}
         className="animate-fade-in-up"
         style={staggerStyle(1)}
       >
@@ -424,92 +446,173 @@ export function BeneficiariosPage() {
         </div>
         {carregando ? (
           <Spinner label="Carregando beneficiários…" />
-        ) : beneficiariosFiltrados.length === 0 ? (
+        ) : totalBeneficiarios === 0 ? (
           <EmptyState
             message={
-              beneficiarios.length === 0
-                ? "Nenhum beneficiário cadastrado ainda."
-                : "Nenhum beneficiário encontrado com esses filtros."
+              filtroNome || filtroPolo
+                ? "Nenhum beneficiário encontrado com esses filtros."
+                : "Nenhum beneficiário cadastrado ainda."
             }
           />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
-                  <th className="py-2.5 px-6">Nome</th>
-                  <th className="px-3">CPF</th>
-                  <th className="px-3">Nascimento</th>
-                  <th className="px-3">Polo</th>
-                  <th className="px-3">Responsável</th>
-                  <th className="px-3">Contato</th>
-                  <th className="px-3 text-right pr-6">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {beneficiariosFiltrados.map((b) => (
-                  <tr key={b.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
-                    <td className="py-2.5 px-6 font-medium text-gray-800">
+          <>
+            {/* Celular: lista de cards (a tabela de 7 colunas não cabe nem
+                com rolagem horizontal de forma usável). Telas sm+: tabela. */}
+            <ul className="sm:hidden divide-y divide-gray-100">
+              {beneficiariosFiltrados.map((b) => (
+                <li key={b.id} className="py-3.5">
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      nome={b.nome_completo}
+                      documentosUrl={`/beneficiarios/${b.id}/documentos`}
+                      arquivoUrlBase="/beneficiarios/documentos"
+                      tipoFoto="foto"
+                      size={40}
+                    />
+                    <div className="min-w-0 flex-1">
                       <button
                         type="button"
                         onClick={() => setBeneficiarioDocumentos(b)}
                         title="Ver documentos anexados"
-                        className="text-left hover:text-brand hover:underline"
+                        className="block text-left font-medium text-gray-800 hover:text-brand hover:underline truncate w-full"
                       >
                         {b.nome_completo}
                       </button>
-                    </td>
-                    <td className="px-3 text-gray-600">{maskCPF(b.documento)}</td>
-                    <td className="px-3 text-gray-600">{formatarData(b.data_nascimento)}</td>
-                    <td className="px-3 text-gray-600">
-                      <span className="block truncate max-w-[110px]" title={poloNome(b.polo_id)}>
-                        {poloNome(b.polo_id)}
-                      </span>
-                    </td>
-                    <td className="px-3 text-gray-600">{b.responsavel_legal_nome ?? "—"}</td>
-                    <td className="px-3 text-gray-600">
-                      {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
-                    </td>
-                    <td className="px-3 text-right pr-6">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link
-                          to={`/beneficiarios/${b.id}/autorizacao-imagem`}
-                          className="text-brand text-xs font-medium hover:underline whitespace-nowrap"
-                        >
-                          Autorização de imagem
-                        </Link>
-                        <button
-                          type="button"
-                          title="Matrículas (modalidades/turmas)"
-                          onClick={() => setBeneficiarioMatriculas(b)}
-                          className="text-gray-400 hover:text-brand transition-colors"
-                        >
-                          <TrophyIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Editar"
-                          onClick={() => setBeneficiarioEditando(b)}
-                          className="text-gray-400 hover:text-brand transition-colors"
-                        >
-                          <PencilIcon />
-                        </button>
-                        <button
-                          type="button"
-                          title="Remover"
-                          onClick={() => excluirBeneficiario(b)}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <TrashIcon />
-                        </button>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {maskCPF(b.documento)} · {formatarData(b.data_nascimento)}
                       </div>
-                    </td>
+                      <div className="text-xs text-gray-500 mt-0.5 truncate">{poloNome(b.polo_id)}</div>
+                      {(b.responsavel_legal_nome || b.responsavel_legal_telefone_1) && (
+                        <div className="text-xs text-gray-500 mt-0.5 truncate">
+                          {b.responsavel_legal_nome ?? "—"}
+                          {b.responsavel_legal_telefone_1 ? ` · ${maskTelefone(b.responsavel_legal_telefone_1)}` : ""}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-5 mt-3 pl-[52px]">
+                    <Link
+                      to={`/beneficiarios/${b.id}/autorizacao-imagem`}
+                      className="text-brand text-xs font-medium hover:underline"
+                    >
+                      Autorização de imagem
+                    </Link>
+                    <button
+                      type="button"
+                      title="Matrículas (modalidades/turmas)"
+                      onClick={() => setBeneficiarioMatriculas(b)}
+                      className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
+                    >
+                      <TrophyIcon className="w-[18px] h-[18px]" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Editar"
+                      onClick={() => setBeneficiarioEditando(b)}
+                      className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
+                    >
+                      <PencilIcon className="w-[18px] h-[18px]" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Remover"
+                      onClick={() => excluirBeneficiario(b)}
+                      className="text-gray-400 hover:text-red-600 transition-colors -m-1.5 p-1.5"
+                    >
+                      <TrashIcon className="w-[18px] h-[18px]" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden sm:block overflow-x-auto -mx-5 sm:-mx-8">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
+                    <th className="py-2.5 px-8">Nome</th>
+                    <th className="px-3">CPF</th>
+                    <th className="px-3">Nascimento</th>
+                    <th className="px-3">Polo</th>
+                    <th className="px-3">Responsável</th>
+                    <th className="px-3">Contato</th>
+                    <th className="px-3 text-right pr-8">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {beneficiariosFiltrados.map((b) => (
+                    <tr key={b.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            nome={b.nome_completo}
+                            documentosUrl={`/beneficiarios/${b.id}/documentos`}
+                            arquivoUrlBase="/beneficiarios/documentos"
+                            tipoFoto="foto"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setBeneficiarioDocumentos(b)}
+                            title="Ver documentos anexados"
+                            className="text-left hover:text-brand hover:underline"
+                          >
+                            {b.nome_completo}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3 text-gray-600">{maskCPF(b.documento)}</td>
+                      <td className="px-3 text-gray-600">{formatarData(b.data_nascimento)}</td>
+                      <td className="px-3 text-gray-600">
+                        <span className="block truncate max-w-[110px]" title={poloNome(b.polo_id)}>
+                          {poloNome(b.polo_id)}
+                        </span>
+                      </td>
+                      <td className="px-3 text-gray-600">{b.responsavel_legal_nome ?? "—"}</td>
+                      <td className="px-3 text-gray-600">
+                        {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
+                      </td>
+                      <td className="px-3 text-right pr-8">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            to={`/beneficiarios/${b.id}/autorizacao-imagem`}
+                            className="text-brand text-xs font-medium hover:underline whitespace-nowrap"
+                          >
+                            Autorização de imagem
+                          </Link>
+                          <button
+                            type="button"
+                            title="Matrículas (modalidades/turmas)"
+                            onClick={() => setBeneficiarioMatriculas(b)}
+                            className="text-gray-400 hover:text-brand transition-colors"
+                          >
+                            <TrophyIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Editar"
+                            onClick={() => setBeneficiarioEditando(b)}
+                            className="text-gray-400 hover:text-brand transition-colors"
+                          >
+                            <PencilIcon />
+                          </button>
+                          <button
+                            type="button"
+                            title="Remover"
+                            onClick={() => excluirBeneficiario(b)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
+        <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalBeneficiarios} onChange={setPagina} />
       </Card>
 
       <DocumentosModal beneficiario={beneficiarioDocumentos} onClose={() => setBeneficiarioDocumentos(null)} />

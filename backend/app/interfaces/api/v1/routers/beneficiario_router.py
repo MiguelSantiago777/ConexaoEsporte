@@ -6,7 +6,7 @@ from typing import Annotated
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
 from app.application.beneficiario.documento_service import BeneficiarioDocumentoService
@@ -29,6 +29,7 @@ from app.interfaces.api.v1.schemas.beneficiario_schemas import (
     BeneficiarioUpdateRequest,
 )
 from app.interfaces.api.v1.schemas.matricula_schemas import MatriculaCreateRequest, MatriculaResponse
+from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 
 router = APIRouter(prefix="/beneficiarios", tags=["Beneficiários"])
 
@@ -52,25 +53,40 @@ def _assert_acesso_ao_beneficiario(usuario: UsuarioAutenticado, db: DbSession, b
 
 @router.get(
     "",
-    response_model=list[BeneficiarioResponse],
+    response_model=list[BeneficiarioResponse] | PaginaResponse[BeneficiarioResponse],
     summary="Listar beneficiários",
-    description="MASTER vê todos. GESTOR_POLO vê os do seu polo. PROFESSOR vê os das suas turmas "
-    "(informe `turma_id`).",
+    description="MASTER vê todos (filtrando opcionalmente por `polo_id`). GESTOR_POLO vê os do seu polo. "
+    "PROFESSOR vê os das suas turmas (informe `turma_id`). Informe `pagina` pra paginar — sem "
+    "isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).",
 )
 def listar_beneficiarios(
-    usuario: CurrentUser, db: DbSession, turma_id: UUID | None = None
-) -> list[BeneficiarioResponse]:
+    usuario: CurrentUser, db: DbSession,
+    turma_id: UUID | None = None,
+    polo_id: UUID | None = None,
+    nome: str | None = None,
+    pagina: Annotated[int | None, Query(ge=1)] = None,
+    tamanho_pagina: Annotated[int, Query(ge=1, le=200)] = 20,
+) -> list[BeneficiarioResponse] | PaginaResponse[BeneficiarioResponse]:
     service = BeneficiarioService(db)
     if usuario.perfil == PerfilUsuario.MASTER:
-        itens = service.listar(turma_id=turma_id)
+        filtro_polo = polo_id
     elif usuario.perfil == PerfilUsuario.GESTOR_POLO:
-        itens = service.listar(polo_id=usuario.polo_id, turma_id=turma_id)
+        filtro_polo = usuario.polo_id
     else:  # PROFESSOR: obrigatório informar turma e ter acesso a ela
         if not turma_id:
             raise HTTPException(status_code=400, detail="Professor deve informar turma_id.")
         assert_acesso_a_turma(usuario, db, turma_id)
-        itens = service.listar(turma_id=turma_id)
-    return [BeneficiarioResponse.model_validate(b) for b in itens]
+        filtro_polo = None
+
+    if pagina is None:
+        itens = service.listar(polo_id=filtro_polo, turma_id=turma_id)
+        return [BeneficiarioResponse.model_validate(b) for b in itens]
+
+    itens, total = service.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=filtro_polo, nome=nome)
+    return PaginaResponse(
+        itens=[BeneficiarioResponse.model_validate(b) for b in itens],
+        total=total, pagina=pagina, tamanho_pagina=tamanho_pagina,
+    )
 
 
 @router.post(
@@ -191,6 +207,7 @@ async def enviar_documentos(
     beneficiario_id: UUID,
     usuario: MasterOuGestor,
     db: DbSession,
+    foto: UploadFile | None = File(default=None),
     certidao_nascimento_ou_identidade: UploadFile | None = File(default=None),
     identidade_responsavel: UploadFile | None = File(default=None),
     comprovante_residencia: UploadFile | None = File(default=None),
@@ -199,6 +216,7 @@ async def enviar_documentos(
     _assert_acesso_ao_beneficiario(usuario, db, beneficiario_id)
 
     enviados = {
+        "foto": foto,
         "certidao_nascimento_ou_identidade": certidao_nascimento_ou_identidade,
         "identidade_responsavel": identidade_responsavel,
         "comprovante_residencia": comprovante_residencia,

@@ -1,20 +1,21 @@
 """Rotas de Entrega de Materiais (Termo de Entrega de Materiais).
 Tag Swagger: 'Entregas de Materiais'. MASTER e GESTOR_POLO do próprio polo."""
-from typing import Annotated
-from urllib.parse import quote
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.application.entrega_material.service import EntregaMaterialService
 from app.application.relatorios.service import RelatorioService
 from app.core.dependencies import DbSession, UsuarioAutenticado, assert_acesso_ao_polo, require_perfis
 from app.domain.enums import PerfilUsuario
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
 from app.interfaces.api.v1.schemas.entrega_material_schemas import (
     EntregaMaterialCreateRequest,
     EntregaMaterialResponse,
     EntregaMaterialUpdateRequest,
 )
+from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 
 router = APIRouter(prefix="/entregas-materiais", tags=["Entregas de Materiais"])
 
@@ -24,14 +25,28 @@ MasterOuGestor = Annotated[
 
 
 @router.get(
-    "", response_model=list[EntregaMaterialResponse],
+    "", response_model=list[EntregaMaterialResponse] | PaginaResponse[EntregaMaterialResponse],
     summary="Listar Entregas de Materiais",
-    description="MASTER vê todas. GESTOR_POLO vê apenas as do seu polo.",
+    description="MASTER vê todas. GESTOR_POLO vê apenas as do seu polo. Informe `pagina` pra paginar "
+    "— sem isso, devolve a lista inteira.",
 )
-def listar_entregas(usuario: MasterOuGestor, db: DbSession, polo_id: UUID | None = None) -> list[EntregaMaterialResponse]:
+def listar_entregas(
+    usuario: MasterOuGestor, db: DbSession, polo_id: UUID | None = None,
+    pagina: Annotated[int | None, Query(ge=1)] = None,
+    tamanho_pagina: Annotated[int, Query(ge=1, le=200)] = 20,
+) -> list[EntregaMaterialResponse] | PaginaResponse[EntregaMaterialResponse]:
     filtro_polo = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else polo_id
-    entregas = EntregaMaterialService(db).listar(polo_id=filtro_polo)
-    return [EntregaMaterialResponse.model_validate(e) for e in entregas]
+    service = EntregaMaterialService(db)
+
+    if pagina is None:
+        entregas = service.listar(polo_id=filtro_polo)
+        return [EntregaMaterialResponse.model_validate(e) for e in entregas]
+
+    entregas, total = service.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=filtro_polo)
+    return PaginaResponse(
+        itens=[EntregaMaterialResponse.model_validate(e) for e in entregas],
+        total=total, pagina=pagina, tamanho_pagina=tamanho_pagina,
+    )
 
 
 @router.post(
@@ -80,18 +95,13 @@ def atualizar_entrega(
     summary="Exportar Termo de Entrega de Materiais em .docx",
     description="Gera o arquivo preenchido no layout oficial do modelo, pronto para assinatura.",
 )
-def exportar_entrega(entrega_id: UUID, usuario: MasterOuGestor, db: DbSession) -> Response:
+def exportar_entrega(
+    entrega_id: UUID, usuario: MasterOuGestor, db: DbSession, formato: Literal["docx", "pdf"] = "docx"
+) -> Response:
     entrega = EntregaMaterialService(db).buscar(entrega_id)
     if not entrega:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrega de materiais não encontrada.")
     assert_acesso_ao_polo(usuario, entrega.polo_id)
 
     buffer = RelatorioService(db).gerar_termo_entrega(entrega_id)
-    nome_arquivo = "Termo de Entrega de Materiais.docx"
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": content_disposition},
-    )
+    return resposta_relatorio(buffer, "Termo de Entrega de Materiais", "docx", formato)

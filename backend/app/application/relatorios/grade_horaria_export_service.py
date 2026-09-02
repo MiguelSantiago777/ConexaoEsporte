@@ -27,6 +27,8 @@ from pathlib import Path
 
 import docx
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_docx
+
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "infrastructure" / "templates" / "grade_horaria.docx"
 
 DIAS_COLUNA = {"SEG": 1, "QUA": 2, "SEX": 3}
@@ -61,7 +63,10 @@ def _fmt_horas(valor: float) -> str:
     return f"{valor:.2f}".rstrip("0").rstrip(".")
 
 
-def exportar_grade_horaria(*, polo_nome: str, turmas: list[TurmaGrade], planejamento_horas: float = 0) -> io.BytesIO:
+def exportar_grade_horaria(
+    *, polo_nome: str, turmas: list[TurmaGrade], planejamento_horas: float = 0,
+    cabecalho_convenio: str | None = None,
+) -> io.BytesIO:
     wb = docx.Document(TEMPLATE_PATH)
     tabela = wb.tables[0]
 
@@ -102,6 +107,7 @@ def exportar_grade_horaria(*, polo_nome: str, turmas: list[TurmaGrade], planejam
         for linha_texto in legenda_linhas:
             wb.add_paragraph(f"• {linha_texto}")
 
+    aplicar_cabecalho_docx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.turma.entities import Turma
 from app.infrastructure.database.models import BeneficiarioModel, MatriculaModel, TurmaModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: TurmaModel) -> Turma:
@@ -14,6 +15,7 @@ def _to_entity(m: TurmaModel) -> Turma:
         horario_inicio=m.horario_inicio, horario_fim=m.horario_fim,
         dias_semana=m.dias_semana.split(","), limite_vagas=m.limite_vagas,
         coordenador_nome=m.coordenador_nome, monitor_nome=m.monitor_nome, periodicidade=m.periodicidade,
+        ativo=m.ativo,
     )
 
 
@@ -22,16 +24,35 @@ class TurmaRepository:
         self.db = db
 
     def listar(self, polo_id: UUID | None = None, professor_id: UUID | None = None) -> list[Turma]:
-        stmt = select(TurmaModel)
+        stmt = select(TurmaModel).where(TurmaModel.ativo.is_(True))
         if polo_id:
             stmt = stmt.where(TurmaModel.polo_id == polo_id)
         if professor_id:
             stmt = stmt.where(TurmaModel.professor_id == professor_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, professor_id: UUID | None = None,
+    ) -> tuple[list[Turma], int]:
+        stmt = select(TurmaModel).where(TurmaModel.ativo.is_(True))
+        if polo_id:
+            stmt = stmt.where(TurmaModel.polo_id == polo_id)
+        if professor_id:
+            stmt = stmt.where(TurmaModel.professor_id == professor_id)
+        stmt = stmt.order_by(TurmaModel.criado_em)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
+
     def buscar_por_id(self, turma_id: UUID) -> Turma | None:
         m = self.db.get(TurmaModel, turma_id)
         return _to_entity(m) if m else None
+
+    def contar_por_modalidade(self, modalidade_id: UUID) -> int:
+        """Conta turmas (ativas ou não) vinculadas à modalidade — usado pra
+        bloquear a remoção de uma modalidade ainda em uso, com uma mensagem
+        clara em vez de deixar a constraint de FK do banco estourar."""
+        stmt = select(func.count()).select_from(TurmaModel).where(TurmaModel.modalidade_id == modalidade_id)
+        return self.db.scalar(stmt) or 0
 
     def contar_beneficiarios_ativos(self, turma_id: UUID) -> int:
         """Conta matrículas ativas na turma, de beneficiários ativos (vagas ocupadas)."""

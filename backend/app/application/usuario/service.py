@@ -38,6 +38,11 @@ class UsuarioService:
     def listar_usuarios(self, polo_id: UUID | None = None) -> list[Usuario]:
         return self.repo.listar(polo_id=polo_id)
 
+    def listar_usuarios_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, perfil: PerfilUsuario | None = None,
+    ) -> tuple[list[Usuario], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id, perfil=perfil)
+
     def buscar_usuario(self, usuario_id: UUID) -> Usuario | None:
         return self.repo.buscar_por_id(usuario_id)
 

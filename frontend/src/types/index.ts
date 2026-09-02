@@ -80,6 +80,36 @@ export type LinhaFichaChamada = Omit<components["schemas"]["LinhaFichaChamada"],
   status_por_data: Record<string, StatusDia>;
 };
 export type ResumoFichaChamada = components["schemas"]["ResumoFichaChamada"];
+export type JustificativaFalta = components["schemas"]["JustificativaFaltaItem"];
 export type FichaChamada = Omit<components["schemas"]["FichaChamadaResponse"], "linhas"> & {
   linhas: LinhaFichaChamada[];
 };
+
+// Anexos do cadastro de professor (foto, documentos, contrato).
+export type UsuarioDocumento = components["schemas"]["UsuarioDocumentoResponse"];
+
+// Repositório livre de Anexos Gerais por polo (MASTER e GESTOR_POLO).
+export type AnexoGeral = components["schemas"]["AnexoGeralResponse"];
+
+// Visão consolidada e somente leitura de tudo que foi anexado pelos polos
+// (Anexos Gerais) ou pelos professores ao lançar a chamada (fotos de
+// evidência e observações de relatório de aula).
+export type DocumentoConsolidado = components["schemas"]["DocumentoConsolidadoResponse"];
+export type TipoDocumentoConsolidado = DocumentoConsolidado["tipo"];
+
+// Envelope de paginação das listagens principais (Beneficiários, Turmas,
+// Professores, Polos, Entregas de Materiais, Fichas de Execução) — o
+// backend gera um schema nomeado por entidade (ex.:
+// `PaginaResponse_BeneficiarioResponse_`), mas a forma é sempre a mesma
+// (ver `PaginaResponse` em app/interfaces/api/v1/schemas/paginacao_schemas.py),
+// então aqui é só um genérico pra não precisar de um alias por entidade.
+export interface Pagina<T> {
+  itens: T[];
+  total: number;
+  pagina: number;
+  tamanho_pagina: number;
+}
+
+// Configuração Geral — número de convênio e datas do projeto, exibidos no
+// rodapé de todos os relatórios exportados.
+export type ConfiguracaoGeral = components["schemas"]["ConfiguracaoGeralResponse"];

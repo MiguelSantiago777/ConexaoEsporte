@@ -5,6 +5,32 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AlertCircleIcon } from "@/components/ui/icons";
 
+/** Brasão do Conexão Esporte redesenhado só com linhas brancas (sem cor de
+ * preenchimento — ver frontend/public/brasao-linhas.png) com uma luz
+ * dourada varrendo diagonalmente por cima, recortada exatamente no
+ * contorno do brasão via mask-image (o PNG tem fundo transparente e só as
+ * linhas do desenho como pixels opacos, então a luz só aparece em cima do
+ * traço, nunca no vazio ao redor). */
+function BrasaoDeLinhas({ className = "" }: { className?: string }) {
+  const mascara = {
+    WebkitMaskImage: "url(/brasao-linhas.png)",
+    maskImage: "url(/brasao-linhas.png)",
+    WebkitMaskSize: "contain",
+    maskSize: "contain",
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+  };
+
+  return (
+    <div className={className} aria-hidden="true">
+      <img src="/brasao-linhas.png" alt="" className="absolute inset-0 w-full h-full object-contain opacity-30" />
+      <div className="absolute inset-0 w-full h-full animate-luz-varrendo" style={mascara} />
+    </div>
+  );
+}
+
 export function LoginPage() {
   const { entrar } = useAuth();
   const navigate = useNavigate();
@@ -36,22 +62,15 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex bg-white">
       {/* Painel de marca — só em telas maiores */}
-      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden bg-brand-dark">
-        <div
-          className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-brand opacity-60 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="absolute bottom-0 right-0 w-[28rem] h-[28rem] rounded-full bg-accent/30 blur-3xl translate-x-1/3 translate-y-1/4"
-          aria-hidden
-        />
+      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden bg-brand-dark bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.08),transparent_45%)]">
+        <BrasaoDeLinhas className="absolute inset-0 w-full h-full" />
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Conexão Esporte" className="w-11 h-11 object-contain" />
-            <span className="text-xl font-bold tracking-tight">Conexão Esporte</span>
+            <span className="font-display text-xl font-semibold tracking-tight">Conexão Esporte</span>
           </div>
           <div className="max-w-sm">
-            <h1 className="text-3xl font-bold leading-tight">
+            <h1 className="font-display text-4xl font-semibold leading-[1.15]">
               Gestão de projetos esportivos, do polo à quadra.
             </h1>
             <p className="mt-4 text-white/70 text-sm leading-relaxed">

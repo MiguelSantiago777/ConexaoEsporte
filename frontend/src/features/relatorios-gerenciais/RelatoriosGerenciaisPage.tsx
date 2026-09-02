@@ -30,7 +30,7 @@ export function RelatoriosGerenciaisPage() {
         <PageHeader title="Relatórios" subtitle="Relatórios gerenciais, fichas cadastrais e documentos prontos para impressão." />
       </div>
 
-      <div className="print:hidden flex flex-wrap gap-2 border-b border-gray-200 pb-px">
+      <div className="print:hidden flex flex-wrap gap-2 pb-px">
         {abas.map((a) => (
           <button
             key={a.id}

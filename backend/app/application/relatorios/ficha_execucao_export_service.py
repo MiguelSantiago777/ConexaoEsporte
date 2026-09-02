@@ -27,6 +27,7 @@ from pathlib import Path
 
 import openpyxl
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
 from app.domain.ficha_execucao.entities import FichaExecucao
 from app.domain.polo.entities import Polo
 
@@ -46,7 +47,9 @@ def _fmt_data(d) -> str:
     return d.strftime("%d/%m/%Y") if d else ""
 
 
-def exportar_ficha_execucao(ficha: FichaExecucao, polo: Polo | None) -> io.BytesIO:
+def exportar_ficha_execucao(
+    ficha: FichaExecucao, polo: Polo | None, cabecalho_convenio: str | None = None
+) -> io.BytesIO:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb["Planilha1"]
 
@@ -149,6 +152,7 @@ def exportar_ficha_execucao(ficha: FichaExecucao, polo: Polo | None) -> io.Bytes
     if ficha.consideracoes_finais:
         ws["D114"] = ficha.consideracoes_finais
 
+    aplicar_cabecalho_xlsx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

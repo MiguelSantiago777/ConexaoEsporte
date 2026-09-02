@@ -19,8 +19,10 @@ from app.core.config import settings
 from app.core.exception_handlers import registrar_exception_handlers
 from app.core.rate_limit import limiter
 from app.interfaces.api.v1.routers import (
+    anexo_geral_router,
     auth_router,
     beneficiario_router,
+    configuracao_geral_router,
     dashboard_router,
     entrega_material_router,
     ficha_execucao_router,
@@ -60,6 +62,16 @@ tags_metadata = [
         "description": "KPIs e séries para gráficos (frequência, beneficiários por modalidade, ranking de "
         "polos) por período — para acompanhamento do Gestor de Polo e visão geral do MASTER.",
     },
+    {
+        "name": "Anexos Gerais",
+        "description": "Repositório livre de documentos por polo, não ligados a um professor ou "
+        "beneficiário específico — MASTER e GESTOR_POLO do próprio polo.",
+    },
+    {
+        "name": "Configuração Geral",
+        "description": "Número de convênio e datas de início/fim do projeto — dado único, exibido no "
+        "rodapé de todos os relatórios exportados. Exclusivo do MASTER.",
+    },
 ]
 
 description = """
@@ -70,7 +82,7 @@ API do sistema **Conexão Esporte** — plataforma de gestão de projetos esport
 - **GESTOR_POLO** — editor restrito ao seu próprio polo.
 - **PROFESSOR** — restrito às suas turmas: chamada de frequência e relatórios de aula.
 
-> **Nomenclatura oficial:** a pessoa atendida é sempre **Beneficiário** — nunca "aluno".
+
 
 ### Como testar no Swagger
 1. Faça login em `POST /api/v1/auth/login` (campo `username` = email).
@@ -78,9 +90,7 @@ API do sistema **Conexão Esporte** — plataforma de gestão de projetos esport
 3. Clique em **Authorize** (cadeado, topo direito) e cole o token.
 """
 
-# Em produção, o Swagger/ReDoc/openapi.json ficam desligados por padrão para
-# reduzir a superfície exposta publicamente (a API continua funcionando
-# normalmente; só a documentação interativa fica indisponível).
+
 _docs_habilitados = not settings.is_production
 
 app = FastAPI(
@@ -102,24 +112,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rate limiting (login e troca de senha) — ver app/core/rate_limit.py.
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Mapeia toda exceção de domínio para o status HTTP correto — ver
-# app/core/exception_handlers.py. Nenhum router precisa de try/except
-# manual para isso.
+
 registrar_exception_handlers(app)
 
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    """Cabeçalhos de segurança padrão, aplicados a toda resposta.
 
-    HSTS só faz sentido quando a conexão já é HTTPS (o Nginx da produção
-    cuida disso — ver DEPLOY.md); em HTTP puro o header é inofensivo mas
-    inútil, então fica de fora até a migração para domínio+TLS.
-    """
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -141,6 +144,8 @@ app.include_router(relatorio_aula_router.router, prefix=API)
 app.include_router(ficha_execucao_router.router, prefix=API)
 app.include_router(entrega_material_router.router, prefix=API)
 app.include_router(dashboard_router.router, prefix=API)
+app.include_router(anexo_geral_router.router, prefix=API)
+app.include_router(configuracao_geral_router.router, prefix=API)
 
 
 @app.get("/", tags=["Health"], summary="Health check")

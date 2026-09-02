@@ -1,6 +1,5 @@
 """Rotas de Turmas. Tag Swagger: 'Turmas'."""
-from typing import Annotated
-from urllib.parse import quote
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -16,6 +15,8 @@ from app.core.dependencies import (
     require_perfis,
 )
 from app.domain.enums import PerfilUsuario
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
+from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.turma_schemas import TurmaCreateRequest, TurmaResponse, TurmaUpdateRequest
 
 router = APIRouter(prefix="/turmas", tags=["Turmas"])
@@ -34,19 +35,35 @@ QualquerPerfil = Annotated[
 
 @router.get(
     "",
-    response_model=list[TurmaResponse],
+    response_model=list[TurmaResponse] | PaginaResponse[TurmaResponse],
     summary="Listar turmas",
-    description="MASTER vê todas. GESTOR_POLO vê as do seu polo. PROFESSOR vê apenas as suas.",
+    description="MASTER vê todas. GESTOR_POLO vê as do seu polo. PROFESSOR vê apenas as suas. "
+    "Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só "
+    "precisam das opções, como um <select>).",
 )
-def listar_turmas(usuario: CurrentUser, db: DbSession) -> list[TurmaResponse]:
+def listar_turmas(
+    usuario: CurrentUser, db: DbSession,
+    pagina: Annotated[int | None, Query(ge=1)] = None,
+    tamanho_pagina: Annotated[int, Query(ge=1, le=200)] = 20,
+) -> list[TurmaResponse] | PaginaResponse[TurmaResponse]:
     service = TurmaService(db)
     if usuario.perfil == PerfilUsuario.MASTER:
-        turmas = service.listar()
+        filtro_polo, filtro_professor = None, None
     elif usuario.perfil == PerfilUsuario.GESTOR_POLO:
-        turmas = service.listar(polo_id=usuario.polo_id)
+        filtro_polo, filtro_professor = usuario.polo_id, None
     else:  # PROFESSOR
-        turmas = service.listar(professor_id=usuario.id)
-    return [TurmaResponse(**t) for t in turmas]
+        filtro_polo, filtro_professor = None, usuario.id
+
+    if pagina is None:
+        turmas = service.listar(polo_id=filtro_polo, professor_id=filtro_professor)
+        return [TurmaResponse(**t) for t in turmas]
+
+    turmas, total = service.listar_pagina(
+        pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=filtro_polo, professor_id=filtro_professor
+    )
+    return PaginaResponse(
+        itens=[TurmaResponse(**t) for t in turmas], total=total, pagina=pagina, tamanho_pagina=tamanho_pagina
+    )
 
 
 @router.post(
@@ -89,10 +106,11 @@ def atualizar_turma(
 
 @router.get(
     "/{turma_id}/lista-presenca/exportar",
-    summary="Exportar Lista de Presença mensal da turma em .xlsx",
+    summary="Exportar Lista de Presença mensal da turma em .xlsx ou .pdf",
     description="Gera o arquivo preenchido no layout oficial do modelo, com a grade de "
     "presença (P/A) do mês a partir dos registros de frequência já lançados. MASTER e "
-    "GESTOR_POLO exportam qualquer turma do seu escopo; PROFESSOR só a(s) sua(s).",
+    "GESTOR_POLO exportam qualquer turma do seu escopo; PROFESSOR só a(s) sua(s). "
+    "`formato=pdf` converte via LibreOffice, preservando o layout.",
 )
 def exportar_lista_presenca(
     turma_id: UUID,
@@ -100,14 +118,8 @@ def exportar_lista_presenca(
     db: DbSession,
     mes: Annotated[int, Query(ge=1, le=12)],
     ano: Annotated[int, Query(ge=2000, le=2100)],
+    formato: Literal["xlsx", "pdf"] = "xlsx",
 ) -> Response:
     assert_acesso_a_turma(usuario, db, turma_id)
     buffer = RelatorioService(db).gerar_lista_presenca(turma_id, mes, ano)
-    nome_arquivo = f"Lista de Presenca - {mes:02d}-{ano}.xlsx"
-    nome_ascii = nome_arquivo.encode("ascii", errors="replace").decode("ascii")
-    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_arquivo)}'
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": content_disposition},
-    )
+    return resposta_relatorio(buffer, f"Lista de Presenca - {mes:02d}-{ano}", "xlsx", formato)

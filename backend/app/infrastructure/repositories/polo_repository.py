@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.polo.entities import Polo
 from app.infrastructure.database.models import PoloModel
+from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: PoloModel) -> Polo:
@@ -35,6 +36,14 @@ class PoloRepository:
 
     def listar(self) -> list[Polo]:
         return [_to_entity(m) for m in self.db.scalars(select(PoloModel))]
+
+    def listar_pagina(self, pagina: int, tamanho_pagina: int, nome: str | None = None) -> tuple[list[Polo], int]:
+        stmt = select(PoloModel)
+        if nome:
+            stmt = stmt.where(PoloModel.nome.ilike(f"%{nome}%"))
+        stmt = stmt.order_by(PoloModel.nome)
+        modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
+        return [_to_entity(m) for m in modelos], total
 
     def buscar_por_id(self, polo_id: UUID) -> Polo | None:
         m = self.db.get(PoloModel, polo_id)

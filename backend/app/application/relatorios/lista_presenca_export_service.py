@@ -18,6 +18,8 @@ from pathlib import Path
 import openpyxl
 from openpyxl.utils import get_column_letter
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
+
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "infrastructure" / "templates" / "lista_presenca.xlsx"
 
 MESES_PT = [
@@ -45,6 +47,7 @@ def exportar_lista_presenca(
     beneficiarios: list[tuple[str, str]],  # [(beneficiario_id, nome_completo), ...]
     presencas: dict[tuple[str, int], bool],  # {(beneficiario_id, dia): presente}
     entidade_titulo: str | None = None,  # "LISTA DE PRESENÇA - {entidade} - Termo de Fomento nº {n}"
+    cabecalho_convenio: str | None = None,
 ) -> io.BytesIO:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb["Lista de Presença"]
@@ -80,6 +83,7 @@ def exportar_lista_presenca(
             col = get_column_letter(PRIMEIRA_COLUNA_DIA + dia - 1)
             ws[f"{col}{linha}"] = "P" if presente else "A"
 
+    aplicar_cabecalho_xlsx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

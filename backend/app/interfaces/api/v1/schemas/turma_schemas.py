@@ -36,6 +36,7 @@ class TurmaUpdateRequest(BaseModel):
     coordenador_nome: str | None = Field(default=None, max_length=150)
     monitor_nome: str | None = Field(default=None, max_length=150)
     periodicidade: str | None = Field(default=None, max_length=50)
+    ativo: bool | None = None
 
 
 class TurmaResponse(BaseModel):
@@ -51,5 +52,6 @@ class TurmaResponse(BaseModel):
     coordenador_nome: str | None = None
     monitor_nome: str | None = None
     periodicidade: str | None = None
+    ativo: bool = True
 
     model_config = {"from_attributes": True}

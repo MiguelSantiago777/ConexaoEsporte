@@ -27,18 +27,18 @@ export function Modal({ open, onClose, title, children, maxWidth = "max-w-lg" }:
       <div
         className={`relative bg-white rounded-xl shadow-xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-fade-in`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
+        <div className="flex items-center justify-between px-5 py-4 sm:px-7 sm:py-5 border-b border-gray-100 sticky top-0 bg-white">
           <h2 className="text-lg font-semibold text-brand-dark">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-gray-100 shrink-0"
             aria-label="Fechar"
           >
             <CloseIcon />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-5 sm:p-7">{children}</div>
       </div>
     </div>
   );

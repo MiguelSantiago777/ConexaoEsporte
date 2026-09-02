@@ -115,7 +115,7 @@ export function FichaExecucaoDetalhePage() {
           title={`Ficha — ${ficha.periodo_referencia}`}
           subtitle={polo ? `${polo.nome} — Ficha Técnica de Execução da Entidade.` : "Ficha Técnica de Execução da Entidade."}
         />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to="/fichas-execucao"><Button variant="secondary">Voltar</Button></Link>
           <Button variant="secondary" onClick={exportar} disabled={exportando}>
             {exportando ? "Exportando…" : "Exportar .xlsx"}
@@ -166,20 +166,20 @@ export function FichaExecucaoDetalhePage() {
           {(ficha.metas ?? []).map((meta, mi) => (
             <div key={mi}>
               <h3 className="text-sm font-semibold text-brand-dark mb-2">{meta.meta}</h3>
-              <div className="overflow-x-auto -mx-6">
+              <div className="overflow-x-auto -mx-5 sm:-mx-8">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-                      <th className="py-1.5 px-6">Etapa</th>
+                      <th className="py-1.5 px-8">Etapa</th>
                       <th className="px-3">Previsto</th>
                       <th className="px-3">Executado</th>
-                      <th className="px-3 pr-6 text-right">Ações</th>
+                      <th className="px-3 pr-8 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(meta.etapas ?? []).map((etapa, ei) => (
                       <tr key={ei} className="border-t border-gray-100">
-                        <td className="py-1.5 px-6">
+                        <td className="py-1.5 px-8">
                           <Input value={etapa.nome} onChange={(e) => {
                             const metas = ficha.metas.map((m, i) =>
                               i !== mi ? m : { ...m, etapas: (m.etapas ?? []).map((et, j) => (j === ei ? { ...et, nome: e.target.value } : et)) }
@@ -203,7 +203,7 @@ export function FichaExecucaoDetalhePage() {
                             patch({ metas });
                           }} />
                         </td>
-                        <td className="px-3 pr-6 text-right">
+                        <td className="px-3 pr-8 text-right">
                           <button type="button" className="text-xs text-gray-400 hover:text-red-600" onClick={() => {
                             const metas = ficha.metas.map((m, i) =>
                               i !== mi ? m : { ...m, etapas: (m.etapas ?? []).filter((_, j) => j !== ei) }
@@ -230,20 +230,20 @@ export function FichaExecucaoDetalhePage() {
       </Card>
 
       <Card title="4 — Desenvolvimento das atividades (pactuado x executado)" className="animate-fade-in-up" style={staggerStyle(3)}>
-        <div className="overflow-x-auto -mx-6">
+        <div className="overflow-x-auto -mx-5 sm:-mx-8">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-                <th className="py-1.5 px-6">Item</th>
+                <th className="py-1.5 px-8">Item</th>
                 <th className="px-3">Pactuado</th>
                 <th className="px-3">Executado</th>
-                <th className="px-3 pr-6">Observações</th>
+                <th className="px-3 pr-8">Observações</th>
               </tr>
             </thead>
             <tbody>
               {(ficha.atividades_comparativo ?? []).map((item, i) => (
                 <tr key={i} className="border-t border-gray-100">
-                  <td className="py-1.5 px-6 font-medium text-gray-700 whitespace-nowrap">{item.item}</td>
+                  <td className="py-1.5 px-8 font-medium text-gray-700 whitespace-nowrap">{item.item}</td>
                   <td className="px-3"><Input value={item.pactuado} onChange={(e) => {
                     const lista = [...(ficha.atividades_comparativo ?? [])];
                     lista[i] = { ...item, pactuado: e.target.value };
@@ -254,7 +254,7 @@ export function FichaExecucaoDetalhePage() {
                     lista[i] = { ...item, executado: e.target.value };
                     patch({ atividades_comparativo: lista });
                   }} /></td>
-                  <td className="px-3 pr-6"><Input value={item.observacoes} onChange={(e) => {
+                  <td className="px-3 pr-8"><Input value={item.observacoes} onChange={(e) => {
                     const lista = [...(ficha.atividades_comparativo ?? [])];
                     lista[i] = { ...item, observacoes: e.target.value };
                     patch({ atividades_comparativo: lista });
@@ -267,19 +267,19 @@ export function FichaExecucaoDetalhePage() {
       </Card>
 
       <Card title="5 — Execução (checklist de documentação)" className="animate-fade-in-up" style={staggerStyle(4)}>
-        <div className="overflow-x-auto -mx-6">
+        <div className="overflow-x-auto -mx-5 sm:-mx-8">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
-                <th className="py-1.5 px-6">Documento</th>
+                <th className="py-1.5 px-8">Documento</th>
                 <th className="px-3">Situação</th>
-                <th className="px-3 pr-6">Observação</th>
+                <th className="px-3 pr-8">Observação</th>
               </tr>
             </thead>
             <tbody>
               {(ficha.checklist_documentos ?? []).map((item, i) => (
                 <tr key={i} className="border-t border-gray-100">
-                  <td className="py-1.5 px-6 text-gray-700">{item.documento}</td>
+                  <td className="py-1.5 px-8 text-gray-700">{item.documento}</td>
                   <td className="px-3 w-44">
                     <Select value={item.situacao} onChange={(e) => {
                       const lista = [...(ficha.checklist_documentos ?? [])];
@@ -290,7 +290,7 @@ export function FichaExecucaoDetalhePage() {
                       <option value="Inserido">Inserido</option>
                     </Select>
                   </td>
-                  <td className="px-3 pr-6"><Input value={item.observacao} onChange={(e) => {
+                  <td className="px-3 pr-8"><Input value={item.observacao} onChange={(e) => {
                     const lista = [...ficha.checklist_documentos];
                     lista[i] = { ...item, observacao: e.target.value };
                     patch({ checklist_documentos: lista });

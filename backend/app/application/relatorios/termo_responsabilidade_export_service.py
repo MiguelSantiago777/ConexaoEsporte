@@ -16,6 +16,8 @@ from pathlib import Path
 
 import docx
 
+from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_docx
+
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "infrastructure" / "templates" / "termo_responsabilidade.docx"
 
 MESES_PT = [
@@ -42,6 +44,7 @@ def exportar_termo_responsabilidade(
     bairro: str,
     cidade: str,
     data_assinatura: date | None = None,
+    cabecalho_convenio: str | None = None,
 ) -> io.BytesIO:
     wb = docx.Document(TEMPLATE_PATH)
     data_assinatura = data_assinatura or date.today()
@@ -61,6 +64,7 @@ def exportar_termo_responsabilidade(
         elif paragrafo.text.startswith("_Cidade/UF"):
             _substituir_paragrafo(paragrafo, texto_data)
 
+    aplicar_cabecalho_docx(wb, cabecalho_convenio)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)

@@ -84,14 +84,23 @@ def _ajustar_largura_colunas(ws: Worksheet, colunas: list[str], linhas: list[lis
         ws.column_dimensions[letra].width = min(max(maior + 3, 10), 42)
 
 
-def cabecalho_documento(ws: Worksheet, titulo: str, subtitulo: str | None = None) -> int:
-    """Título grande + subtítulo opcional no topo da planilha. Retorna a
-    próxima linha livre."""
-    ws.cell(row=1, column=1, value=titulo).font = Font(bold=True, size=16, color=AZUL_MARCA)
+def cabecalho_documento(ws: Worksheet, titulo: str, subtitulo: str | None = None, com_logo: bool = False) -> int:
+    """Título grande + subtítulo opcional no topo da planilha. Com
+    `com_logo=True`, ancora o logo do projeto em A1 e desloca o texto para
+    a coluna C, para não sobrepor a imagem (só usar em planilhas sem
+    layout oficial fixo — ver `cabecalho_convenio.py`). Retorna a próxima
+    linha livre."""
+    coluna = 3 if com_logo else 1
+    ws.cell(row=1, column=coluna, value=titulo).font = Font(bold=True, size=16, color=AZUL_MARCA)
     linha = 2
     if subtitulo:
-        ws.cell(row=2, column=1, value=subtitulo).font = Font(size=10, color="FF6B7280")
+        ws.cell(row=2, column=coluna, value=subtitulo).font = Font(size=10, color="FF6B7280")
         linha = 3
+    if com_logo:
+        from app.application.relatorios.cabecalho_convenio import logo_flutuante_xlsx
+
+        logo_flutuante_xlsx(ws)
+        linha = max(linha, 3)
     return linha + 1
 
 

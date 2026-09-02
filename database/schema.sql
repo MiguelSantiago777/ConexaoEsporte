@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS beneficiario_documentos (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     beneficiario_id   UUID NOT NULL REFERENCES beneficiarios(id) ON DELETE CASCADE,
     tipo              VARCHAR(50) NOT NULL CHECK (tipo IN (
-        'certidao_nascimento_ou_identidade', 'identidade_responsavel',
+        'foto', 'certidao_nascimento_ou_identidade', 'identidade_responsavel',
         'comprovante_residencia', 'comprovante_escolar'
     )),
     nome_arquivo      VARCHAR(255) NOT NULL,
@@ -336,6 +336,11 @@ CREATE INDEX IF NOT EXISTS idx_relatorios_turma ON relatorios_aula(turma_id);
 ALTER TABLE turmas ADD COLUMN IF NOT EXISTS coordenador_nome VARCHAR(150);
 ALTER TABLE turmas ADD COLUMN IF NOT EXISTS monitor_nome     VARCHAR(150);
 ALTER TABLE turmas ADD COLUMN IF NOT EXISTS periodicidade    VARCHAR(50);
+
+-- "Excluir" turma é uma desativação (ativo = false), nunca um DELETE físico:
+-- turma_id tem ON DELETE CASCADE em frequências, matrículas, impeditivos e
+-- evidências — um DELETE de verdade apagaria todo o histórico de chamada.
+ALTER TABLE turmas ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT true;
 
 -- A tabela "entidade" (cadastro único de OSC) foi substituída pelos campos
 -- de parceria direto em `polos` — cada polo é sua própria entidade
@@ -456,3 +461,60 @@ CREATE TABLE IF NOT EXISTS chamada_evidencias (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chamada_evidencias_turma_data ON chamada_evidencias(turma_id, data);
+
+-- ---------------------------------------------------------------------
+-- TABELA: usuario_documentos — anexos do cadastro de professor (foto,
+-- documentos e contrato). Mesmo esquema de armazenamento dos demais
+-- anexos do sistema (beneficiario_documentos).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS usuario_documentos (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id        UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    tipo              VARCHAR(20) NOT NULL CHECK (tipo IN ('FOTO', 'DOCUMENTO', 'CONTRATO')),
+    nome_arquivo      VARCHAR(255) NOT NULL,
+    caminho_arquivo   VARCHAR(500) NOT NULL,
+    content_type      VARCHAR(100),
+    tamanho_bytes     INTEGER,
+    enviado_por_id    UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_usuario_documentos_usuario ON usuario_documentos(usuario_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: anexos_gerais — repositório livre de documentos por polo (não
+-- ligados a um professor/beneficiário específico), para MASTER e
+-- GESTOR_POLO anexarem qualquer arquivo útil (apólices, contratos de
+-- aluguel, atas, etc.).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS anexos_gerais (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    polo_id           UUID NOT NULL REFERENCES polos(id) ON DELETE CASCADE,
+    titulo            VARCHAR(150) NOT NULL,
+    nome_arquivo      VARCHAR(255) NOT NULL,
+    caminho_arquivo   VARCHAR(500) NOT NULL,
+    content_type      VARCHAR(100),
+    tamanho_bytes     INTEGER,
+    enviado_por_id    UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_anexos_gerais_polo ON anexos_gerais(polo_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: configuracao_geral — registro único (singleton) com dados
+-- globais do projeto/convênio, exibidos no rodapé de todos os relatórios
+-- exportados. Não é por polo (cada polo já tem seu próprio Termo de
+-- Fomento em `polos`) — é um dado só, da entidade como um todo.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS configuracao_geral (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome_projeto          VARCHAR(200),
+    numero_convenio       VARCHAR(100),
+    data_inicio_projeto   DATE,
+    data_fim_projeto      DATE,
+    atualizado_por_id     UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    atualizado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_projeto VARCHAR(200);

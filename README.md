@@ -43,7 +43,6 @@ conexao-esporte/
 │   └── .env.example
 ├── database/
 │   ├── schema.sql               # tabelas, enums, FKs, índices (idempotente)
-│   ├── rls_policies.sql         # NÃO USAR fora do Supabase — ver aviso no topo do arquivo
 │   └── seed.sql                 # dados de teste (NÃO usar em produção)
 ├── deploy/                      # assets de produção: systemd, Nginx, gerador de segredos
 ├── DEPLOY.md                    # passo a passo completo de deploy num servidor Linux próprio
@@ -73,8 +72,6 @@ Ou num Postgres já instalado localmente, aplique nesta ordem:
 psql -h localhost -U postgres -d conexao_esporte -f database/schema.sql
 psql -h localhost -U postgres -d conexao_esporte -f database/seed.sql   # só em dev
 ```
-
-> **Não rode `database/rls_policies.sql`** fora de um projeto Supabase — ele depende do PostgREST para funcionar e, num Postgres comum, bloquearia o acesso do próprio backend. Leia o aviso no topo do arquivo.
 
 ### Usuários de teste do `seed.sql` (senha: `senha123`)
 
@@ -229,7 +226,7 @@ preservam 100% do layout/estilo originais).
 ## Arquitetura & decisões
 
 - **DDD em camadas:** `domain` (entidades e regras puras, sem framework) → `application` (casos de uso) → `infrastructure` (ORM/repos) → `interfaces` (HTTP). As dependências apontam sempre para dentro.
-- **RBAC no backend:** todas as regras de acesso por perfil/polo/turma são impostas em `app/core/dependencies.py` e nos services — a API nunca depende de RLS de banco para segurança (o arquivo `rls_policies.sql` é só um resquício de uma versão anterior pensada para Supabase, e não deve ser executado neste setup).
+- **RBAC no backend:** todas as regras de acesso por perfil/polo/turma são impostas em `app/core/dependencies.py` e nos services — a API nunca depende de RLS de banco para segurança.
 - **Nomenclatura "beneficiário"** aplicada de ponta a ponta e verificada por teste automatizado.
 - **JWT self-managed:** access token curto + refresh token; o front renova automaticamente via interceptor do axios. Autenticação via **Bearer puro** (`HTTPBearer`), não OAuth2 completo.
 - **Segurança:** senhas com bcrypt (custo 12, mínimo 8 caracteres), rate limiting em login/troca de senha, security headers em toda resposta, Swagger desligado em produção, usuário de banco dedicado sem privilégio de superusuário. Checklist completo em `DEPLOY.md`.
