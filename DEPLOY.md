@@ -177,6 +177,16 @@ Esse usuário só enxerga o banco `conexao_esporte` — não tem privilégio de
 superusuário nem acesso a outros bancos que venham a existir nesta mesma
 instância no futuro.
 
+O schema usa a extensão `pgcrypto` (pra gerar UUID) — criá-la exige
+superusuário, então rode isso uma vez como `postgres` antes do schema (o
+próprio `schema.sql` também tenta criar, mas o usuário de aplicação não
+tem permissão; sem isso, toda tabela falha em cascata porque nenhuma
+consegue resolver `gen_random_uuid()`):
+
+```bash
+sudo -u postgres psql -d conexao_esporte -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto";'
+```
+
 Aplique o schema (rode como o novo usuário, para que ele já seja o *owner*
 das tabelas):
 
