@@ -16,10 +16,16 @@ class Usuario:
     ativo: bool = True
     telefone: str | None = None
     carga_horaria_semanal: str | None = None
+    almoxarifado_id: UUID | None = None  # obrigatório apenas para COORDENADOR_ALMOXARIFADO
+    papel_id: UUID | None = None  # obrigatório apenas para PERSONALIZADO
 
     def __post_init__(self) -> None:
         if self.perfil == PerfilUsuario.GESTOR_POLO and self.polo_id is None:
             raise ValueError("GESTOR_POLO precisa estar vinculado a um polo_id.")
+        if self.perfil == PerfilUsuario.COORDENADOR_ALMOXARIFADO and self.almoxarifado_id is None:
+            raise ValueError("COORDENADOR_ALMOXARIFADO precisa estar vinculado a um almoxarifado_id.")
+        if self.perfil == PerfilUsuario.PERSONALIZADO and self.papel_id is None:
+            raise ValueError("PERSONALIZADO precisa estar vinculado a um papel_id.")
 
 
 # Tipos de anexo aceitos no cadastro de professor.

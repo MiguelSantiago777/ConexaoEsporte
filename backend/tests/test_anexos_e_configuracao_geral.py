@@ -17,6 +17,8 @@ def _limpar_uploads_teste():
     yield
     shutil.rmtree(Path("uploads/usuarios"), ignore_errors=True)
     shutil.rmtree(Path("uploads/anexos_gerais"), ignore_errors=True)
+    shutil.rmtree(Path("uploads/estoque"), ignore_errors=True)
+    shutil.rmtree(Path("uploads/comprovantes_entrega"), ignore_errors=True)
 
 
 def _criar_professor(client, token_gestor, polo_id, email="prof.anexo@test.com"):
@@ -87,11 +89,9 @@ def test_gestor_de_outro_polo_nao_acessa_documentos_do_professor(client, seed_ba
     assert resp.status_code == 403
 
 
-def test_anexo_geral_por_polo_e_isolado_entre_polos(client, seed_basico):
+def test_gestor_de_polo_nao_acessa_anexos_gerais(client, seed_basico):
     token_gestor_a = login(client, "gestor.a@test.com")
-    token_gestor_b = login(client, "gestor.b@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)
-    polo_b_id = str(seed_basico["polo_b"].id)
 
     resp = client.post(
         "/api/v1/anexos-gerais",
@@ -99,28 +99,42 @@ def test_anexo_geral_por_polo_e_isolado_entre_polos(client, seed_basico):
         files={"arquivo": ("apolice.pdf", b"conteudo", "application/pdf")},
         headers={"Authorization": f"Bearer {token_gestor_a}"},
     )
+    assert resp.status_code == 403
+
+    resp_lista = client.get(
+        "/api/v1/anexos-gerais", headers={"Authorization": f"Bearer {token_gestor_a}"}
+    )
+    assert resp_lista.status_code == 403
+
+
+def test_anexo_geral_e_filtrado_por_polo(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    headers_master = {"Authorization": f"Bearer {token_master}"}
+    polo_a_id = str(seed_basico["polo_a"].id)
+    polo_b_id = str(seed_basico["polo_b"].id)
+
+    resp = client.post(
+        "/api/v1/anexos-gerais",
+        data={"polo_id": polo_a_id, "titulo": "Apólice de seguro"},
+        files={"arquivo": ("apolice.pdf", b"conteudo", "application/pdf")},
+        headers=headers_master,
+    )
     assert resp.status_code == 201, resp.text
     anexo = resp.json()
 
-    # Gestor do polo B não enxerga o anexo do polo A.
+    # Filtrando pelo polo B (sem anexos) fica vazio.
     resp_lista_b = client.get(
-        "/api/v1/anexos-gerais", headers={"Authorization": f"Bearer {token_gestor_b}"}
+        "/api/v1/anexos-gerais", params={"polo_id": polo_b_id}, headers=headers_master
     )
     assert resp_lista_b.json() == []
 
-    # Nem consegue baixá-lo ou removê-lo diretamente pelo id.
-    resp_arquivo_b = client.get(
-        f"/api/v1/anexos-gerais/{anexo['id']}/arquivo", headers={"Authorization": f"Bearer {token_gestor_b}"}
-    )
-    assert resp_arquivo_b.status_code == 403
-
     resp_lista_a = client.get(
-        "/api/v1/anexos-gerais", headers={"Authorization": f"Bearer {token_gestor_a}"}
+        "/api/v1/anexos-gerais", params={"polo_id": polo_a_id}, headers=headers_master
     )
     assert len(resp_lista_a.json()) == 1
 
     resp_del = client.delete(
-        f"/api/v1/anexos-gerais/{anexo['id']}", headers={"Authorization": f"Bearer {token_gestor_a}"}
+        f"/api/v1/anexos-gerais/{anexo['id']}", headers=headers_master
     )
     assert resp_del.status_code == 204
 
@@ -158,7 +172,7 @@ def test_visao_consolidada_reune_anexo_geral_foto_de_chamada_e_observacao_de_aul
         "/api/v1/anexos-gerais",
         data={"polo_id": polo_a_id, "titulo": "Apólice de seguro"},
         files={"arquivo": ("apolice.pdf", b"conteudo", "application/pdf")},
-        headers={"Authorization": f"Bearer {token_gestor_a}"},
+        headers={"Authorization": f"Bearer {token_master}"},
     )
     assert resp_anexo.status_code == 201, resp_anexo.text
 
@@ -203,12 +217,12 @@ def test_visao_consolidada_reune_anexo_geral_foto_de_chamada_e_observacao_de_aul
     assert evidencia["nome_arquivo"] == "chamada.jpg"
     assert evidencia["possui_arquivo"] is True
 
-    # Gestor do polo B só enxerga o que é do próprio polo (nada, aqui).
+    # GESTOR_POLO não acessa a visão consolidada — exclusiva do MASTER.
     token_gestor_b = login(client, "gestor.b@test.com")
     resp_gestor_b = client.get(
         "/api/v1/anexos-gerais/consolidado", headers={"Authorization": f"Bearer {token_gestor_b}"}
     )
-    assert resp_gestor_b.json() == []
+    assert resp_gestor_b.status_code == 403
 
     # MASTER filtrando por polo_id do polo B (sem dados) fica vazio; polo A traz os 3 itens.
     resp_master_polo_b = client.get(
@@ -216,6 +230,67 @@ def test_visao_consolidada_reune_anexo_geral_foto_de_chamada_e_observacao_de_aul
         headers={"Authorization": f"Bearer {token_master}"},
     )
     assert resp_master_polo_b.json() == []
+
+
+def test_visao_consolidada_inclui_entrada_de_estoque_e_comprovante_de_entrega(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    token_gestor_a = login(client, "gestor.a@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+
+    produto = client.post(
+        "/api/v1/produtos", json={"nome": "Bola", "unidade_medida": "unidade"},
+        headers={"Authorization": f"Bearer {token_master}"},
+    ).json()
+    almoxarifado = client.post(
+        "/api/v1/almoxarifados", json={"nome": "Almoxarifado Central"},
+        headers={"Authorization": f"Bearer {token_master}"},
+    ).json()
+    client.post(
+        "/api/v1/movimentos-estoque",
+        data={
+            "produto_id": produto["id"], "almoxarifado_id": almoxarifado["id"], "quantidade": "10", "data": "2026-03-01",
+            "entregue_por": "Fornecedor ABC", "recebido_por": "João",
+        },
+        files={"arquivo": ("nota.pdf", b"conteudo", "application/pdf")},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+
+    entrega = client.post(
+        "/api/v1/entregas-materiais",
+        json={"polo_id": polo_a_id, "itens": [{"descricao": "Uniformes", "quantidade": "5"}]},
+        headers={"Authorization": f"Bearer {token_master}"},
+    ).json()
+    client.post(
+        f"/api/v1/entregas-materiais/{entrega['id']}/comprovante",
+        data={"recebido_por": "Maria"},
+        files={"arquivo": ("recibo.jpg", b"conteudo", "image/jpeg")},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+
+    # MASTER sem filtro de polo vê os dois — a Entrada de estoque (central,
+    # sem polo) e o comprovante da entrega (do polo A).
+    resp_master = client.get(
+        "/api/v1/anexos-gerais/consolidado", headers={"Authorization": f"Bearer {token_master}"}
+    )
+    itens = resp_master.json()
+    tipos = {item["tipo"] for item in itens}
+    assert "ESTOQUE_ENTRADA" in tipos
+    assert "ENTREGA_MATERIAIS" in tipos
+
+    entrada_doc = next(i for i in itens if i["tipo"] == "ESTOQUE_ENTRADA")
+    assert entrada_doc["polo_id"] is None
+    assert "Fornecedor ABC" in entrada_doc["descricao"]
+    assert "João" in entrada_doc["descricao"]
+
+    entrega_doc = next(i for i in itens if i["tipo"] == "ENTREGA_MATERIAIS")
+    assert entrega_doc["polo_id"] == polo_a_id
+    assert "Maria" in entrega_doc["descricao"]
+
+    # GESTOR_POLO não acessa a visão consolidada — exclusiva do MASTER.
+    resp_gestor = client.get(
+        "/api/v1/anexos-gerais/consolidado", headers={"Authorization": f"Bearer {token_gestor_a}"}
+    )
+    assert resp_gestor.status_code == 403
 
 
 def test_configuracao_geral_e_exclusiva_do_master(client, seed_basico):

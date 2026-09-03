@@ -25,8 +25,8 @@ function BrasaoDeLinhas({ className = "" }: { className?: string }) {
 
   return (
     <div className={className} aria-hidden="true">
-      <img src="/brasao-linhas.png" alt="" className="absolute inset-0 w-full h-full object-contain opacity-30" />
-      <div className="absolute inset-0 w-full h-full animate-luz-varrendo" style={mascara} />
+      <img src="/brasao-linhas.png" alt="" className="absolute inset-0 w-full h-full object-contain opacity-30 scale-[0.8]" />
+      <div className="absolute inset-0 w-full h-full animate-luz-varrendo scale-[0.8]" style={mascara} />
     </div>
   );
 }

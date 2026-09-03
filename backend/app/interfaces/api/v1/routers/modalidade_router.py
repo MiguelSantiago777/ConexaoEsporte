@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.application.modalidade.service import ModalidadeService
-from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, require_perfis
+from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.schemas.modalidade_schemas import (
     ModalidadeCreateRequest,
@@ -16,7 +16,8 @@ from app.interfaces.api.v1.schemas.modalidade_schemas import (
 router = APIRouter(prefix="/modalidades", tags=["Modalidades"])
 
 MasterOuGestor = Annotated[
-    UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
+    UsuarioAutenticado,
+    Depends(require_modulo_ou_perfis("modalidades", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO)),
 ]
 
 

@@ -19,16 +19,20 @@ from app.core.config import settings
 from app.core.exception_handlers import registrar_exception_handlers
 from app.core.rate_limit import limiter
 from app.interfaces.api.v1.routers import (
+    almoxarifado_router,
     anexo_geral_router,
     auth_router,
     beneficiario_router,
     configuracao_geral_router,
     dashboard_router,
     entrega_material_router,
+    estoque_router,
     ficha_execucao_router,
     frequencia_router,
     modalidade_router,
+    papel_router,
     polo_router,
+    produto_router,
     relatorio_aula_router,
     turma_router,
     usuario_router,
@@ -55,7 +59,14 @@ tags_metadata = [
     },
     {
         "name": "Entregas de Materiais",
-        "description": "Termo de Entrega de Materiais — registro e exportação em .docx por polo.",
+        "description": "Termo de Entrega de Materiais — registro e exportação em .docx por polo. Itens podem "
+        "referenciar um produto do catálogo de Estoque, o que baixa o estoque automaticamente (Saída).",
+    },
+    {
+        "name": "Estoque",
+        "description": "Catálogo de produtos e Entradas/Saídas do estoque central (exclusivo do MASTER "
+        "pra cadastro/Entrada; leitura liberada pro GESTOR_POLO). A Saída não tem rota própria — nasce "
+        "automaticamente de um item de Entrega de Materiais que referencia um produto.",
     },
     {
         "name": "Relatórios Gerenciais",
@@ -72,6 +83,11 @@ tags_metadata = [
         "description": "Número de convênio e datas de início/fim do projeto — dado único, exibido no "
         "rodapé de todos os relatórios exportados. Exclusivo do MASTER.",
     },
+    {
+        "name": "Central de Acessos",
+        "description": "Exclusiva do MASTER: cria Papéis (níveis de acesso personalizados) escolhendo "
+        "módulos do sistema, pra depois vincular usuários com perfil PERSONALIZADO a eles.",
+    },
 ]
 
 description = """
@@ -81,6 +97,9 @@ API do sistema **Conexão Esporte** — plataforma de gestão de projetos esport
 - **MASTER** — acesso total: polos, modalidades, turmas, beneficiários e usuários.
 - **GESTOR_POLO** — editor restrito ao seu próprio polo.
 - **PROFESSOR** — restrito às suas turmas: chamada de frequência e relatórios de aula.
+- **COORDENADOR_ALMOXARIFADO** — restrito ao Estoque de um único almoxarifado.
+- **PERSONALIZADO** — nível de acesso dinâmico, criado pelo MASTER na Central de Acessos: acesso
+  de leitura/escrita só nos módulos escolhidos pra aquele Papel.
 
 
 
@@ -143,6 +162,10 @@ app.include_router(frequencia_router.router, prefix=API)
 app.include_router(relatorio_aula_router.router, prefix=API)
 app.include_router(ficha_execucao_router.router, prefix=API)
 app.include_router(entrega_material_router.router, prefix=API)
+app.include_router(almoxarifado_router.router, prefix=API)
+app.include_router(papel_router.router, prefix=API)
+app.include_router(produto_router.router, prefix=API)
+app.include_router(estoque_router.router, prefix=API)
 app.include_router(dashboard_router.router, prefix=API)
 app.include_router(anexo_geral_router.router, prefix=API)
 app.include_router(configuracao_geral_router.router, prefix=API)

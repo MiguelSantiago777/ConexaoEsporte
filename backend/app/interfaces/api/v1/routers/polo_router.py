@@ -11,7 +11,7 @@ from app.core.dependencies import (
     DbSession,
     UsuarioAutenticado,
     assert_acesso_ao_polo,
-    require_perfis,
+    require_modulo_ou_perfis,
 )
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
@@ -20,9 +20,12 @@ from app.interfaces.api.v1.schemas.polo_schemas import PoloCreateRequest, PoloRe
 
 router = APIRouter(prefix="/polos", tags=["Polos"])
 
-SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
+SomenteMaster = Annotated[
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("polos", PerfilUsuario.MASTER))
+]
 MasterOuGestor = Annotated[
-    UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
+    UsuarioAutenticado,
+    Depends(require_modulo_ou_perfis("polos", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO)),
 ]
 
 
@@ -119,7 +122,7 @@ def exportar_grade_horaria(
     planejamento_horas: Annotated[float, Query(ge=0)] = 0,
     formato: Literal["docx", "pdf"] = "docx",
 ) -> Response:
-    assert_acesso_ao_polo(usuario, polo_id)
+    assert_acesso_ao_polo(usuario, polo_id, "polos")
     buffer = RelatorioService(db).gerar_grade_horaria(polo_id, planejamento_horas)
     return resposta_relatorio(buffer, "Grade Horaria", "docx", formato)
 
@@ -134,7 +137,7 @@ def exportar_grade_horaria(
 def exportar_planilha_nucleos(
     polo_id: UUID, usuario: MasterOuGestor, db: DbSession, formato: Literal["xlsx", "pdf"] = "xlsx"
 ) -> Response:
-    assert_acesso_ao_polo(usuario, polo_id)
+    assert_acesso_ao_polo(usuario, polo_id, "polos")
     buffer = RelatorioService(db).gerar_planilha_nucleos(polo_id)
     return resposta_relatorio(buffer, "Planilha de Nucleos", "xlsx", formato)
 
@@ -148,6 +151,6 @@ def exportar_planilha_nucleos(
 def exportar_termo_responsabilidade(
     polo_id: UUID, usuario: MasterOuGestor, db: DbSession, formato: Literal["docx", "pdf"] = "docx"
 ) -> Response:
-    assert_acesso_ao_polo(usuario, polo_id)
+    assert_acesso_ao_polo(usuario, polo_id, "polos")
     buffer = RelatorioService(db).gerar_termo_responsabilidade(polo_id)
     return resposta_relatorio(buffer, "Termo de Responsabilidade", "docx", formato)

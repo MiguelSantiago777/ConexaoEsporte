@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.application.configuracao_geral.service import ConfiguracaoGeralService
-from app.core.dependencies import DbSession, UsuarioAutenticado, require_perfis
+from app.core.dependencies import DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.schemas.configuracao_geral_schemas import (
     ConfiguracaoGeralResponse,
@@ -15,7 +15,9 @@ from app.interfaces.api.v1.schemas.configuracao_geral_schemas import (
 
 router = APIRouter(prefix="/configuracao-geral", tags=["Configuração Geral"])
 
-SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
+SomenteMaster = Annotated[
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("configuracoes", PerfilUsuario.MASTER))
+]
 
 
 @router.get(

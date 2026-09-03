@@ -48,3 +48,7 @@ armazenamento_evidencias = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_EVID
 armazenamento_usuario_documentos = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_USUARIOS)
 # Repositório de Anexos Gerais por polo.
 armazenamento_anexos_gerais = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_ANEXOS_GERAIS)
+# Nota fiscal/comprovante de uma Entrada de estoque.
+armazenamento_estoque = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_ESTOQUE)
+# Comprovante de recebimento no polo de uma Entrega de Materiais.
+armazenamento_comprovantes_entrega = ArmazenamentoLocalDocumentos(settings.UPLOAD_DIR_COMPROVANTES_ENTREGA)

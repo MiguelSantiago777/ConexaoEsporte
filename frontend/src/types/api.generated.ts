@@ -815,6 +815,275 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/entregas-materiais/{entrega_id}/comprovante": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar o comprovante de recebimento no polo */
+        get: operations["baixar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_get"];
+        put?: never;
+        /**
+         * Anexar comprovante de recebimento no polo
+         * @description Foto ou PDF assinado comprovando que o polo recebeu os materiais — aceita PDF, JPG, PNG ou WEBP. Enviar de novo substitui o comprovante anterior.
+         */
+        post: operations["enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/almoxarifados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar almoxarifados
+         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
+         */
+        get: operations["listar_almoxarifados_api_v1_almoxarifados_get"];
+        put?: never;
+        /** Cadastrar almoxarifado */
+        post: operations["criar_almoxarifado_api_v1_almoxarifados_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/almoxarifados/{almoxarifado_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalhar almoxarifado
+         * @description MASTER e GESTOR_POLO consultam qualquer um. COORDENADOR_ALMOXARIFADO só o próprio.
+         */
+        get: operations["buscar_almoxarifado_api_v1_almoxarifados__almoxarifado_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Remover almoxarifado
+         * @description Recusa a remoção se existir alguma movimentação de estoque registrada nele.
+         */
+        delete: operations["remover_almoxarifado_api_v1_almoxarifados__almoxarifado_id__delete"];
+        options?: never;
+        head?: never;
+        /** Editar almoxarifado */
+        patch: operations["editar_almoxarifado_api_v1_almoxarifados__almoxarifado_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/almoxarifados/{almoxarifado_id}/saldos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saldo de cada produto num almoxarifado
+         * @description MASTER e GESTOR_POLO consultam qualquer um. COORDENADOR_ALMOXARIFADO só o próprio. Só lista produtos que já tiveram alguma movimentação nele.
+         */
+        get: operations["saldos_do_almoxarifado_api_v1_almoxarifados__almoxarifado_id__saldos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/papeis/modulos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar módulos do sistema disponíveis para um Papel */
+        get: operations["listar_modulos_api_v1_papeis_modulos_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/papeis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Papéis (níveis de acesso personalizados)
+         * @description Exclusivo do MASTER. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
+         */
+        get: operations["listar_papeis_api_v1_papeis_get"];
+        put?: never;
+        /** Criar Papel */
+        post: operations["criar_papel_api_v1_papeis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/papeis/{papel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remover Papel
+         * @description Recusa a remoção se existir algum usuário vinculado a este Papel.
+         */
+        delete: operations["remover_papel_api_v1_papeis__papel_id__delete"];
+        options?: never;
+        head?: never;
+        /** Editar Papel */
+        patch: operations["editar_papel_api_v1_papeis__papel_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/produtos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar produtos do catálogo de Estoque
+         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
+         */
+        get: operations["listar_produtos_api_v1_produtos_get"];
+        put?: never;
+        /** Cadastrar produto no catálogo de Estoque */
+        post: operations["criar_produto_api_v1_produtos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/produtos/{produto_id}/saldos-por-almoxarifado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saldo do produto em cada almoxarifado
+         * @description MASTER e GESTOR_POLO podem consultar. Só lista almoxarifados que já tiveram alguma movimentação deste produto.
+         */
+        get: operations["saldos_por_almoxarifado_api_v1_produtos__produto_id__saldos_por_almoxarifado_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/produtos/{produto_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remover produto do catálogo de Estoque
+         * @description Recusa a remoção se existir alguma movimentação de estoque registrada pra este produto.
+         */
+        delete: operations["remover_produto_api_v1_produtos__produto_id__delete"];
+        options?: never;
+        head?: never;
+        /** Editar produto do catálogo de Estoque */
+        patch: operations["editar_produto_api_v1_produtos__produto_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/movimentos-estoque": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar movimentos de estoque (Entradas e Saídas)
+         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
+         */
+        get: operations["listar_movimentos_api_v1_movimentos_estoque_get"];
+        put?: never;
+        /**
+         * Registrar Entrada de estoque
+         * @description MASTER pode lançar em qualquer almoxarifado. COORDENADOR_ALMOXARIFADO só no seu próprio. O comprovante (nota fiscal, foto do recibo etc.) é obrigatório — aceita PDF, JPG, PNG ou WEBP, até o limite configurado de tamanho.
+         */
+        post: operations["registrar_entrada_api_v1_movimentos_estoque_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movimentos-estoque/{movimento_id}/arquivo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar o comprovante de uma Entrada de estoque */
+        get: operations["baixar_arquivo_api_v1_movimentos_estoque__movimento_id__arquivo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movimentos-estoque/relatorio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Relatório de Estoque — saldos por produto e movimentos do período
+         * @description MASTER e GESTOR_POLO podem consultar tudo. COORDENADOR_ALMOXARIFADO só vê o próprio almoxarifado.
+         */
+        get: operations["relatorio_estoque_api_v1_movimentos_estoque_relatorio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/relatorios/polo/{polo_id}": {
         parameters: {
             query?: never;
@@ -1041,6 +1310,39 @@ export interface components {
             /** Linhas */
             linhas?: (string | number | null)[][];
         };
+        /** AlmoxarifadoCreateRequest */
+        AlmoxarifadoCreateRequest: {
+            /**
+             * Nome
+             * @example Almoxarifado Central
+             */
+            nome: string;
+            /** Descricao */
+            descricao?: string | null;
+        };
+        /** AlmoxarifadoResponse */
+        AlmoxarifadoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Ativo */
+            ativo: boolean;
+        };
+        /** AlmoxarifadoUpdateRequest */
+        AlmoxarifadoUpdateRequest: {
+            /** Nome */
+            nome?: string | null;
+            /** Descricao */
+            descricao?: string | null;
+            /** Ativo */
+            ativo?: boolean | null;
+        };
         /** AlterarSenhaRequest */
         AlterarSenhaRequest: {
             /** Senha Atual */
@@ -1246,6 +1548,13 @@ export interface components {
             /** Arquivo */
             arquivo: string;
         };
+        /** Body_enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post */
+        Body_enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post: {
+            /** Arquivo */
+            arquivo: string;
+            /** Recebido Por */
+            recebido_por?: string | null;
+        };
         /** Body_enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post */
         Body_enviar_documento_usuario_api_v1_usuarios__usuario_id__documentos_post: {
             /**
@@ -1307,6 +1616,34 @@ export interface components {
              * Format: password
              */
             client_secret?: string | null;
+        };
+        /** Body_registrar_entrada_api_v1_movimentos_estoque_post */
+        Body_registrar_entrada_api_v1_movimentos_estoque_post: {
+            /**
+             * Produto Id
+             * Format: uuid
+             */
+            produto_id: string;
+            /**
+             * Almoxarifado Id
+             * Format: uuid
+             */
+            almoxarifado_id: string;
+            /** Quantidade */
+            quantidade: number;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /** Arquivo */
+            arquivo: string;
+            /** Observacao */
+            observacao?: string | null;
+            /** Entregue Por */
+            entregue_por?: string | null;
+            /** Recebido Por */
+            recebido_por?: string | null;
         };
         /**
          * ChamadaCreateRequest
@@ -1402,9 +1739,12 @@ export interface components {
         /**
          * DocumentoConsolidadoResponse
          * @description Item da visão consolidada e somente leitura de tudo que foi anexado
-         *     pelos polos (Anexos Gerais), pelos gestores de polo, ou pelos professores
-         *     ao lançar a chamada (fotos de evidência e observações do relatório de
-         *     aula).
+         *     pelos polos (Anexos Gerais), pelos gestores de polo, pelos professores ao
+         *     lançar a chamada (fotos de evidência e observações do relatório de aula),
+         *     ou gerado pelo módulo de Estoque (nota fiscal da Entrada, comprovante de
+         *     recebimento no polo de uma Entrega de Materiais). `polo_id`/`polo_nome`
+         *     ficam nulos só para a Entrada de estoque, que é um lançamento central e
+         *     não pertence a nenhum polo específico.
          */
         DocumentoConsolidadoResponse: {
             /**
@@ -1416,18 +1756,15 @@ export interface components {
              * Tipo
              * @enum {string}
              */
-            tipo: "ANEXO_GERAL" | "EVIDENCIA_CHAMADA" | "OBSERVACAO_AULA";
+            tipo: "ANEXO_GERAL" | "EVIDENCIA_CHAMADA" | "OBSERVACAO_AULA" | "ESTOQUE_ENTRADA" | "ENTREGA_MATERIAIS";
             /** Titulo */
             titulo: string;
             /** Descricao */
             descricao?: string | null;
-            /**
-             * Polo Id
-             * Format: uuid
-             */
-            polo_id: string;
+            /** Polo Id */
+            polo_id?: string | null;
             /** Polo Nome */
-            polo_nome: string;
+            polo_nome?: string | null;
             /** Turma Nome */
             turma_nome?: string | null;
             /** Autor Nome */
@@ -1483,6 +1820,12 @@ export interface components {
             entregue_por: string | null;
             /** Itens */
             itens: components["schemas"]["ItemEntregaRequest"][];
+            /** Comprovante Nome Arquivo */
+            comprovante_nome_arquivo?: string | null;
+            /** Comprovante Content Type */
+            comprovante_content_type?: string | null;
+            /** Comprovante Tamanho Bytes */
+            comprovante_tamanho_bytes?: number | null;
             /** Criado Por Id */
             criado_por_id: string | null;
         };
@@ -1763,6 +2106,16 @@ export interface components {
              * @example 10
              */
             quantidade: string;
+            /**
+             * Produto Id
+             * @description Quando informado, o item vem do catálogo de Estoque e a criação da entrega registra automaticamente uma Saída desse produto (quantidade precisa ser um inteiro).
+             */
+            produto_id?: string | null;
+            /**
+             * Almoxarifado Id
+             * @description Obrigatório quando produto_id é informado — de qual almoxarifado a Saída sai.
+             */
+            almoxarifado_id?: string | null;
         };
         /**
          * JustificativaFaltaItem
@@ -1894,6 +2247,69 @@ export interface components {
             /** Descricao */
             descricao?: string | null;
         };
+        /** ModuloDisponivelItem */
+        ModuloDisponivelItem: {
+            /** Chave */
+            chave: string;
+            /** Label */
+            label: string;
+        };
+        /** MovimentoEstoqueResponse */
+        MovimentoEstoqueResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Produto Id
+             * Format: uuid
+             */
+            produto_id: string;
+            /**
+             * Almoxarifado Id
+             * Format: uuid
+             */
+            almoxarifado_id: string;
+            /** Tipo */
+            tipo: string;
+            /** Quantidade */
+            quantidade: number;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /** Observacao */
+            observacao: string | null;
+            /** Entregue Por */
+            entregue_por: string | null;
+            /** Recebido Por */
+            recebido_por: string | null;
+            /** Nome Arquivo */
+            nome_arquivo: string | null;
+            /** Content Type */
+            content_type: string | null;
+            /** Tamanho Bytes */
+            tamanho_bytes: number | null;
+            /** Entrega Material Id */
+            entrega_material_id: string | null;
+            /** Criado Por Id */
+            criado_por_id: string | null;
+            /** Criado Em */
+            criado_em: string | null;
+        };
+        /** PaginaResponse[AlmoxarifadoResponse] */
+        PaginaResponse_AlmoxarifadoResponse_: {
+            /** Itens */
+            itens: components["schemas"]["AlmoxarifadoResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
         /** PaginaResponse[BeneficiarioResponse] */
         PaginaResponse_BeneficiarioResponse_: {
             /** Itens */
@@ -1927,10 +2343,43 @@ export interface components {
             /** Tamanho Pagina */
             tamanho_pagina: number;
         };
+        /** PaginaResponse[MovimentoEstoqueResponse] */
+        PaginaResponse_MovimentoEstoqueResponse_: {
+            /** Itens */
+            itens: components["schemas"]["MovimentoEstoqueResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[PapelResponse] */
+        PaginaResponse_PapelResponse_: {
+            /** Itens */
+            itens: components["schemas"]["PapelResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
         /** PaginaResponse[PoloResponse] */
         PaginaResponse_PoloResponse_: {
             /** Itens */
             itens: components["schemas"]["PoloResponse"][];
+            /** Total */
+            total: number;
+            /** Pagina */
+            pagina: number;
+            /** Tamanho Pagina */
+            tamanho_pagina: number;
+        };
+        /** PaginaResponse[ProdutoResponse] */
+        PaginaResponse_ProdutoResponse_: {
+            /** Itens */
+            itens: components["schemas"]["ProdutoResponse"][];
             /** Total */
             total: number;
             /** Pagina */
@@ -1960,11 +2409,50 @@ export interface components {
             /** Tamanho Pagina */
             tamanho_pagina: number;
         };
+        /** PapelCreateRequest */
+        PapelCreateRequest: {
+            /**
+             * Nome
+             * @example Financeiro
+             */
+            nome: string;
+            /** Descricao */
+            descricao?: string | null;
+            /** Modulos */
+            modulos?: string[];
+        };
+        /** PapelResponse */
+        PapelResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Modulos */
+            modulos: string[];
+            /** Ativo */
+            ativo: boolean;
+        };
+        /** PapelUpdateRequest */
+        PapelUpdateRequest: {
+            /** Nome */
+            nome?: string | null;
+            /** Descricao */
+            descricao?: string | null;
+            /** Modulos */
+            modulos?: string[] | null;
+            /** Ativo */
+            ativo?: boolean | null;
+        };
         /**
          * PerfilUsuario
          * @enum {string}
          */
-        PerfilUsuario: "MASTER" | "GESTOR_POLO" | "PROFESSOR";
+        PerfilUsuario: "MASTER" | "GESTOR_POLO" | "PROFESSOR" | "COORDENADOR_ALMOXARIFADO" | "PERSONALIZADO";
         /** PoloCreateRequest */
         PoloCreateRequest: {
             /**
@@ -2183,6 +2671,55 @@ export interface components {
             /** Longitude */
             longitude?: number | null;
         };
+        /** ProdutoCreateRequest */
+        ProdutoCreateRequest: {
+            /**
+             * Nome
+             * @example Bola de futebol
+             */
+            nome: string;
+            /**
+             * Unidade Medida
+             * @example unidade
+             * @example par
+             * @example caixa
+             */
+            unidade_medida: string;
+            /** Descricao */
+            descricao?: string | null;
+        };
+        /** ProdutoResponse */
+        ProdutoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Unidade Medida */
+            unidade_medida: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Ativo */
+            ativo: boolean;
+            /**
+             * Saldo Atual
+             * @default 0
+             */
+            saldo_atual: number;
+        };
+        /** ProdutoUpdateRequest */
+        ProdutoUpdateRequest: {
+            /** Nome */
+            nome?: string | null;
+            /** Unidade Medida */
+            unidade_medida?: string | null;
+            /** Descricao */
+            descricao?: string | null;
+            /** Ativo */
+            ativo?: boolean | null;
+        };
         /** RankingPolo */
         RankingPolo: {
             /**
@@ -2263,6 +2800,29 @@ export interface components {
             /** Observacoes */
             observacoes: string | null;
         };
+        /** RelatorioEstoqueResponse */
+        RelatorioEstoqueResponse: {
+            /**
+             * Data Inicio
+             * Format: date
+             */
+            data_inicio: string;
+            /**
+             * Data Fim
+             * Format: date
+             */
+            data_fim: string;
+            /** Total Produtos */
+            total_produtos: number;
+            /** Total Entradas Periodo */
+            total_entradas_periodo: number;
+            /** Total Saidas Periodo */
+            total_saidas_periodo: number;
+            /** Saldos */
+            saldos: components["schemas"]["SaldoProdutoItem"][];
+            /** Movimentos */
+            movimentos: components["schemas"]["MovimentoEstoqueResponse"][];
+        };
         /** RelatorioGeralResponse */
         RelatorioGeralResponse: {
             /**
@@ -2324,6 +2884,60 @@ export interface components {
             sem_marcacao: number;
             /** Total */
             total: number;
+        };
+        /**
+         * SaldoAlmoxarifadoItem
+         * @description Saldo de um Produto num almoxarifado específico — usado pro
+         *     detalhamento no catálogo e pras opções de Saída na Entrega de
+         *     Materiais, já que o mesmo produto pode ter saldos diferentes em cada
+         *     almoxarifado.
+         */
+        SaldoAlmoxarifadoItem: {
+            /**
+             * Almoxarifado Id
+             * Format: uuid
+             */
+            almoxarifado_id: string;
+            /** Almoxarifado Nome */
+            almoxarifado_nome: string;
+            /** Saldo */
+            saldo: number;
+        };
+        /** SaldoProdutoItem */
+        SaldoProdutoItem: {
+            /**
+             * Produto Id
+             * Format: uuid
+             */
+            produto_id: string;
+            /** Produto Nome */
+            produto_nome: string;
+            /** Unidade Medida */
+            unidade_medida: string;
+            /** Total Entradas */
+            total_entradas: number;
+            /** Total Saidas */
+            total_saidas: number;
+            /** Saldo Atual */
+            saldo_atual: number;
+        };
+        /**
+         * SaldoProdutoNoAlmoxarifadoItem
+         * @description Inverso do item acima: saldo de um Produto num almoxarifado
+         *     específico já conhecido (dashboard do Coordenador de Almoxarifado).
+         */
+        SaldoProdutoNoAlmoxarifadoItem: {
+            /**
+             * Produto Id
+             * Format: uuid
+             */
+            produto_id: string;
+            /** Produto Nome */
+            produto_nome: string;
+            /** Unidade Medida */
+            unidade_medida: string;
+            /** Saldo */
+            saldo: number;
         };
         /**
          * SeriePonto
@@ -2499,6 +3113,16 @@ export interface components {
              * @description Obrigatório quando perfil = GESTOR_POLO ou PROFESSOR.
              */
             polo_id?: string | null;
+            /**
+             * Almoxarifado Id
+             * @description Obrigatório quando perfil = COORDENADOR_ALMOXARIFADO.
+             */
+            almoxarifado_id?: string | null;
+            /**
+             * Papel Id
+             * @description Obrigatório quando perfil = PERSONALIZADO (ver Central de Acessos).
+             */
+            papel_id?: string | null;
             /** Telefone */
             telefone?: string | null;
             /**
@@ -2552,6 +3176,12 @@ export interface components {
             polo_nome?: string | null;
             /** Polo Codigo */
             polo_codigo?: string | null;
+            /** Almoxarifado Id */
+            almoxarifado_id?: string | null;
+            /** Almoxarifado Nome */
+            almoxarifado_nome?: string | null;
+            /** Modulos */
+            modulos?: string[];
         };
         /** UsuarioResponse */
         UsuarioResponse: {
@@ -2570,6 +3200,10 @@ export interface components {
             perfil: components["schemas"]["PerfilUsuario"];
             /** Polo Id */
             polo_id: string | null;
+            /** Almoxarifado Id */
+            almoxarifado_id: string | null;
+            /** Papel Id */
+            papel_id: string | null;
             /** Ativo */
             ativo: boolean;
             /** Telefone */
@@ -2585,6 +3219,10 @@ export interface components {
             ativo?: boolean | null;
             /** Polo Id */
             polo_id?: string | null;
+            /** Almoxarifado Id */
+            almoxarifado_id?: string | null;
+            /** Papel Id */
+            papel_id?: string | null;
             /** Telefone */
             telefone?: string | null;
             /**
@@ -4381,6 +5019,711 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entrega_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entrega_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntregaMaterialResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_almoxarifados_api_v1_almoxarifados_get: {
+        parameters: {
+            query?: {
+                apenas_ativos?: boolean;
+                nome?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlmoxarifadoResponse"][] | components["schemas"]["PaginaResponse_AlmoxarifadoResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    criar_almoxarifado_api_v1_almoxarifados_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlmoxarifadoCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlmoxarifadoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    buscar_almoxarifado_api_v1_almoxarifados__almoxarifado_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                almoxarifado_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlmoxarifadoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_almoxarifado_api_v1_almoxarifados__almoxarifado_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                almoxarifado_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_almoxarifado_api_v1_almoxarifados__almoxarifado_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                almoxarifado_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlmoxarifadoUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlmoxarifadoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saldos_do_almoxarifado_api_v1_almoxarifados__almoxarifado_id__saldos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                almoxarifado_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaldoProdutoNoAlmoxarifadoItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_modulos_api_v1_papeis_modulos_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuloDisponivelItem"][];
+                };
+            };
+        };
+    };
+    listar_papeis_api_v1_papeis_get: {
+        parameters: {
+            query?: {
+                apenas_ativos?: boolean;
+                nome?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PapelResponse"][] | components["schemas"]["PaginaResponse_PapelResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    criar_papel_api_v1_papeis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PapelCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PapelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_papel_api_v1_papeis__papel_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                papel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_papel_api_v1_papeis__papel_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                papel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PapelUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PapelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_produtos_api_v1_produtos_get: {
+        parameters: {
+            query?: {
+                apenas_ativos?: boolean;
+                nome?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoResponse"][] | components["schemas"]["PaginaResponse_ProdutoResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    criar_produto_api_v1_produtos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProdutoCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saldos_por_almoxarifado_api_v1_produtos__produto_id__saldos_por_almoxarifado_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                produto_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaldoAlmoxarifadoItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_produto_api_v1_produtos__produto_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                produto_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_produto_api_v1_produtos__produto_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                produto_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProdutoUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_movimentos_api_v1_movimentos_estoque_get: {
+        parameters: {
+            query?: {
+                produto_id?: string | null;
+                almoxarifado_id?: string | null;
+                tipo?: string | null;
+                data_inicio?: string | null;
+                data_fim?: string | null;
+                pagina?: number | null;
+                tamanho_pagina?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoEstoqueResponse"][] | components["schemas"]["PaginaResponse_MovimentoEstoqueResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    registrar_entrada_api_v1_movimentos_estoque_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_registrar_entrada_api_v1_movimentos_estoque_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoEstoqueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_arquivo_api_v1_movimentos_estoque__movimento_id__arquivo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                movimento_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    relatorio_estoque_api_v1_movimentos_estoque_relatorio_get: {
+        parameters: {
+            query: {
+                data_inicio: string;
+                data_fim: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatorioEstoqueResponse"];
                 };
             };
             /** @description Validation Error */

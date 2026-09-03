@@ -57,6 +57,7 @@ def refresh(body: RefreshTokenRequest, db: DbSession) -> TokenResponse:
     description="Retorna o perfil e o polo vinculado do usuário do token atual.",
 )
 def me(usuario: CurrentUser, db: DbSession) -> UsuarioLogadoResponse:
+    from app.infrastructure.repositories.almoxarifado_repository import AlmoxarifadoRepository
     from app.infrastructure.repositories.polo_repository import PoloRepository
     from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
@@ -65,9 +66,12 @@ def me(usuario: CurrentUser, db: DbSession) -> UsuarioLogadoResponse:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
     polo = PoloRepository(db).buscar_por_id(u.polo_id) if u.polo_id else None
+    almoxarifado = AlmoxarifadoRepository(db).buscar_por_id(u.almoxarifado_id) if u.almoxarifado_id else None
     return UsuarioLogadoResponse(
         id=u.id, nome=u.nome, email=u.email, perfil=u.perfil.value, polo_id=u.polo_id,
         polo_nome=polo.nome if polo else None, polo_codigo=polo.codigo if polo else None,
+        almoxarifado_id=u.almoxarifado_id, almoxarifado_nome=almoxarifado.nome if almoxarifado else None,
+        modulos=usuario.modulos,
     )
 
 

@@ -18,21 +18,26 @@ class AnexoGeralResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-TipoDocumentoConsolidado = Literal["ANEXO_GERAL", "EVIDENCIA_CHAMADA", "OBSERVACAO_AULA"]
+TipoDocumentoConsolidado = Literal[
+    "ANEXO_GERAL", "EVIDENCIA_CHAMADA", "OBSERVACAO_AULA", "ESTOQUE_ENTRADA", "ENTREGA_MATERIAIS"
+]
 
 
 class DocumentoConsolidadoResponse(BaseModel):
     """Item da visão consolidada e somente leitura de tudo que foi anexado
-    pelos polos (Anexos Gerais), pelos gestores de polo, ou pelos professores
-    ao lançar a chamada (fotos de evidência e observações do relatório de
-    aula)."""
+    pelos polos (Anexos Gerais), pelos gestores de polo, pelos professores ao
+    lançar a chamada (fotos de evidência e observações do relatório de aula),
+    ou gerado pelo módulo de Estoque (nota fiscal da Entrada, comprovante de
+    recebimento no polo de uma Entrega de Materiais). `polo_id`/`polo_nome`
+    ficam nulos só para a Entrada de estoque, que é um lançamento central e
+    não pertence a nenhum polo específico."""
 
     id: UUID
     tipo: TipoDocumentoConsolidado
     titulo: str
     descricao: str | None = None
-    polo_id: UUID
-    polo_nome: str
+    polo_id: UUID | None = None
+    polo_nome: str | None = None
     turma_nome: str | None = None
     autor_nome: str | None = None
     data_evento: date

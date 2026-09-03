@@ -2,8 +2,8 @@
 Testes de Entrega de Materiais (Termo de Entrega de Materiais) e do Termo
 de Responsabilidade — ambos exportados em .docx, no layout oficial do
 modelo. Cobre:
-- RBAC: MASTER e GESTOR_POLO do próprio polo cadastram/exportam entregas;
-  gestor de outro polo não pode.
+- RBAC: exclusiva do MASTER — GESTOR_POLO não cadastra/exporta entregas,
+  nem mesmo do próprio polo.
 - A entrega nasce com o coordenador copiado do responsável do polo.
 - O termo de entrega e o termo de responsabilidade trazem os dados
   cadastrados (do polo/entrega) nos parágrafos e células certas.
@@ -15,8 +15,8 @@ import docx
 from tests.conftest import login
 
 
-def test_gestor_de_outro_polo_nao_cria_entrega(client, seed_basico):
-    token = login(client, "gestor.b@test.com")
+def test_gestor_de_polo_nao_cria_entrega(client, seed_basico):
+    token = login(client, "gestor.a@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)
     resp = client.post(
         "/api/v1/entregas-materiais",
@@ -32,15 +32,13 @@ def test_entrega_nasce_com_coordenador_do_polo(client, seed_basico):
     polo_a_id = str(seed_basico["polo_a"].id)
     client.patch(f"/api/v1/polos/{polo_a_id}", json={"responsavel_nome": "Coordenadora Fulana"}, headers=headers_master)
 
-    token = login(client, "gestor.a@test.com")
-    headers = {"Authorization": f"Bearer {token}"}
     resp = client.post(
         "/api/v1/entregas-materiais",
         json={
             "polo_id": polo_a_id, "data_entrega": "2026-03-01",
             "itens": [{"descricao": "Bolas de futebol", "quantidade": "10"}],
         },
-        headers=headers,
+        headers=headers_master,
     )
     assert resp.status_code == 201, resp.text
     assert resp.json()["coordenador_nome"] == "Coordenadora Fulana"
@@ -52,8 +50,7 @@ def test_exportar_termo_entrega_reflete_itens_e_coordenador(client, seed_basico)
     polo_a_id = str(seed_basico["polo_a"].id)
     client.patch(f"/api/v1/polos/{polo_a_id}", json={"responsavel_nome": "Coordenadora Fulana"}, headers=headers_master)
 
-    token = login(client, "gestor.a@test.com")
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = headers_master
     entrega = client.post(
         "/api/v1/entregas-materiais",
         json={

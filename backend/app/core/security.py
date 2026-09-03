@@ -52,10 +52,16 @@ def create_token(subject: str, extra_claims: dict[str, Any], token_type: TokenTy
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_access_token(usuario_id: str, perfil: str, polo_id: str | None) -> str:
+def create_access_token(
+    usuario_id: str, perfil: str, polo_id: str | None, almoxarifado_id: str | None = None,
+    modulos: list[str] | None = None,
+) -> str:
     return create_token(
         subject=usuario_id,
-        extra_claims={"perfil": perfil, "polo_id": polo_id},
+        extra_claims={
+            "perfil": perfil, "polo_id": polo_id, "almoxarifado_id": almoxarifado_id,
+            "modulos": modulos or [],
+        },
         token_type="access",
     )
 

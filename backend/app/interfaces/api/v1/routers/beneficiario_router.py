@@ -18,7 +18,7 @@ from app.core.dependencies import (
     UsuarioAutenticado,
     assert_acesso_a_turma,
     assert_acesso_ao_polo,
-    require_perfis,
+    require_modulo_ou_perfis,
 )
 from app.domain.enums import PerfilUsuario
 from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
@@ -34,13 +34,14 @@ from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 router = APIRouter(prefix="/beneficiarios", tags=["Beneficiários"])
 
 MasterOuGestor = Annotated[
-    UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("beneficiarios", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
 ]
 
 
 def _assert_acesso_ao_beneficiario(usuario: UsuarioAutenticado, db: DbSession, beneficiario_id: UUID) -> None:
-    """GESTOR_POLO só acessa beneficiários do seu polo. MASTER tem acesso irrestrito."""
-    if usuario.perfil == PerfilUsuario.MASTER:
+    """GESTOR_POLO só acessa beneficiários do seu polo. MASTER e
+    PERSONALIZADO (módulo beneficiarios) têm acesso irrestrito."""
+    if usuario.perfil == PerfilUsuario.MASTER or usuario.tem_modulo("beneficiarios"):
         return
 
     from app.infrastructure.database.models import BeneficiarioModel  # evita import circular
@@ -68,15 +69,17 @@ def listar_beneficiarios(
     tamanho_pagina: Annotated[int, Query(ge=1, le=200)] = 20,
 ) -> list[BeneficiarioResponse] | PaginaResponse[BeneficiarioResponse]:
     service = BeneficiarioService(db)
-    if usuario.perfil == PerfilUsuario.MASTER:
+    if usuario.perfil == PerfilUsuario.MASTER or usuario.tem_modulo("beneficiarios"):
         filtro_polo = polo_id
     elif usuario.perfil == PerfilUsuario.GESTOR_POLO:
         filtro_polo = usuario.polo_id
-    else:  # PROFESSOR: obrigatório informar turma e ter acesso a ela
+    elif usuario.perfil == PerfilUsuario.PROFESSOR:
         if not turma_id:
             raise HTTPException(status_code=400, detail="Professor deve informar turma_id.")
-        assert_acesso_a_turma(usuario, db, turma_id)
+        assert_acesso_a_turma(usuario, db, turma_id, "beneficiarios")
         filtro_polo = None
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Perfil sem permissão para executar esta ação.")
 
     if pagina is None:
         itens = service.listar(polo_id=filtro_polo, turma_id=turma_id)
@@ -101,7 +104,7 @@ def listar_beneficiarios(
 def criar_beneficiario(
     body: BeneficiarioCreateRequest, usuario: MasterOuGestor, db: DbSession
 ) -> BeneficiarioResponse:
-    assert_acesso_ao_polo(usuario, body.polo_id)
+    assert_acesso_ao_polo(usuario, body.polo_id, "beneficiarios")
     service = BeneficiarioService(db)
     criado = service.criar(
         nome_completo=body.nome_completo, data_nascimento=body.data_nascimento,
@@ -129,7 +132,7 @@ def atualizar_beneficiario(
 ) -> BeneficiarioResponse:
     _assert_acesso_ao_beneficiario(usuario, db, beneficiario_id)
     if body.polo_id:
-        assert_acesso_ao_polo(usuario, body.polo_id)
+        assert_acesso_ao_polo(usuario, body.polo_id, "beneficiarios")
     service = BeneficiarioService(db)
     atualizado = service.atualizar(beneficiario_id, **body.model_dump(exclude_unset=True))
     if not atualizado:
@@ -156,7 +159,7 @@ def matricular_beneficiario(
     beneficiario_id: UUID, body: MatriculaCreateRequest, usuario: MasterOuGestor, db: DbSession
 ) -> MatriculaResponse:
     _assert_acesso_ao_beneficiario(usuario, db, beneficiario_id)
-    assert_acesso_a_turma(usuario, db, body.turma_id)
+    assert_acesso_a_turma(usuario, db, body.turma_id, "beneficiarios")
     service = MatriculaService(db)
     matricula = service.matricular(beneficiario_id, body.turma_id)
     return MatriculaResponse.model_validate(matricula)

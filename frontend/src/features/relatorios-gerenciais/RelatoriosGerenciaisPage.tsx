@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthContext";
 import { RelatorioGeralPage } from "./RelatorioGeralPage";
@@ -13,7 +13,8 @@ type Aba = "geral" | "polo" | "beneficiarios" | "professores" | "entregas" | "ch
 export function RelatoriosGerenciaisPage() {
   const { temPerfil } = useAuth();
   const ehMaster = temPerfil("MASTER");
-  const [aba, setAba] = useState<Aba>(ehMaster ? "geral" : "polo");
+  const navigate = useNavigate();
+  const { aba } = useParams<{ aba?: string }>();
 
   const abas: { id: Aba; label: string }[] = [
     ...(ehMaster ? [{ id: "geral" as const, label: "Relatório Geral" }] : []),
@@ -23,6 +24,11 @@ export function RelatoriosGerenciaisPage() {
     { id: "entregas", label: "Entrega de Materiais" },
     { id: "chamada", label: "Ficha de Chamada" },
   ];
+
+  const abaAtual = abas.find((a) => a.id === aba)?.id;
+  if (!abaAtual) {
+    return <Navigate to={`/relatorios-gerenciais/${ehMaster ? "geral" : "polo"}`} replace />;
+  }
 
   return (
     <div className="space-y-6">
@@ -35,9 +41,9 @@ export function RelatoriosGerenciaisPage() {
           <button
             key={a.id}
             type="button"
-            onClick={() => setAba(a.id)}
+            onClick={() => navigate(`/relatorios-gerenciais/${a.id}`)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-              aba === a.id
+              abaAtual === a.id
                 ? "border-brand text-brand-dark bg-white"
                 : "border-transparent text-gray-500 hover:text-brand-dark hover:bg-gray-50"
             }`}
@@ -47,12 +53,12 @@ export function RelatoriosGerenciaisPage() {
         ))}
       </div>
 
-      {aba === "geral" && ehMaster && <RelatorioGeralPage />}
-      {aba === "polo" && <RelatorioPoloPage />}
-      {aba === "beneficiarios" && <RelatorioBeneficiariosPage />}
-      {aba === "professores" && <RelatorioProfessoresPage />}
-      {aba === "entregas" && <RelatorioEntregasPage />}
-      {aba === "chamada" && <RelatorioFichaChamadaPage />}
+      {abaAtual === "geral" && ehMaster && <RelatorioGeralPage />}
+      {abaAtual === "polo" && <RelatorioPoloPage />}
+      {abaAtual === "beneficiarios" && <RelatorioBeneficiariosPage />}
+      {abaAtual === "professores" && <RelatorioProfessoresPage />}
+      {abaAtual === "entregas" && <RelatorioEntregasPage />}
+      {abaAtual === "chamada" && <RelatorioFichaChamadaPage />}
     </div>
   );
 }

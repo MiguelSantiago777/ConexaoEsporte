@@ -14,7 +14,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
-import { PaperclipIcon, CameraIcon, DocumentTextIcon } from "@/components/ui/icons";
+import { PaperclipIcon, CameraIcon, DocumentTextIcon, StackIcon, BoxIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 export function AnexosGeraisPage() {
@@ -32,17 +32,23 @@ const ABAS_TIPO: { id: TipoDocumentoConsolidado | "TODOS"; label: string }[] = [
   { id: "ANEXO_GERAL", label: "Anexos dos polos" },
   { id: "EVIDENCIA_CHAMADA", label: "Fotos de chamada" },
   { id: "OBSERVACAO_AULA", label: "Observações de aula" },
+  { id: "ESTOQUE_ENTRADA", label: "Entradas de estoque" },
+  { id: "ENTREGA_MATERIAIS", label: "Recebimento nos polos" },
 ];
 
 const INFO_TIPO: Record<TipoDocumentoConsolidado, { icone: typeof PaperclipIcon; badge: "brand" | "accent" | "gray" }> = {
   ANEXO_GERAL: { icone: PaperclipIcon, badge: "brand" },
   EVIDENCIA_CHAMADA: { icone: CameraIcon, badge: "accent" },
   OBSERVACAO_AULA: { icone: DocumentTextIcon, badge: "gray" },
+  ESTOQUE_ENTRADA: { icone: StackIcon, badge: "brand" },
+  ENTREGA_MATERIAIS: { icone: BoxIcon, badge: "accent" },
 };
 
 function urlArquivo(doc: DocumentoConsolidado): string | null {
   if (doc.tipo === "ANEXO_GERAL") return `/anexos-gerais/${doc.id}/arquivo`;
   if (doc.tipo === "EVIDENCIA_CHAMADA") return `/frequencias/evidencias/${doc.id}/arquivo`;
+  if (doc.tipo === "ESTOQUE_ENTRADA") return `/movimentos-estoque/${doc.id}/arquivo`;
+  if (doc.tipo === "ENTREGA_MATERIAIS") return `/entregas-materiais/${doc.id}/comprovante`;
   return null;
 }
 
@@ -104,7 +110,7 @@ function VisaoConsolidadaDocumentos() {
     <div className="space-y-6">
       <PageHeader
         title="Anexos Gerais"
-        subtitle="Tudo o que foi anexado pelos polos, gestores de polo e professores — inclusive as fotos e observações registradas na hora da chamada. Consulta somente leitura."
+        subtitle="Tudo o que foi anexado pelos polos, gestores de polo e professores, além dos documentos gerados pelo Estoque (nota fiscal da Entrada e comprovante de recebimento nos polos). Consulta somente leitura."
       />
       <Card className="animate-fade-in-up">
         <div className="space-y-4">
@@ -139,7 +145,7 @@ function VisaoConsolidadaDocumentos() {
                             <Badge variant={info.badge}>{ABAS_TIPO.find((a) => a.id === doc.tipo)?.label}</Badge>
                           </div>
                           <div className="text-xs text-gray-400">
-                            {doc.polo_nome}
+                            {doc.polo_nome ?? "Estoque Central"}
                             {doc.turma_nome ? ` — ${doc.turma_nome}` : ""}
                             {doc.autor_nome ? ` · ${doc.autor_nome}` : ""} · {formatarData(doc.data_evento)}
                           </div>

@@ -125,6 +125,15 @@ export function KeyIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function ShieldIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3.5l7 3v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9v-5l7-3z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function LogoutIcon({ className = "w-4 h-4" }: Props) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -292,6 +301,25 @@ export function MenuIcon({ className = "w-5 h-5" }: Props) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M3 5.5h14M3 10h14M3 14.5h14" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Caixas empilhadas — Estoque (catálogo de produtos e movimentações),
+ * distinto do BoxIcon (uma caixa só) usado em Entregas de Materiais. */
+export function StackIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 17.5v-4L12 9l8 4.5v4L12 22l-8-4.5z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 13.5L12 18l8-4.5M12 2l7.5 4.2L12 10.4 4.5 6.2 12 2z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className = "w-4 h-4" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M5 7.5l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -29,5 +29,10 @@ class UsuarioLogadoResponse(BaseModel):
     polo_id: UUID | None = None
     polo_nome: str | None = None
     polo_codigo: str | None = None
+    almoxarifado_id: UUID | None = None
+    almoxarifado_nome: str | None = None
+    # Só populado pra perfil PERSONALIZADO (ver Papel/Central de Acessos) — os
+    # módulos do sistema que o Papel vinculado libera pra este usuário.
+    modulos: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

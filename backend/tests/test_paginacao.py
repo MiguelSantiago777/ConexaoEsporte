@@ -171,19 +171,19 @@ def test_polos_paginados_e_busca_por_nome(client, seed_basico):
 
 
 def test_entregas_materiais_paginadas(client, seed_basico):
-    token_gestor = login(client, "gestor.a@test.com")
+    token_master = login(client, "master@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)
     for _ in range(3):
         resp = client.post(
             "/api/v1/entregas-materiais",
             json={"polo_id": polo_a_id, "itens": [{"descricao": "Bola", "quantidade": "5"}]},
-            headers={"Authorization": f"Bearer {token_gestor}"},
+            headers={"Authorization": f"Bearer {token_master}"},
         )
         assert resp.status_code == 201, resp.text
 
     resp = client.get(
         "/api/v1/entregas-materiais", params={"pagina": 1, "tamanho_pagina": 2},
-        headers={"Authorization": f"Bearer {token_gestor}"},
+        headers={"Authorization": f"Bearer {token_master}"},
     )
     assert resp.status_code == 200, resp.text
     corpo = resp.json()

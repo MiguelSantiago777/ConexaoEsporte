@@ -12,7 +12,10 @@ from app.infrastructure.repositories.paginacao import paginar
 def _to_entity(m: EntregaMaterialModel) -> EntregaMaterial:
     return EntregaMaterial(
         id=m.id, polo_id=m.polo_id, data_entrega=m.data_entrega, coordenador_nome=m.coordenador_nome,
-        entregue_por=m.entregue_por, itens=m.itens or [], criado_por_id=m.criado_por_id, criado_em=m.criado_em,
+        entregue_por=m.entregue_por, itens=m.itens or [],
+        comprovante_nome_arquivo=m.comprovante_nome_arquivo, comprovante_caminho_arquivo=m.comprovante_caminho_arquivo,
+        comprovante_content_type=m.comprovante_content_type, comprovante_tamanho_bytes=m.comprovante_tamanho_bytes,
+        criado_por_id=m.criado_por_id, criado_em=m.criado_em,
     )
 
 

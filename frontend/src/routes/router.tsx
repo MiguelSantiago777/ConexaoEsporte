@@ -15,9 +15,13 @@ import { RelatoriosPage } from "@/features/relatorios/RelatoriosPage";
 import { FichasExecucaoPage } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { FichaExecucaoDetalhePage } from "@/features/fichas-execucao/FichaExecucaoDetalhePage";
 import { EntregasMateriaisPage } from "@/features/entregas-materiais/EntregasMateriaisPage";
+import { EstoquePage } from "@/features/estoque/EstoquePage";
+import { AlmoxarifadosPage } from "@/features/almoxarifados/AlmoxarifadosPage";
+import { MeuAlmoxarifadoPage } from "@/features/meu-almoxarifado/MeuAlmoxarifadoPage";
 import { RelatoriosGerenciaisPage } from "@/features/relatorios-gerenciais/RelatoriosGerenciaisPage";
 import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
 import { AnexosGeraisPage } from "@/features/anexos-gerais/AnexosGeraisPage";
+import { PapeisPage } from "@/features/papeis/PapeisPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -38,6 +42,10 @@ export const router = createBrowserRouter([
               { path: "/fichas-execucao", element: <FichasExecucaoPage /> },
               { path: "/fichas-execucao/:id", element: <FichaExecucaoDetalhePage /> },
               { path: "/configuracoes", element: <ConfiguracoesPage /> },
+              { path: "/central-acessos", element: <PapeisPage /> },
+              { path: "/entregas-materiais", element: <EntregasMateriaisPage /> },
+              { path: "/estoque", element: <EstoquePage /> },
+              { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
             ],
           },
           // MASTER + GESTOR_POLO
@@ -49,9 +57,9 @@ export const router = createBrowserRouter([
               { path: "/beneficiarios", element: <BeneficiariosPage /> },
               { path: "/beneficiarios/:id/autorizacao-imagem", element: <AutorizacaoImagemPage /> },
               { path: "/professores", element: <ProfessoresPage /> },
-              { path: "/entregas-materiais", element: <EntregasMateriaisPage /> },
+              { path: "/almoxarifados", element: <AlmoxarifadosPage /> },
               { path: "/relatorios-gerenciais", element: <RelatoriosGerenciaisPage /> },
-              { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
+              { path: "/relatorios-gerenciais/:aba", element: <RelatoriosGerenciaisPage /> },
             ],
           },
           // PROFESSOR
@@ -60,6 +68,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "/frequencia", element: <FrequenciaPage /> },
               { path: "/relatorios", element: <RelatoriosPage /> },
+            ],
+          },
+          // COORDENADOR_ALMOXARIFADO
+          {
+            element: <ProtectedRoute perfisPermitidos={["COORDENADOR_ALMOXARIFADO"]} />,
+            children: [
+              { path: "/meu-almoxarifado", element: <MeuAlmoxarifadoPage /> },
             ],
           },
         ],

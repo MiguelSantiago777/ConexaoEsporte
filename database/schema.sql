@@ -14,9 +14,20 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'perfil_usuario') THEN
-        CREATE TYPE perfil_usuario AS ENUM ('MASTER', 'GESTOR_POLO', 'PROFESSOR');
+        CREATE TYPE perfil_usuario AS ENUM (
+            'MASTER', 'GESTOR_POLO', 'PROFESSOR', 'COORDENADOR_ALMOXARIFADO', 'PERSONALIZADO'
+        );
     END IF;
 END$$;
+
+-- Coordenador de Almoxarifado: acesso restrito ao Estoque de um único
+-- almoxarifado (adicionado depois do lançamento inicial do enum).
+ALTER TYPE perfil_usuario ADD VALUE IF NOT EXISTS 'COORDENADOR_ALMOXARIFADO';
+
+-- PERSONALIZADO: perfil dinâmico, cujo acesso vem do Papel vinculado (ver
+-- tabela `papeis` mais abaixo) em vez de regras fixas do enum — criado pela
+-- Central de Acessos, exclusiva do MASTER.
+ALTER TYPE perfil_usuario ADD VALUE IF NOT EXISTS 'PERSONALIZADO';
 
 DO $$
 BEGIN
@@ -103,7 +114,22 @@ ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_bairro VARCHAR(10
 ALTER TABLE polos ADD COLUMN IF NOT EXISTS representante_legal_cidade VARCHAR(100);
 
 -- ---------------------------------------------------------------------
--- TABELA: usuarios (funcionários: MASTER, GESTOR_POLO, PROFESSOR)
+-- TABELA: papeis — níveis de acesso personalizados da Central de Acessos
+-- (exclusiva do MASTER): um nome e a lista de módulos do sistema que ele
+-- libera pra quem tiver perfil PERSONALIZADO vinculado a ele. Fica antes de
+-- `usuarios` porque `usuarios.papel_id` referencia esta tabela.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS papeis (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome            VARCHAR(150) NOT NULL,
+    descricao       TEXT,
+    modulos         JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------
+-- TABELA: usuarios (funcionários: MASTER, GESTOR_POLO, PROFESSOR, ...)
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuarios (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -128,6 +154,19 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_polo  ON usuarios(polo_id);
 
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefone VARCHAR(20);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS carga_horaria_semanal VARCHAR(20);
+
+-- PERSONALIZADO: acesso definido pelo Papel vinculado, não por regra fixa.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS papel_id UUID REFERENCES papeis(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_papel ON usuarios(papel_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_personalizado_tem_papel'
+    ) THEN
+        ALTER TABLE usuarios ADD CONSTRAINT chk_personalizado_tem_papel
+            CHECK (perfil <> 'PERSONALIZADO' OR papel_id IS NOT NULL);
+    END IF;
+END$$;
 
 -- FK circular: gestor responsável do polo referencia usuarios
 ALTER TABLE polos
@@ -436,13 +475,94 @@ CREATE TABLE IF NOT EXISTS entregas_materiais (
     data_entrega    DATE,
     coordenador_nome VARCHAR(150),  -- snapshot do responsável do núcleo no momento da entrega
     entregue_por    VARCHAR(150),  -- nome de quem foi fisicamente levar os materiais
-    -- [{"descricao": "Bolas de futebol", "quantidade": "10"}, ...]
+    -- [{"descricao": "Bolas de futebol", "quantidade": "10", "produto_id": "..."}, ...]
+    -- produto_id é opcional — quando presente, o item veio do catálogo de
+    -- Estoque e gerou uma Saída automática (ver movimentos_estoque abaixo).
     itens           JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- Comprovante de recebimento no polo (foto/PDF assinado), anexado depois
+    -- que a entrega já foi registrada, via rota própria de upload.
+    comprovante_nome_arquivo    VARCHAR(255),
+    comprovante_caminho_arquivo VARCHAR(500),
+    comprovante_content_type   VARCHAR(100),
+    comprovante_tamanho_bytes  INTEGER,
     criado_por_id   UUID REFERENCES usuarios(id) ON DELETE SET NULL,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_entregas_materiais_polo ON entregas_materiais(polo_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: produtos — catálogo central de Estoque (bolas, uniformes,
+-- materiais em geral), exclusivo do MASTER. A quantidade disponível nunca
+-- fica aqui; é sempre a soma dos movimentos_estoque (ENTRADA - SAÍDA).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS produtos (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome            VARCHAR(150) NOT NULL,
+    unidade_medida  VARCHAR(30) NOT NULL,
+    descricao       TEXT,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------
+-- TABELA: almoxarifados — locais físicos onde o estoque central fica
+-- guardado. O saldo de cada Produto é controlado separadamente em cada
+-- almoxarifado (ver almoxarifado_id em movimentos_estoque).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS almoxarifados (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome            VARCHAR(150) NOT NULL,
+    descricao       TEXT,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- COORDENADOR_ALMOXARIFADO: acesso restrito ao Estoque de um único
+-- almoxarifado, igual GESTOR_POLO é restrito a um único polo. Só pode vir
+-- depois da tabela almoxarifados existir (referenciada pela FK).
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS almoxarifado_id UUID REFERENCES almoxarifados(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_almoxarifado ON usuarios(almoxarifado_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_coordenador_tem_almoxarifado'
+    ) THEN
+        ALTER TABLE usuarios ADD CONSTRAINT chk_coordenador_tem_almoxarifado
+            CHECK (perfil <> 'COORDENADOR_ALMOXARIFADO' OR almoxarifado_id IS NOT NULL);
+    END IF;
+END$$;
+
+-- ---------------------------------------------------------------------
+-- TABELA: movimentos_estoque — Entrada ou Saída de um Produto, num
+-- almoxarifado específico. ENTRADA é lançada manualmente na tela de
+-- Estoque (com nota fiscal/comprovante em anexo); SAÍDA nasce
+-- automaticamente quando um item de uma Entrega de Materiais referencia o
+-- produto (entrega_material_id rastreia a origem), escolhendo de qual
+-- almoxarifado a saída sai.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS movimentos_estoque (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    produto_id          UUID NOT NULL REFERENCES produtos(id) ON DELETE RESTRICT,
+    almoxarifado_id     UUID NOT NULL REFERENCES almoxarifados(id) ON DELETE RESTRICT,
+    tipo                VARCHAR(10) NOT NULL CHECK (tipo IN ('ENTRADA', 'SAIDA')),
+    quantidade          INTEGER NOT NULL CHECK (quantidade > 0),
+    data                DATE NOT NULL,
+    observacao          TEXT,
+    entregue_por        VARCHAR(150),  -- quem trouxe o material até o estoque (fornecedor, transportadora etc.)
+    recebido_por        VARCHAR(150),  -- quem recebeu e conferiu no estoque central
+    nome_arquivo        VARCHAR(255),
+    caminho_arquivo     VARCHAR(500),
+    content_type        VARCHAR(100),
+    tamanho_bytes       INTEGER,
+    entrega_material_id UUID REFERENCES entregas_materiais(id) ON DELETE SET NULL,
+    criado_por_id       UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_produto ON movimentos_estoque(produto_id);
+CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_almoxarifado ON movimentos_estoque(almoxarifado_id);
+CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_entrega ON movimentos_estoque(entrega_material_id);
 
 -- ---------------------------------------------------------------------
 -- TABELA: chamada_evidencias — fotos anexadas pelo professor a uma chamada

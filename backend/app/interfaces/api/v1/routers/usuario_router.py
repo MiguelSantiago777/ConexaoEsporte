@@ -7,7 +7,7 @@ from fastapi.responses import Response
 
 from app.application.usuario.documento_service import UsuarioDocumentoService
 from app.application.usuario.service import UsuarioService
-from app.core.dependencies import DbSession, UsuarioAutenticado, require_perfis
+from app.core.dependencies import DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
@@ -20,23 +20,36 @@ from app.interfaces.api.v1.schemas.usuario_schemas import (
 
 router = APIRouter(prefix="/usuarios", tags=["Usuários"])
 
-# MASTER cria qualquer usuário; GESTOR_POLO só cria PROFESSOR no próprio polo.
+# MASTER cria qualquer usuário; GESTOR_POLO só cria PROFESSOR no próprio
+# polo. PERSONALIZADO com o módulo "professores" (Central de Acessos) tem
+# o mesmo tipo de restrição do GESTOR_POLO, mas sem escopo de polo (o Papel
+# não é vinculado a nenhum polo específico).
 MasterOuGestor = Annotated[
-    UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("professores", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
 ]
 
 
 def _assert_acesso_ao_usuario_alvo(usuario: UsuarioAutenticado, db: DbSession, usuario_alvo_id: UUID):
-    """GESTOR_POLO só acessa anexos de professores do seu polo. MASTER tem acesso irrestrito."""
+    """GESTOR_POLO só acessa anexos de professores do seu polo. PERSONALIZADO
+    (módulo professores) só acessa anexos de professores, de qualquer polo.
+    MASTER tem acesso irrestrito."""
     alvo = UsuarioService(db).buscar_usuario(usuario_alvo_id)
     if not alvo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado.")
-    if usuario.perfil != PerfilUsuario.MASTER:
-        if alvo.perfil != PerfilUsuario.PROFESSOR or alvo.polo_id != usuario.polo_id:
+    if usuario.perfil == PerfilUsuario.MASTER:
+        return alvo
+    if usuario.perfil == PerfilUsuario.PERSONALIZADO:
+        if alvo.perfil != PerfilUsuario.PROFESSOR:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Gestor só pode acessar anexos de professores do próprio polo.",
+                detail="Só é possível acessar anexos de professores.",
             )
+        return alvo
+    if alvo.perfil != PerfilUsuario.PROFESSOR or alvo.polo_id != usuario.polo_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Gestor só pode acessar anexos de professores do próprio polo.",
+        )
     return alvo
 
 
@@ -54,6 +67,7 @@ def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSes
         nome=body.nome, email=body.email, senha=body.senha, perfil=body.perfil,
         polo_id=body.polo_id, criado_por_perfil=usuario.perfil, criado_por_polo_id=usuario.polo_id,
         telefone=body.telefone, carga_horaria_semanal=body.carga_horaria_semanal,
+        almoxarifado_id=body.almoxarifado_id, papel_id=body.papel_id,
     )
     return UsuarioResponse.model_validate(criado)
 
@@ -73,6 +87,11 @@ def listar_usuarios(
 ) -> list[UsuarioResponse] | PaginaResponse[UsuarioResponse]:
     service = UsuarioService(db)
     filtro_polo = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    # PERSONALIZADO (módulo professores) só enxerga professores — nunca a
+    # lista de outros funcionários (MASTER, gestores etc.), mesmo pedindo
+    # outro filtro de perfil.
+    if usuario.perfil == PerfilUsuario.PERSONALIZADO:
+        perfil = PerfilUsuario.PROFESSOR
 
     if pagina is None:
         itens = service.listar_usuarios(polo_id=filtro_polo)
@@ -113,6 +132,12 @@ def atualizar_usuario(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Gestor não pode alterar polo/situação do professor.",
+            )
+    elif usuario.perfil == PerfilUsuario.PERSONALIZADO:
+        if alvo.perfil != PerfilUsuario.PROFESSOR:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Só é possível editar professores.",
             )
 
     atualizado = service.atualizar_usuario(usuario_id, **body.model_dump(exclude_unset=True))

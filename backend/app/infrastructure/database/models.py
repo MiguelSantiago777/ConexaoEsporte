@@ -43,6 +43,12 @@ class UsuarioModel(Base):
     polo_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("polos.id", use_alter=True), nullable=True
     )
+    almoxarifado_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("almoxarifados.id"), nullable=True
+    )
+    papel_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("papeis.id"), nullable=True
+    )
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # RH do núcleo (Planilha de Núcleos — RH e Beneficiário)
     telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -393,6 +399,88 @@ class EntregaMaterialModel(Base):
     coordenador_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
     entregue_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
     itens: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Comprovante de recebimento no polo (foto/PDF assinado) — anexado depois
+    # que a entrega já foi registrada, via rota própria de upload.
+    comprovante_nome_arquivo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    comprovante_caminho_arquivo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    comprovante_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    comprovante_tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ProdutoModel(Base):
+    """Item do catálogo central de Estoque (bolas, uniformes, materiais em
+    geral) — exclusivo do MASTER. A quantidade disponível nunca fica aqui;
+    é sempre a soma dos MovimentoEstoqueModel (ENTRADA - SAÍDA)."""
+
+    __tablename__ = "produtos"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome: Mapped[str] = mapped_column(String(150), nullable=False)
+    unidade_medida: Mapped[str] = mapped_column(String(30), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AlmoxarifadoModel(Base):
+    """Um dos locais físicos onde o estoque central fica guardado — o
+    saldo de cada Produto é controlado separadamente em cada almoxarifado
+    (ver `almoxarifado_id` em MovimentoEstoqueModel)."""
+
+    __tablename__ = "almoxarifados"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome: Mapped[str] = mapped_column(String(150), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class PapelModel(Base):
+    """Nível de acesso personalizado (Central de Acessos, exclusiva do
+    MASTER): um nome e a lista de módulos do sistema que ele libera para
+    quem tiver perfil PERSONALIZADO vinculado a ele."""
+
+    __tablename__ = "papeis"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome: Mapped[str] = mapped_column(String(150), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    modulos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class MovimentoEstoqueModel(Base):
+    """Entrada ou Saída de um Produto no estoque central. ENTRADA é lançada
+    manualmente (com nota fiscal/comprovante em anexo); SAÍDA nasce
+    automaticamente de um item de Entrega de Materiais que referencia o
+    produto (ver `entrega_material_id`)."""
+
+    __tablename__ = "movimentos_estoque"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    produto_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("produtos.id"), nullable=False)
+    almoxarifado_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("almoxarifados.id"), nullable=False
+    )
+    tipo: Mapped[str] = mapped_column(String(10), nullable=False)  # ENTRADA | SAIDA
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[date] = mapped_column(Date, nullable=False)
+    observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entregue_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    recebido_por: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    nome_arquivo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    caminho_arquivo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    entrega_material_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("entregas_materiais.id"), nullable=True
+    )
     criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )

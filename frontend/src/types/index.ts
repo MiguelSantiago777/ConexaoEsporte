@@ -20,6 +20,22 @@ export type Polo = components["schemas"]["PoloResponse"];
 export type ItemEntrega = components["schemas"]["ItemEntregaRequest"];
 export type EntregaMaterial = components["schemas"]["EntregaMaterialResponse"];
 
+// Estoque — Almoxarifados (locais físicos), catálogo de Produto e
+// Movimentos (Entrada/Saída). O saldo de cada Produto é controlado
+// separadamente em cada Almoxarifado. A Saída não tem rota própria: nasce
+// automaticamente de um item de Entrega de Materiais que referencia um
+// produto + almoxarifado.
+export type Almoxarifado = components["schemas"]["AlmoxarifadoResponse"];
+export type Produto = components["schemas"]["ProdutoResponse"];
+export type SaldoAlmoxarifado = components["schemas"]["SaldoAlmoxarifadoItem"];
+// Inverso do anterior: saldo de cada produto num almoxarifado já conhecido
+// — usado no dashboard do Coordenador de Almoxarifado.
+export type SaldoProdutoNoAlmoxarifado = components["schemas"]["SaldoProdutoNoAlmoxarifadoItem"];
+export type MovimentoEstoque = components["schemas"]["MovimentoEstoqueResponse"];
+export type TipoMovimentoEstoque = MovimentoEstoque["tipo"];
+export type SaldoProduto = components["schemas"]["SaldoProdutoItem"];
+export type RelatorioEstoque = components["schemas"]["RelatorioEstoqueResponse"];
+
 export type Usuario = components["schemas"]["UsuarioResponse"];
 
 export type Modalidade = components["schemas"]["ModalidadeResponse"];
@@ -113,3 +129,9 @@ export interface Pagina<T> {
 // Configuração Geral — número de convênio e datas do projeto, exibidos no
 // rodapé de todos os relatórios exportados.
 export type ConfiguracaoGeral = components["schemas"]["ConfiguracaoGeralResponse"];
+
+// Central de Acessos (exclusiva do MASTER) — Papel é um nível de acesso
+// personalizado (nome + lista de módulos do sistema); um usuário com perfil
+// PERSONALIZADO tem seu acesso definido pelo Papel vinculado a ele.
+export type ModuloDisponivel = components["schemas"]["ModuloDisponivelItem"];
+export type Papel = components["schemas"]["PapelResponse"];

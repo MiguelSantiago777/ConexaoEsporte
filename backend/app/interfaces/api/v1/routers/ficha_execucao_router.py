@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.application.ficha_execucao.service import FichaExecucaoService
 from app.application.relatorios.ficha_execucao_export_service import exportar_ficha_execucao
 from app.application.relatorios.cabecalho_convenio import texto_cabecalho
-from app.core.dependencies import DbSession, UsuarioAutenticado, require_perfis
+from app.core.dependencies import DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.infrastructure.repositories.configuracao_geral_repository import ConfiguracaoGeralRepository
 from app.infrastructure.repositories.polo_repository import PoloRepository
@@ -22,7 +22,9 @@ from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 
 router = APIRouter(prefix="/fichas-execucao", tags=["Fichas de Execução"])
 
-SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
+SomenteMaster = Annotated[
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("fichas_execucao", PerfilUsuario.MASTER))
+]
 
 
 @router.get(

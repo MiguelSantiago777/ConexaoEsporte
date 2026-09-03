@@ -15,7 +15,7 @@ from app.application.relatorios.relatorio_geral_export_service import exportar_r
 from app.application.relatorios.relatorio_polo_export_service import exportar_relatorio_polo
 from app.application.relatorios.cabecalho_convenio import texto_cabecalho
 from app.application.relatorios.tabela_export_service import exportar_tabelas
-from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, assert_acesso_ao_polo, require_perfis
+from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, assert_acesso_ao_polo, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RecursoNaoEncontrado
 from app.infrastructure.repositories.configuracao_geral_repository import ConfiguracaoGeralRepository
@@ -25,7 +25,9 @@ from app.interfaces.api.v1.schemas.tabela_export_schemas import TabelaExportRequ
 
 router = APIRouter(prefix="/relatorios", tags=["Relatórios Gerenciais"])
 
-SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
+SomenteMaster = Annotated[
+    UsuarioAutenticado, Depends(require_modulo_ou_perfis("relatorios_gerenciais", PerfilUsuario.MASTER))
+]
 
 
 @router.get(
@@ -42,7 +44,7 @@ def relatorio_polo(
     usuario: CurrentUser,
     db: DbSession,
 ) -> RelatorioPoloResponse:
-    assert_acesso_ao_polo(usuario, polo_id)
+    assert_acesso_ao_polo(usuario, polo_id, "relatorios_gerenciais")
     try:
         return DashboardService(db).relatorio_polo(polo_id, data_inicio, data_fim)
     except RecursoNaoEncontrado as e:
@@ -68,7 +70,7 @@ def exportar_relatorio_polo_endpoint(
     polo_id: UUID, data_inicio: date, data_fim: date, usuario: CurrentUser, db: DbSession,
     formato: Literal["xlsx", "pdf"] = "xlsx",
 ) -> Response:
-    assert_acesso_ao_polo(usuario, polo_id)
+    assert_acesso_ao_polo(usuario, polo_id, "relatorios_gerenciais")
     try:
         relatorio = DashboardService(db).relatorio_polo(polo_id, data_inicio, data_fim)
     except RecursoNaoEncontrado as e:

@@ -15,6 +15,7 @@ def _to_entity(m: UsuarioModel) -> Usuario:
         id=m.id, nome=m.nome, email=m.email, senha_hash=m.senha_hash,
         perfil=PerfilUsuario(m.perfil), polo_id=m.polo_id, ativo=m.ativo,
         telefone=m.telefone, carga_horaria_semanal=m.carga_horaria_semanal,
+        almoxarifado_id=m.almoxarifado_id, papel_id=m.papel_id,
     )
 
 
@@ -30,10 +31,12 @@ class UsuarioRepository:
         m = self.db.get(UsuarioModel, usuario_id)
         return _to_entity(m) if m else None
 
-    def listar(self, polo_id: UUID | None = None) -> list[Usuario]:
+    def listar(self, polo_id: UUID | None = None, almoxarifado_id: UUID | None = None) -> list[Usuario]:
         stmt = select(UsuarioModel)
         if polo_id:
             stmt = stmt.where(UsuarioModel.polo_id == polo_id)
+        if almoxarifado_id:
+            stmt = stmt.where(UsuarioModel.almoxarifado_id == almoxarifado_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
     def listar_pagina(
@@ -53,6 +56,7 @@ class UsuarioRepository:
             nome=usuario.nome, email=usuario.email, senha_hash=usuario.senha_hash,
             perfil=usuario.perfil.value, polo_id=usuario.polo_id, ativo=usuario.ativo,
             telefone=usuario.telefone, carga_horaria_semanal=usuario.carga_horaria_semanal,
+            almoxarifado_id=usuario.almoxarifado_id, papel_id=usuario.papel_id,
         )
         self.db.add(m)
         self.db.commit()

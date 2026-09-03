@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { EntregaMaterial, ItemEntrega, Pagina, Polo } from "@/types";
+import type { EntregaMaterial, ItemEntrega, Pagina, Polo, Produto, SaldoAlmoxarifado } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,8 +17,9 @@ import { staggerStyle } from "@/lib/animation";
 import { formatarData } from "@/lib/format";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { useAuth } from "@/features/auth/AuthContext";
+import { ConfirmarRecebimentoModal } from "./ConfirmarRecebimentoModal";
 
-const ITEM_VAZIO: ItemEntrega = { descricao: "", quantidade: "" };
+const ITEM_VAZIO: ItemEntrega = { descricao: "", quantidade: "", produto_id: undefined, almoxarifado_id: undefined };
 const TAMANHO_PAGINA = 10;
 
 export function EntregasMateriaisPage() {
@@ -42,13 +43,34 @@ export function EntregasMateriaisPage() {
     queryKey: ["polos"],
     queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
   });
+  const { data: produtos = [] } = useQuery({
+    queryKey: ["produtos", "ativos"],
+    queryFn: () => api.get<Produto[]>("/produtos", { params: { apenas_ativos: true } }).then((r) => r.data),
+  });
 
   const [salvando, setSalvando] = useState(false);
   const [exportando, setExportando] = useState<string | null>(null);
+  const [baixandoComprovante, setBaixandoComprovante] = useState<string | null>(null);
+  const [entregaConfirmando, setEntregaConfirmando] = useState<EntregaMaterial | null>(null);
   const [poloId, setPoloId] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
   const [entreguePor, setEntreguePor] = useState("");
   const [itens, setItens] = useState<ItemEntrega[]>([{ ...ITEM_VAZIO }]);
+
+  // --- Saldo por almoxarifado de cada produto escolhido num item — busca
+  // sob demanda (não dá pra usar useQuery dentro do .map dos itens), só uma
+  // vez por produto, pra popular o <select> de Almoxarifado daquele item. ---
+  const [saldosPorProduto, setSaldosPorProduto] = useState<Record<string, SaldoAlmoxarifado[]>>({});
+  useEffect(() => {
+    const idsUnicos = [...new Set(itens.map((i) => i.produto_id).filter((id): id is string => !!id))];
+    idsUnicos.forEach((id) => {
+      if (saldosPorProduto[id]) return;
+      api.get<SaldoAlmoxarifado[]>(`/produtos/${id}/saldos-por-almoxarifado`).then((r) => {
+        setSaldosPorProduto((atual) => ({ ...atual, [id]: r.data }));
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens]);
 
   useEffect(() => {
     if (!ehMaster && usuario?.polo_id) setPoloId(usuario.polo_id);
@@ -63,8 +85,46 @@ export function EntregasMateriaisPage() {
     setItens((lista) => lista.map((item, i) => (i === idx ? { ...item, [campo]: valor } : item)));
   }
 
+  function selecionarProdutoItem(idx: number, produtoId: string) {
+    setItens((lista) =>
+      lista.map((item, i) => {
+        if (i !== idx) return item;
+        const produto = produtos.find((p) => p.id === produtoId);
+        return {
+          ...item,
+          produto_id: produtoId || undefined,
+          almoxarifado_id: undefined,
+          descricao: produto ? produto.nome : item.descricao,
+        };
+      })
+    );
+  }
+
+  function selecionarAlmoxarifadoItem(idx: number, almoxarifadoId: string) {
+    setItens((lista) => lista.map((item, i) => (i === idx ? { ...item, almoxarifado_id: almoxarifadoId || undefined } : item)));
+  }
+
   function removerItem(idx: number) {
     setItens((lista) => lista.filter((_, i) => i !== idx));
+  }
+
+  async function verComprovante(entrega: EntregaMaterial) {
+    setBaixandoComprovante(entrega.id);
+    try {
+      const resp = await api.get(`/entregas-materiais/${entrega.id}/comprovante`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(resp.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entrega.comprovante_nome_arquivo ?? "comprovante";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Não foi possível abrir o comprovante.");
+    } finally {
+      setBaixandoComprovante(null);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -128,31 +188,57 @@ export function EntregasMateriaisPage() {
 
           <div>
             <span className="block text-sm font-medium text-gray-700 mb-2">Itens entregues</span>
+            <p className="text-xs text-gray-500 mb-2">
+              Escolha um produto do estoque para baixar a quantidade automaticamente, ou deixe em branco para um item livre (sem controle de estoque).
+            </p>
             <div className="space-y-2">
-              {itens.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-2 items-end">
-                  <Input
-                    label={idx === 0 ? "Descrição do item" : undefined}
-                    placeholder="ex.: Bolas de futebol"
-                    value={item.descricao}
-                    onChange={(e) => atualizarItem(idx, "descricao", e.target.value)}
-                  />
-                  <Input
-                    label={idx === 0 ? "Qtde entregue" : undefined}
-                    placeholder="ex.: 10"
-                    value={item.quantidade}
-                    onChange={(e) => atualizarItem(idx, "quantidade", e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="text-xs text-gray-400 hover:text-red-600 pb-2"
-                    onClick={() => removerItem(idx)}
-                    disabled={itens.length === 1}
-                  >
-                    remover
-                  </button>
-                </div>
-              ))}
+              {itens.map((item, idx) => {
+                const saldosDoProduto = item.produto_id ? saldosPorProduto[item.produto_id] ?? [] : [];
+                return (
+                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_100px_auto] gap-2 items-end">
+                    <Select
+                      label={idx === 0 ? "Produto do estoque (opcional)" : undefined}
+                      value={item.produto_id ?? ""}
+                      onChange={(e) => selecionarProdutoItem(idx, e.target.value)}
+                    >
+                      <option value="">— Item livre —</option>
+                      {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} (saldo: {p.saldo_atual})</option>)}
+                    </Select>
+                    <Select
+                      label={idx === 0 ? "Almoxarifado" : undefined}
+                      value={item.almoxarifado_id ?? ""}
+                      onChange={(e) => selecionarAlmoxarifadoItem(idx, e.target.value)}
+                      disabled={!item.produto_id}
+                      required={!!item.produto_id}
+                    >
+                      <option value="">{item.produto_id ? "— Selecione —" : "— (item livre) —"}</option>
+                      {saldosDoProduto.map((s) => (
+                        <option key={s.almoxarifado_id} value={s.almoxarifado_id}>{s.almoxarifado_nome} (saldo: {s.saldo})</option>
+                      ))}
+                    </Select>
+                    <Input
+                      label={idx === 0 ? "Descrição do item" : undefined}
+                      placeholder="ex.: Bolas de futebol"
+                      value={item.descricao}
+                      onChange={(e) => atualizarItem(idx, "descricao", e.target.value)}
+                    />
+                    <Input
+                      label={idx === 0 ? "Qtde entregue" : undefined}
+                      placeholder="ex.: 10"
+                      value={item.quantidade}
+                      onChange={(e) => atualizarItem(idx, "quantidade", e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="text-xs text-gray-400 hover:text-red-600 pb-2"
+                      onClick={() => removerItem(idx)}
+                      disabled={itens.length === 1}
+                    >
+                      remover
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             {itens.length < 18 && (
               <button
@@ -187,12 +273,23 @@ export function EntregasMateriaisPage() {
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5 truncate">
                       Entregue por {e.entregue_por ?? "—"}
-                      {e.coordenador_nome ? ` · Coordenador: ${e.coordenador_nome}` : ""}
+                      {e.coordenador_nome ? ` · Recebido por: ${e.coordenador_nome}` : ""}
                     </div>
                   </div>
-                  <Button variant="secondary" className="mt-3 w-full" onClick={() => exportar(e)} disabled={exportando === e.id}>
-                    {exportando === e.id ? "Exportando…" : "Exportar .docx"}
-                  </Button>
+                  <div className="flex flex-col gap-2 mt-3">
+                    <Button variant="secondary" onClick={() => exportar(e)} disabled={exportando === e.id}>
+                      {exportando === e.id ? "Exportando…" : "Exportar .docx"}
+                    </Button>
+                    {e.comprovante_nome_arquivo ? (
+                      <Button variant="secondary" onClick={() => verComprovante(e)} disabled={baixandoComprovante === e.id}>
+                        {baixandoComprovante === e.id ? "Abrindo…" : "Ver comprovante de recebimento"}
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" onClick={() => setEntregaConfirmando(e)}>
+                        Confirmar recebimento no polo
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -204,8 +301,9 @@ export function EntregasMateriaisPage() {
                     <th className="py-2.5 px-8">Polo</th>
                     <th className="px-3">Data</th>
                     <th className="px-3">Entregue por</th>
-                    <th className="px-3">Coordenador</th>
+                    <th className="px-3">Recebido por</th>
                     <th className="px-3">Itens</th>
+                    <th className="px-3">Comprovante</th>
                     <th className="px-3 text-right pr-8">Ações</th>
                   </tr>
                 </thead>
@@ -217,6 +315,17 @@ export function EntregasMateriaisPage() {
                       <td className="px-3 text-gray-600">{e.entregue_por ?? "—"}</td>
                       <td className="px-3 text-gray-600">{e.coordenador_nome ?? "—"}</td>
                       <td className="px-3 text-gray-600">{e.itens.length}</td>
+                      <td className="px-3">
+                        {e.comprovante_nome_arquivo ? (
+                          <Button variant="secondary" onClick={() => verComprovante(e)} disabled={baixandoComprovante === e.id}>
+                            {baixandoComprovante === e.id ? "Abrindo…" : "Ver"}
+                          </Button>
+                        ) : (
+                          <Button variant="secondary" onClick={() => setEntregaConfirmando(e)}>
+                            Confirmar
+                          </Button>
+                        )}
+                      </td>
                       <td className="px-3 text-right pr-8">
                         <Button variant="secondary" onClick={() => exportar(e)} disabled={exportando === e.id}>
                           {exportando === e.id ? "Exportando…" : "Exportar .docx"}
@@ -231,6 +340,16 @@ export function EntregasMateriaisPage() {
         )}
         <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalEntregas} onChange={setPagina} />
       </Card>
+
+      <ConfirmarRecebimentoModal
+        entrega={entregaConfirmando}
+        onClose={() => setEntregaConfirmando(null)}
+        onSalvo={() => {
+          setEntregaConfirmando(null);
+          toast.success("Recebimento confirmado com sucesso.");
+          queryClient.invalidateQueries({ queryKey: ["entregas-materiais"] });
+        }}
+      />
     </div>
   );
 }

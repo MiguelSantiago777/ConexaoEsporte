@@ -13,6 +13,13 @@ class EntregaMaterial:
     data_entrega: date | None
     coordenador_nome: str | None
     entregue_por: str | None = None
-    itens: list[dict] = field(default_factory=list)  # [{"descricao": "...", "quantidade": "..."}]
+    # [{"descricao": "...", "quantidade": "...", "produto_id": "..." (opcional)}]
+    itens: list[dict] = field(default_factory=list)
+    # Comprovante de recebimento no polo — anexado depois que a entrega já
+    # foi registrada, via rota própria de upload.
+    comprovante_nome_arquivo: str | None = None
+    comprovante_caminho_arquivo: str | None = None
+    comprovante_content_type: str | None = None
+    comprovante_tamanho_bytes: int | None = None
     criado_por_id: UUID | None = None
     criado_em: object = None

@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR_USUARIOS: str = "uploads/usuarios"
     UPLOAD_DIR_ANEXOS_GERAIS: str = "uploads/anexos_gerais"
 
+    # Estoque: nota fiscal/comprovante de uma Entrada, e comprovante de
+    # recebimento no polo de uma Entrega de Materiais — mesmo esquema,
+    # pastas próprias.
+    UPLOAD_DIR_ESTOQUE: str = "uploads/estoque"
+    UPLOAD_DIR_COMPROVANTES_ENTREGA: str = "uploads/comprovantes_entrega"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]

@@ -18,20 +18,26 @@ class UsuarioService:
         self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
         telefone: str | None = None, carga_horaria_semanal: str | None = None,
+        almoxarifado_id: UUID | None = None, papel_id: UUID | None = None,
     ) -> Usuario:
         if self.repo.buscar_por_email(email):
             raise RecursoJaExiste("Já existe um usuário com este email.")
 
-        # Regra: GESTOR_POLO só pode cadastrar PROFESSOR, e apenas no próprio polo.
-        if criado_por_perfil == PerfilUsuario.GESTOR_POLO:
+        # Regra: GESTOR_POLO só pode cadastrar PROFESSOR, e apenas no próprio
+        # polo. PERSONALIZADO com o módulo "professores" tem a mesma
+        # restrição de perfil, mas sem forçar um polo (o Papel não é
+        # vinculado a nenhum polo específico — quem cadastra escolhe).
+        if criado_por_perfil in (PerfilUsuario.GESTOR_POLO, PerfilUsuario.PERSONALIZADO):
             if perfil != PerfilUsuario.PROFESSOR:
-                raise RegraDeNegocioViolada("Gestor de Polo só pode cadastrar usuários com perfil PROFESSOR.")
-            polo_id = criado_por_polo_id  # força o polo do próprio gestor
+                raise RegraDeNegocioViolada("Este usuário só pode cadastrar usuários com perfil PROFESSOR.")
+            if criado_por_perfil == PerfilUsuario.GESTOR_POLO:
+                polo_id = criado_por_polo_id  # força o polo do próprio gestor
 
         usuario = Usuario(
             id=None, nome=nome, email=email, senha_hash=hash_password(senha),
             perfil=perfil, polo_id=polo_id, ativo=True,
             telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
+            almoxarifado_id=almoxarifado_id, papel_id=papel_id,
         )
         return self.repo.criar(usuario)
 
