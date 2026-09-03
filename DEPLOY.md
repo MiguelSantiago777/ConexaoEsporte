@@ -229,19 +229,51 @@ python3 --version
 ```
 
 **Se já for 3.10+**, pode usar `python3` mesmo daqui pra baixo. **Se for
-mais antigo** (ex.: Ubuntu 20.04 vem com Python 3.8, sem `python3.12` nos
-repositórios padrão), adicione o repositório `deadsnakes` primeiro:
+mais antigo** (ex.: Ubuntu 20.04 vem com Python 3.8), tente primeiro o
+repositório `deadsnakes` — mas ele só builda pra distros ainda dentro do
+suporte padrão, então em algo tão antigo quanto o 20.04 (fora de suporte
+desde abril/2025) é bem provável que não tenha nada publicado pra ela:
 
 ```bash
 sudo apt install -y software-properties-common
 sudo add-apt-repository -y ppa:deadsnakes/ppa
 sudo apt update
+apt-cache madison python3.12   # se não aparecer nada, o deadsnakes não serve — pule pro método abaixo
 ```
 
-Depois de qualquer um dos dois, com o código já em `/home/servidor/conexao-esporte`:
+**Se o deadsnakes não tiver a versão pra sua distro** (foi o caso real no
+primeiro deploy deste guia, em Ubuntu 20.04 — o `apt update` "achava" o
+repositório mas nenhum pacote dele aparecia, porque o índice de pacotes
+retornava 404 direto na fonte), compile o Python do código-fonte oficial.
+Mais lento (uns 5-15 min de `make`), mas não depende de nenhum repositório
+terceiro manter suporte à sua distro:
 
 ```bash
-sudo apt install -y python3.12 python3.12-venv python3.12-dev build-essential libpq-dev
+sudo apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev \
+  libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev wget \
+  libbz2-dev liblzma-dev libpq-dev
+
+cd /tmp
+wget https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz
+tar -xf Python-3.12.7.tgz
+cd Python-3.12.7
+./configure --enable-optimizations
+make -j"$(nproc)"
+sudo make altinstall
+python3.12 --version
+```
+
+`make altinstall` (não `make install`) é o que garante que isso não
+sobrescreve nem interfere no `python3`/`python3.8` que o resto do sistema
+(outros apps incluídos) já usa — instala só como `/usr/local/bin/python3.12`,
+um binário adicional, sem tocar em nada existente.
+
+Depois de qualquer um dos caminhos acima (o `deadsnakes`, se sua distro
+tiver suporte, já deixa `python3.12-venv` pronto; a compilação do
+código-fonte já inclui o módulo `venv` embutido, sem pacote extra), com o
+código já em `/home/servidor/conexao-esporte`:
+
+```bash
 cd /home/servidor/conexao-esporte/backend
 
 python3.12 -m venv .venv
