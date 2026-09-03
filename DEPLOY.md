@@ -219,16 +219,39 @@ git clone https://github.com/MiguelSantiago777/ConexaoEsporte.git /home/servidor
 **Via WinSCP + PuTTY (zip, sem Git)** — ver seção **3.1** logo abaixo para o
 passo a passo completo, incluindo como gerar o zip no Windows.
 
+O projeto usa sintaxe `X | None` de tipos direto (sem
+`from __future__ import annotations`), então **exige Python 3.10+ de
+verdade rodando** — não é só uma questão de compatibilidade de sintaxe,
+o processo nem sobe em Python mais antigo. Confirme antes:
+
+```bash
+python3 --version
+```
+
+**Se já for 3.10+**, pode usar `python3` mesmo daqui pra baixo. **Se for
+mais antigo** (ex.: Ubuntu 20.04 vem com Python 3.8, sem `python3.12` nos
+repositórios padrão), adicione o repositório `deadsnakes` primeiro:
+
+```bash
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+```
+
 Depois de qualquer um dos dois, com o código já em `/home/servidor/conexao-esporte`:
 
 ```bash
-sudo apt install -y python3.12-venv build-essential libpq-dev
+sudo apt install -y python3.12 python3.12-venv python3.12-dev build-essential libpq-dev
 cd /home/servidor/conexao-esporte/backend
 
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -r requirements.txt
 ```
+
+> Se o seu Ubuntu já tinha Python 3.10+ nativo (não precisou do
+> deadsnakes), troque `python3.12` por `python3` nesses dois últimos
+> comandos.
 
 > **Exportação de relatórios em PDF:** além das dependências acima, a
 > exportação em PDF (`?formato=pdf` nas rotas de relatórios) chama o
