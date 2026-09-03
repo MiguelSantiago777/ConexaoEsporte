@@ -3,22 +3,34 @@
 Guia de instalação nativa (sem Docker): PostgreSQL, backend (FastAPI) e
 frontend (React) rodando direto no servidor.
 
-**Este servidor já tem outro app usando as portas 80, 443, 8000 e 5432, e
-o domínio do Conexão Esporte ainda vai ser configurado depois.** O guia
+**Este servidor já tem outro app usando as portas 80, 443 e 8000 (Apache
+na 80/443, um Gunicorn dele na 8000) — mas não tem Postgres instalado. O
+domínio do Conexão Esporte ainda vai ser configurado depois.** O guia
 abaixo já foi ajustado pra conviver com isso:
 
-- **Postgres (5432):** reaproveitamos a instância que já está rodando —
-  criamos só um banco e um usuário novos dentro dela. Não sobe um segundo
-  Postgres.
+- **Postgres (5432):** este servidor não tinha Postgres instalado
+  (confirmado via `systemctl`, `ss`, `dpkg` e `docker ps` — nada achado),
+  então instalamos do zero, só pra esta aplicação. Diferente de um cenário
+  onde já existisse uma instância a reaproveitar, aqui não tem outro banco
+  pra isolar — mas o usuário de aplicação dedicado (nunca o superusuário
+  `postgres`) continua sendo boa prática de qualquer forma.
 - **Backend Uvicorn:** porta `8010` em vez de `8000` (só em `127.0.0.1`,
-  nunca exposta — o número em si não importa muito, só não pode colidir).
-- **Frontend/Nginx (80/443):** como ainda não tem domínio, o site sobe
-  temporariamente na porta `8080` (`http://SEU_IP:8080`). Quando o domínio
-  estiver pronto, você adiciona um novo `server_name` no Nginx apontando
-  pra ele nas portas 80/443 normais — isso **não conflita** com o outro
-  app, porque o Nginx roteia por nome de domínio (Host header), não por
-  porta; múltiplos sites dividem a mesma porta 443 numa boa. O passo 5 já
-  explica os dois cenários.
+  nunca exposta — o número em si não importa muito, só não pode colidir
+  com o Gunicorn do outro app, que já ocupa a `8000`).
+- **Frontend/Nginx (80/443):** o outro app usa **Apache** nessas portas,
+  não Nginx — então `apt install nginx` não mexe em nada dele. Como ainda
+  não tem domínio, o site do Conexão Esporte sobe temporariamente na porta
+  `8080` (`http://SEU_IP:8080`), sem conflito nenhum com o Apache. **Ponto
+  de atenção pra quando o domínio estiver pronto (passo 5.2):** Nginx e
+  Apache não escutam a mesma porta 80/443 ao mesmo tempo do jeito simples
+  — como o Apache já é dono dessas portas, nessa hora vai ser preciso
+  decidir entre (a) colocar o Nginx na frente roteando por domínio e mover
+  o Apache pra escutar só internamente (ex.: `127.0.0.1:8081`, com o
+  próprio Nginx fazendo proxy pro site dele também), ou (b) publicar o
+  Conexão Esporte como mais um `VirtualHost`/proxy dentro do próprio
+  Apache em vez de instalar Nginx pra valer. Não é bloqueio agora — só não
+  é tão simples quanto "múltiplos `server_name` dividem a mesma porta",
+  como seria se o outro app já usasse Nginx.
 
 Comandos testados para Ubuntu/Debian (`apt`); em outra distro troque o
 gerenciador de pacotes, o resto é igual.
@@ -30,17 +42,22 @@ gerenciador de pacotes, o resto é igual.
 ```
 Agora (sem domínio):
 Internet ──8080──> Nginx ──┬─ arquivos estáticos (frontend/dist)
-                            └─ /api/* ──> Uvicorn (127.0.0.1:8010) ──> PostgreSQL (127.0.0.1:5432, banco separado)
+                            └─ /api/* ──> Uvicorn (127.0.0.1:8010) ──> PostgreSQL (127.0.0.1:5432, instalado só pra este app)
+Internet ──80/443──> Apache (outro app, sem mexer)
 
-Depois (com domínio):
+Depois (com domínio) — ver ressalva do passo 5.2 sobre dividir a 80/443 com o Apache:
 Internet ──443──> Nginx (server_name esporte.seudominio.com.br) ──> mesma coisa
-                   (o outro app continua respondendo no server_name dele, na mesma porta 443)
 ```
 
 - Postgres e o backend só escutam em `127.0.0.1` — nunca ficam expostos
   diretamente à internet, só o Nginx.
-- O backend roda como serviço systemd, sem `--reload`, com um usuário
-  Linux dedicado sem privilégios.
+- O backend roda como serviço systemd, sem `--reload`, com o mesmo usuário
+  Linux `servidor` que já roda o outro app neste servidor — sem privilégio
+  de root. O isolamento entre os dois apps vem de *sandboxing* do próprio
+  systemd (`ProtectSystem=strict`, `ProtectHome=read-only` e
+  `ReadWritePaths` liberando escrita só na pasta `uploads/`), em vez de um
+  usuário Linux dedicado — o processo não consegue escrever em nada fora
+  dali, nem nos próprios arquivos do projeto, nem nos do outro app.
 
 Antes de tudo, confirme o que realmente está em cada porta (só pra não
 supor errado):
@@ -49,9 +66,13 @@ supor errado):
 sudo ss -tlnp | grep -E ':80 |:443 |:8000 |:5432 '
 ```
 
-Se **5432** não aparecer como Postgres (`postgres`/`postmaster` no
-processo), ou se **8080** também já estiver ocupada, troque os números
-usados neste guia por outros livres — a lógica é a mesma.
+Se **5432** não aparecer em nada (nem `ss`, nem `ps aux | grep postgres`,
+nem `dpkg -l | grep postgres`, nem `docker ps`), é porque não tem Postgres
+instalado ainda — normal, o passo 2 instala do zero e ele nasce escutando
+nessa porta por padrão, sem precisar trocar nada. Só troque os números
+deste guia se a porta já estiver ocupada por **outra coisa** que não seja
+Postgres (mesma lógica valeria pra **8080**, se ela também já estivesse em
+uso).
 
 ---
 
@@ -72,33 +93,54 @@ sudo ufw status
 > outro app. Quando migrar o Conexão Esporte pra elas (passo 5), não
 > precisa abrir de novo.
 
-Crie um usuário de sistema dedicado para rodar a aplicação (não root):
+> **Firewall (`ufw`) inativo neste servidor:** o `ufw status` mostrou
+> `inactive` — ele nunca foi ativado aqui (o outro app roda exposto sem
+> regra nenhuma; Postgres e o backend deste app continuam protegidos de
+> qualquer forma, por escutarem só em `127.0.0.1`). Os comandos acima só
+> deixam as regras *prontas*, sem ativar o firewall (`sudo ufw enable`) —
+> ativar remotamente tem risco de travar o próprio acesso SSH se algo na
+> regra do OpenSSH não pegar. Só ative se tiver um plano B de acesso ao
+> servidor (console da hospedagem, etc.) e depois de confirmar que a regra
+> `OpenSSH` está mesmo lá (`sudo ufw status`).
+
+Este app roda com o mesmo usuário Linux que já é dono do resto do
+servidor (`servidor`, o mesmo da galerianata) — sem criar usuário
+dedicado novo. O isolamento entre os dois apps fica por conta do
+*sandboxing* do systemd no passo 3 (`ProtectSystem=strict` etc.), não de
+UIDs separados. A pasta do projeto fica ao lado da galerianata, dentro da
+home de `servidor`:
 
 ```bash
-sudo adduser --system --group --home /opt/conexao-esporte conexao
-sudo mkdir -p /opt/conexao-esporte
-sudo chown conexao:conexao /opt/conexao-esporte
+mkdir -p /home/servidor/conexao-esporte
 ```
+
+(sem `sudo` — como você já está logado como `servidor`, é sua própria
+home, não precisa de privilégio extra.)
 
 ---
 
-## 2. PostgreSQL (reaproveitando a instância existente)
+## 2. PostgreSQL (instalação nova, só pra este app)
 
-Confirme que o Postgres já instalado está rodando e escutando em
-`127.0.0.1`/`localhost` (não precisa mudar nada se já for assim, é o
-padrão do pacote do Ubuntu/Debian):
+Este servidor não tinha Postgres — instale o pacote padrão do
+Ubuntu/Debian, que já sobe como serviço e escuta em `127.0.0.1`/`localhost`
+por padrão (não precisa mudar nada nisso):
 
 ```bash
-sudo systemctl status postgresql
+sudo apt install -y postgresql
+sudo systemctl status postgresql --no-pager
 sudo grep listen_addresses /etc/postgresql/*/main/postgresql.conf
 ```
 
+Confirme que criou um usuário Linux `postgres` (padrão do pacote) e que o
+serviço está `active (running)`.
+
 Crie o banco e um **usuário de aplicação dedicado só do Conexão Esporte**
-dentro dessa mesma instância (nunca use o superusuário `postgres`, nem o
-usuário/banco do outro app, na `DATABASE_URL`). O Postgres não tem um
-"gerar senha pra mim" embutido — mas o script abaixo gera uma senha
-aleatória forte e já te devolve o SQL e as linhas do `.env` prontos pra
-colar, sem você ter que digitar nada à mão:
+(nunca use o superusuário `postgres` na `DATABASE_URL`, mesmo sendo a
+única aplicação usando esta instância — evita que um bug na app tenha
+privilégio de superusuário no banco). O Postgres não tem um "gerar senha
+pra mim" embutido — mas o script abaixo gera uma senha aleatória forte e
+já te devolve o SQL e as linhas do `.env` prontos pra colar, sem você ter
+que digitar nada à mão:
 
 ```bash
 bash deploy/gerar_segredos.sh
@@ -131,8 +173,9 @@ script já gerou.
 > instalado, `python3 -c "import secrets; print(secrets.token_urlsafe(24))"`
 > funciona igual (o Python já é obrigatório pro backend).
 
-Esse usuário só enxerga o banco `conexao_esporte`; ele não tem acesso ao
-banco do outro app, e vice-versa.
+Esse usuário só enxerga o banco `conexao_esporte` — não tem privilégio de
+superusuário nem acesso a outros bancos que venham a existir nesta mesma
+instância no futuro.
 
 Aplique o schema (rode como o novo usuário, para que ele já seja o *owner*
 das tabelas):
@@ -150,29 +193,31 @@ PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app -d conexao_espor
 
 ## 3. Backend (FastAPI)
 
-Primeiro, coloque o código em `/opt/conexao-esporte` (a pasta já criada e
-com dono `conexao` no passo 1). Duas formas — use a que preferir:
+Primeiro, coloque o código em `/home/servidor/conexao-esporte` (a pasta
+criada no passo 1, ao lado da galerianata). Como está tudo dentro da sua
+própria home, nenhum comando daqui pra baixo precisa de `sudo` — só os que
+mexem em pacotes do sistema ou no systemd/Nginx. Duas formas de trazer o
+código — use a que preferir:
 
-**Via `git clone`** (se o repositório estiver num Git remoto):
+**Via `git clone`** (repositório é público no GitHub):
 
 ```bash
 sudo apt install -y python3.12-venv build-essential libpq-dev git
-sudo -u conexao git clone <URL_DO_SEU_REPOSITORIO_GIT> /opt/conexao-esporte-src
-sudo rsync -a --delete /opt/conexao-esporte-src/ /opt/conexao-esporte/
+git clone https://github.com/MiguelSantiago777/ConexaoEsporte.git /home/servidor/conexao-esporte
 ```
 
 **Via WinSCP + PuTTY (zip, sem Git)** — ver seção **3.1** logo abaixo para o
 passo a passo completo, incluindo como gerar o zip no Windows.
 
-Depois de qualquer um dos dois, com o código já em `/opt/conexao-esporte`:
+Depois de qualquer um dos dois, com o código já em `/home/servidor/conexao-esporte`:
 
 ```bash
 sudo apt install -y python3.12-venv build-essential libpq-dev
-cd /opt/conexao-esporte/backend
+cd /home/servidor/conexao-esporte/backend
 
-sudo -u conexao python3 -m venv .venv
-sudo -u conexao .venv/bin/pip install --upgrade pip
-sudo -u conexao .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements.txt
 ```
 
 > **Exportação de relatórios em PDF:** além das dependências acima, a
@@ -204,35 +249,33 @@ Compress-Archive -Path "$tmp\*" -DestinationPath "$env:USERPROFILE\Desktop\conex
 `.zip` ter sido criado na Área de Trabalho no final.)
 
 No **WinSCP**: conecte com seu usuário SSH normal (o mesmo do PuTTY) e
-arraste o `conexao-esporte.zip` para a **home dele no servidor**
-(`/home/seu_usuario/`) — nunca direto pra `/opt/...`, porque seu usuário
-SSH não tem permissão de escrita lá (só `sudo` tem).
+arraste o `conexao-esporte.zip` para a **sua home no servidor**
+(`/home/servidor/`).
 
-No **PuTTY** (SSH), extraia e mova pro lugar certo com `sudo`:
+No **PuTTY** (SSH), extraia direto no lugar certo (sem precisar de `sudo`,
+é a sua própria home):
 
 ```bash
 sudo apt install -y unzip
-sudo mkdir -p /opt/conexao-esporte
-sudo unzip -q ~/conexao-esporte.zip -d /opt/conexao-esporte
-sudo chown -R conexao:conexao /opt/conexao-esporte
+unzip -q ~/conexao-esporte.zip -d /home/servidor/conexao-esporte
 rm ~/conexao-esporte.zip
 ```
 
 Confira que ficou com a cara certa antes de seguir para o resto do passo 3:
 
 ```bash
-ls /opt/conexao-esporte
+ls /home/servidor/conexao-esporte
 # deve mostrar: backend  frontend  database  deploy  DEPLOY.md  README.md ...
 ```
 
-Crie o `.env` de produção a partir do exemplo, já restringindo a leitura só
-ao usuário `conexao` (o servidor tem outro app rodando, então outras contas
-locais podem existir):
+Crie o `.env` de produção a partir do exemplo, restringindo a leitura só
+ao dono (o servidor tem outro app rodando, então outras contas locais
+podem existir):
 
 ```bash
-sudo -u conexao cp .env.example .env
-sudo chmod 600 .env
-sudo -u conexao nano .env
+cp .env.example .env
+chmod 600 .env
+nano .env
 ```
 
 Preencha `DATABASE_URL` e `JWT_SECRET_KEY` com o bloco 2 que o
@@ -245,7 +288,7 @@ ENVIRONMENT=production
 # Enquanto não tem domínio, libere a porta temporária; troque para
 # https://esporte.seudominio.com.br assim que o domínio estiver pronto.
 CORS_ORIGINS=http://SEU_IP:8080
-UPLOAD_DIR=/opt/conexao-esporte/backend/uploads/documentos
+UPLOAD_DIR=/home/servidor/conexao-esporte/backend/uploads/documentos
 ```
 
 `ENVIRONMENT=production` faz duas coisas automaticamente: a aplicação se
@@ -256,8 +299,8 @@ ficam desligados.
 Crie o primeiro usuário MASTER:
 
 ```bash
-cd /opt/conexao-esporte/backend
-sudo -u conexao .venv/bin/python scripts/criar_usuario_master.py
+cd /home/servidor/conexao-esporte/backend
+.venv/bin/python scripts/criar_usuario_master.py
 ```
 
 Teste manualmente antes de criar o serviço (porta `8010`, para não colidir
@@ -267,7 +310,7 @@ processos — reinicia worker que travar, faz reload gradual sem derrubar
 conexão — e o Uvicorn é quem entende async/FastAPI de fato):
 
 ```bash
-sudo -u conexao .venv/bin/gunicorn app.main:app \
+.venv/bin/gunicorn app.main:app \
   --worker-class uvicorn.workers.UvicornWorker --workers 2 --bind 127.0.0.1:8010
 # noutro terminal:
 curl http://127.0.0.1:8010/
@@ -279,13 +322,13 @@ curl http://127.0.0.1:8010/
 > fica isolada e não depende do que outro app já tem instalado
 > globalmente, evitando que uma atualização de um quebre o outro.
 
-Instale como serviço systemd (o arquivo em `deploy/` já usa Gunicorn +
-Uvicorn workers na porta `8010`):
+Instale como serviço systemd — o arquivo em `deploy/` já usa Gunicorn +
+Uvicorn workers na porta `8010`, `User=servidor`/`Group=servidor` e o
+caminho `/home/servidor/conexao-esporte`, então não precisa editar nada se
+você seguiu os caminhos deste guia:
 
 ```bash
 sudo cp deploy/conexao-esporte-api.service /etc/systemd/system/
-# Só precisa editar se você colocou o código em outro caminho que não /opt/conexao-esporte
-sudo nano /etc/systemd/system/conexao-esporte-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now conexao-esporte-api
 sudo systemctl status conexao-esporte-api
@@ -304,7 +347,7 @@ sudo journalctl -u conexao-esporte-api -f
 Build local (na sua máquina ou direto no servidor — precisa de Node 20+):
 
 ```bash
-cd frontend
+cd /home/servidor/conexao-esporte/frontend
 npm install
 npm run build   # gera frontend/dist
 ```
@@ -314,12 +357,11 @@ Como o Nginx serve o frontend e a API na **mesma origem** (via proxy em
 caminho relativo `/api/v1` por padrão. Isso continua valendo tanto na
 porta temporária `8080` quanto depois no domínio final.
 
-Copie o resultado para onde o Nginx vai servir:
-
-```bash
-sudo mkdir -p /opt/conexao-esporte/frontend
-sudo cp -r dist/* /opt/conexao-esporte/frontend/dist/
-```
+Como tudo já está dentro da home de `servidor`, o Nginx aponta direto pra
+`frontend/dist` — não precisa copiar pra lugar nenhum (isso só seria
+necessário se o build ficasse fora do alcance de leitura do Nginx, o que
+não é o caso aqui: `/home/servidor` é `755`, então o worker do Nginx
+consegue ler os arquivos normalmente).
 
 ---
 
@@ -328,9 +370,8 @@ sudo cp -r dist/* /opt/conexao-esporte/frontend/dist/
 ### 5.1 Agora — sem domínio, porta 8080
 
 ```bash
-# Se o outro app já usa Nginx, ótimo, é o mesmo pacote — só adiciona um
-# novo arquivo de site. Se o outro app usa outra coisa (Apache etc.), o
-# apt install abaixo instala o Nginx do zero, sem mexer no que já existe.
+# O outro app usa Apache (80/443) — apt install nginx instala do zero,
+# sem mexer nele. Nginx só vai escutar na 8080 por enquanto.
 sudo apt install -y nginx
 
 sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/conexao-esporte
@@ -346,6 +387,31 @@ Acesse `http://SEU_IP:8080` e faça login com o usuário MASTER criado no
 passo 3.
 
 ### 5.2 Depois — quando o domínio estiver pronto
+
+**Ressalva importante (já avisada na Visão geral):** como o outro app usa
+**Apache** nas portas 80/443 — não Nginx —, não dá pra simplesmente trocar
+`listen 8080;` por `listen 80;` no Nginx: as duas portas já têm dono
+(Apache) e dois processos não escutam a mesma porta ao mesmo tempo. Antes
+de mexer em DNS/certbot, decida um dos dois caminhos:
+
+- **(a) Nginx assume a porta 80/443, Apache passa a escutar só
+  internamente.** Reconfigura o Apache pra ouvir em algo tipo
+  `127.0.0.1:8081` (editar `Listen` e o `VirtualHost` do Apache) e o Nginx
+  ganha um segundo `server_name` fazendo proxy pra lá, além do
+  `server_name` do Conexão Esporte. Deixa os dois apps atrás do mesmo
+  Nginx, cada um por `server_name`/domínio.
+- **(b) Publica o Conexão Esporte dentro do próprio Apache**, com um novo
+  `VirtualHost`/`ServerName` pro domínio dele e `mod_proxy`/`mod_proxy_http`
+  encaminhando `/api/` pro backend (`127.0.0.1:8010`) e servindo
+  `frontend/dist` como arquivos estáticos — sem nunca colocar o Nginx pra
+  valer em produção (ele fica só como preview temporário na 8080, e dá pra
+  desinstalar depois).
+
+Este guia documenta o caminho com Nginx (opção a) por ser o mais comum,
+mas os comandos abaixo assumem que a porta 80/443 **já está livre pro
+Nginx** — ou seja, o Apache já foi movido pra outra porta antes de rodar
+isso. Se preferir a opção (b), a configuração de `VirtualHost`+proxy do
+Apache não está coberta aqui.
 
 Aponte o DNS (registro `A`) do domínio/subdomínio escolhido
 (ex.: `esporte.seudominio.com.br`) para o IP deste servidor. Depois:
@@ -367,9 +433,9 @@ sudo certbot --nginx -d esporte.seudominio.com.br
 
 O certbot edita o server block automaticamente para servir em 443 com
 HTTPS e redirecionar HTTP→HTTPS; a renovação automática já vem
-configurada (`systemctl status certbot.timer`). Isso convive numa boa com
-o outro app já rodando em 80/443 — cada um responde pelo seu próprio
-`server_name`.
+configurada (`systemctl status certbot.timer`). Com a opção (a) já feita
+(Apache movido pra outra porta e reconfigurado como segundo `server_name`
+no Nginx), os dois apps continuam respondendo, cada um pelo seu domínio.
 
 Depois disso, atualize também:
 
@@ -389,7 +455,7 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Senha mínima de 8 caracteres na criação/troca de senha (`usuario_schemas.py`, `auth_schemas.py`).
 - [x] `JWT_SECRET_KEY` forte e exclusivo de produção (`openssl rand -hex 32`); a app recusa subir com o valor padrão quando `ENVIRONMENT=production`.
 - [x] `DATABASE_URL` com usuário/senha dedicados (nunca `postgres`/`postgres`); a app recusa subir com essa credencial padrão quando `ENVIRONMENT=production` (mesma trava do JWT, ver `app/core/config.py`).
-- [x] `backend/.env` com permissão `600` (leitura restrita ao usuário `conexao`) — o servidor tem outras contas locais rodando outro app.
+- [x] `backend/.env` com permissão `600` (leitura restrita ao dono do arquivo, `servidor`).
 - [x] Autenticação via Bearer JWT puro (`HTTPBearer`) em todas as rotas protegidas.
 - [x] Rate limiting em `/auth/login` e `PATCH /auth/senha` (10 tentativas/minuto por IP) — ver `app/core/rate_limit.py`.
 - [x] Security headers em toda resposta (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security` quando HTTPS) — ver middleware em `app/main.py`.
@@ -397,10 +463,10 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Validação de que `professor_id` vinculado a uma turma é de fato um PROFESSOR do mesmo polo (evita vazamento de acesso entre polos).
 - [x] Nome de arquivo de documentos sanitizado antes de entrar no header `Content-Disposition` no download.
 - [x] Postgres e backend acessíveis só via `127.0.0.1` — nunca exponha as portas 5432/8010 no firewall.
-- [x] Usuário de banco dedicado (`conexao_esporte_app`), sem privilégio de superusuário, isolado do banco/usuário do outro app.
+- [x] Usuário de banco dedicado (`conexao_esporte_app`), sem privilégio de superusuário.
 - [x] `CORS_ORIGINS` restrito à origem real do frontend (porta temporária agora, domínio HTTPS depois).
 - [x] Swagger/ReDoc desligados em produção (`ENVIRONMENT=production`).
-- [x] Backend rodando como usuário Linux sem privilégios (`conexao`), nunca root.
+- [x] Backend rodando como usuário Linux sem privilégios (`servidor`, nunca root), isolado do resto do sistema via *sandboxing* do systemd (`ProtectSystem=strict`, `ProtectHome=read-only`, `ReadWritePaths` só em `uploads/`).
 - [x] Aba "Alterar senha" disponível para todo usuário logado trocar a própria senha.
 - [ ] Migrar para HTTPS assim que o domínio estiver pronto (passo 5.2) — não deixe rodando só em HTTP por muito tempo, principalmente com dados de menores de idade envolvidos.
 - [ ] Configure backups periódicos do banco (passo 7).
@@ -411,9 +477,8 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 
 ## 7. Backup do banco
 
-Cron diário simples com `pg_dump` (funciona igual reaproveitando a
-instância existente — só faz backup do banco `conexao_esporte`, não mexe
-no banco do outro app):
+Cron diário simples com `pg_dump`, fazendo backup só do banco
+`conexao_esporte`:
 
 ```bash
 sudo -u postgres mkdir -p /var/backups/conexao_esporte
@@ -441,21 +506,22 @@ disco.
 
 ## 8. Atualizando depois do primeiro deploy
 
-Primeiro, atualize o código em `/opt/conexao-esporte`:
+Primeiro, atualize o código em `/home/servidor/conexao-esporte` (é sua
+própria home, nenhum comando abaixo precisa de `sudo` além do restart do
+serviço):
 
 **Via Git:**
 
 ```bash
-cd /opt/conexao-esporte
-sudo -u conexao git pull
+cd /home/servidor/conexao-esporte
+git pull
 ```
 
 **Via WinSCP + PuTTY (zip)** — gere um novo zip como na seção 3.1, suba
 pra sua home no servidor via WinSCP e, no PuTTY:
 
 ```bash
-sudo unzip -oq ~/conexao-esporte.zip -d /opt/conexao-esporte   # -o sobrescreve sem perguntar
-sudo chown -R conexao:conexao /opt/conexao-esporte
+unzip -oq ~/conexao-esporte.zip -d /home/servidor/conexao-esporte   # -o sobrescreve sem perguntar
 rm ~/conexao-esporte.zip
 ```
 
@@ -467,13 +533,13 @@ rm ~/conexao-esporte.zip
 Depois, com o código atualizado (por qualquer um dos dois caminhos):
 
 ```bash
-cd /opt/conexao-esporte
+cd /home/servidor/conexao-esporte
 
 # Backend: reaplica o schema (é idempotente — só cria/altera o que mudou)
-sudo -u conexao PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app \
+PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app \
   -d conexao_esporte -f database/schema.sql
 cd backend
-sudo -u conexao .venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt
 sudo systemctl restart conexao-esporte-api
 # Alternativa sem downtime (não use se as dependências do requirements.txt
 # mudaram — aí precisa do restart completo acima, que já carrega o venv novo):
@@ -483,5 +549,5 @@ sudo systemctl restart conexao-esporte-api
 # se ele tiver Node instalado — os dois funcionam, escolha o mais simples)
 cd ../frontend
 npm install && npm run build
-sudo cp -r dist/* /opt/conexao-esporte/frontend/dist/
+# Nada pra copiar — o Nginx já lê direto de frontend/dist.
 ```
