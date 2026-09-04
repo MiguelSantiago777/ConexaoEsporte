@@ -51,13 +51,17 @@ Internet ──443──> Apache (ServerName galeria.institutonata.org.br) ─�
 
 - Postgres e o backend só escutam em `127.0.0.1` — nunca ficam expostos
   diretamente à internet, só o Apache.
-- O backend roda como serviço systemd, sem `--reload`, com o mesmo usuário
-  Linux `servidor` que já roda o outro app neste servidor — sem privilégio
-  de root. O isolamento entre os dois apps vem de *sandboxing* do próprio
-  systemd (`ProtectSystem=strict`, `ProtectHome=read-only` e
-  `ReadWritePaths` liberando escrita só na pasta `uploads/`), em vez de um
-  usuário Linux dedicado — o processo não consegue escrever em nada fora
-  dali, nem nos próprios arquivos do projeto, nem nos do outro app.
+- O backend roda como serviço systemd, sem `--reload`, sob um **usuário
+  Linux dedicado** (`conexao_esporte`) — separado do `servidor`, que é
+  quem roda o outro app neste servidor — sem privilégio de root. Isso
+  importa porque os dois apps compartilham o mesmo servidor/SO: se
+  rodassem como o mesmo usuário, uma falha que desse execução de código
+  no outro app já teria acesso de leitura ao `.env` e aos uploads deste
+  (permissão de dono sempre vale pro próprio dono, mesmo com `chmod 600`).
+  Com usuários separados, isso não acontece. O *sandboxing* do systemd
+  (`ProtectSystem=strict`, `ProtectHome=read-only` e `ReadWritePaths`
+  liberando escrita só na pasta `uploads/`) continua valendo por cima
+  disso, contendo o próprio processo do Conexão Esporte.
 
 Antes de tudo, confirme o que realmente está em cada porta (só pra não
 supor errado):
@@ -103,19 +107,28 @@ sudo ufw status
 > servidor (console da hospedagem, etc.) e depois de confirmar que a regra
 > `OpenSSH` está mesmo lá (`sudo ufw status`).
 
-Este app roda com o mesmo usuário Linux que já é dono do resto do
-servidor (`servidor`, o mesmo da galerianata) — sem criar usuário
-dedicado novo. O isolamento entre os dois apps fica por conta do
-*sandboxing* do systemd no passo 3 (`ProtectSystem=strict` etc.), não de
-UIDs separados. A pasta do projeto fica ao lado da galerianata, dentro da
-home de `servidor`:
+Crie o usuário Linux dedicado que vai rodar (e ser dono d)o Conexão
+Esporte — sem senha e sem shell de login, já que ele só existe pra ser
+dono de arquivos e do processo do backend, nunca pra logar de verdade:
 
 ```bash
-mkdir -p /home/servidor/conexao-esporte
+sudo useradd --system --create-home --home-dir /home/conexao_esporte --shell /usr/sbin/nologin conexao_esporte
+sudo chmod 711 /home/conexao_esporte
 ```
 
-(sem `sudo` — como você já está logado como `servidor`, é sua própria
-home, não precisa de privilégio extra.)
+`711`: o dono (`conexao_esporte`) tem acesso total; qualquer outro
+usuário do sistema consegue *atravessar* o diretório (necessário porque
+o Apache, rodando como `www-data`, precisa alcançar `frontend/dist`),
+mas não *listar* o conteúdo. O código do backend, o `.venv` e o `.env`
+continuam sem nenhum acesso para "outros" — só `frontend/dist` (arquivos
+estáticos já públicos de qualquer forma) fica de fato legível por fora,
+no passo 4.
+
+Você continua logado via SSH como `servidor` normalmente. Todo comando
+daqui pra frente que grava algo dentro da pasta do projeto (clone, `pip
+install`, `npm install`, criar o `.env` etc.) roda como o usuário novo
+via `sudo -u conexao_esporte` — é só um prefixo a mais em cada comando,
+sem precisar abrir outra sessão SSH nem trocar de usuário de verdade.
 
 ---
 
@@ -167,8 +180,9 @@ comando, cole o bloco, `Enter`, depois `\q` pra sair). Guarde o bloco 2 —
 ele vai para o `.env` no passo 3, junto com a `JWT_SECRET_KEY` que o mesmo
 script já gerou.
 
-> Sem o script, o equivalente manual é `openssl rand -base64 24` (senha do
-> banco) e `openssl rand -hex 32` (`JWT_SECRET_KEY`) — copie a saída de
+> Sem o script, o equivalente manual é `openssl rand -hex 24` (senha do
+> banco — hexadecimal, sem caracteres como `/` que quebram a `DATABASE_URL`)
+> e `openssl rand -hex 32` (`JWT_SECRET_KEY`) — copie a saída de
 > cada comando pros lugares certos. Se o servidor não tiver `openssl`
 > instalado, `python3 -c "import secrets; print(secrets.token_urlsafe(24))"`
 > funciona igual (o Python já é obrigatório pro backend).
@@ -203,17 +217,15 @@ PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app -d conexao_espor
 
 ## 3. Backend (FastAPI)
 
-Primeiro, coloque o código em `/home/servidor/conexao-esporte` (a pasta
-criada no passo 1, ao lado da galerianata). Como está tudo dentro da sua
-própria home, nenhum comando daqui pra baixo precisa de `sudo` — só os que
-mexem em pacotes do sistema ou no systemd/Apache. Duas formas de trazer o
+Primeiro, coloque o código em `/home/conexao_esporte/conexao-esporte` (a
+home criada no passo 1 pro usuário dedicado). Duas formas de trazer o
 código — use a que preferir:
 
 **Via `git clone`** (repositório é público no GitHub):
 
 ```bash
 sudo apt install -y python3.12-venv build-essential libpq-dev git
-git clone https://github.com/MiguelSantiago777/ConexaoEsporte.git /home/servidor/conexao-esporte
+sudo -u conexao_esporte git clone https://github.com/MiguelSantiago777/ConexaoEsporte.git /home/conexao_esporte/conexao-esporte
 ```
 
 **Via WinSCP + PuTTY (zip, sem Git)** — ver seção **3.1** logo abaixo para o
@@ -271,14 +283,26 @@ um binário adicional, sem tocar em nada existente.
 Depois de qualquer um dos caminhos acima (o `deadsnakes`, se sua distro
 tiver suporte, já deixa `python3.12-venv` pronto; a compilação do
 código-fonte já inclui o módulo `venv` embutido, sem pacote extra), com o
-código já em `/home/servidor/conexao-esporte`:
+código já em `/home/conexao_esporte/conexao-esporte`:
 
 ```bash
-cd /home/servidor/conexao-esporte/backend
+cd /home/conexao_esporte/conexao-esporte/backend
 
-python3.12 -m venv .venv
-.venv/bin/pip install --upgrade pip
-.venv/bin/pip install -r requirements.txt
+sudo -u conexao_esporte python3.12 -m venv .venv
+sudo -u conexao_esporte .venv/bin/pip install --upgrade pip
+sudo -u conexao_esporte .venv/bin/pip install -r requirements.txt
+```
+
+Agora que o código já está todo no lugar, feche o acesso de "outros" ao
+que é sensível e deixe só travessia (sem listagem) no resto — o `backend/`
+(código, `.venv`, e o `.env` que você ainda vai criar) fica completamente
+inacessível a qualquer usuário que não seja `conexao_esporte`; só
+`frontend/dist`, depois de buildado no passo 4, vai ganhar leitura:
+
+```bash
+sudo chmod 711 /home/conexao_esporte/conexao-esporte
+sudo chmod 700 /home/conexao_esporte/conexao-esporte/backend
+sudo chmod 711 /home/conexao_esporte/conexao-esporte/frontend
 ```
 
 > Se o seu Ubuntu já tinha Python 3.10+ nativo (não precisou do
@@ -315,32 +339,33 @@ Compress-Archive -Path "$tmp\*" -DestinationPath "$env:USERPROFILE\Desktop\conex
 
 No **WinSCP**: conecte com seu usuário SSH normal (o mesmo do PuTTY) e
 arraste o `conexao-esporte.zip` para a **sua home no servidor**
-(`/home/servidor/`).
+(`/home/servidor/`) — é só um ponto de trânsito, o zip é apagado depois
+de extraído no lugar certo.
 
-No **PuTTY** (SSH), extraia direto no lugar certo (sem precisar de `sudo`,
-é a sua própria home):
+No **PuTTY** (SSH), extraia direto no lugar certo, já como o usuário
+dedicado (pra sair com o dono certo sem precisar de `chown` depois):
 
 ```bash
 sudo apt install -y unzip
-unzip -q ~/conexao-esporte.zip -d /home/servidor/conexao-esporte
+sudo -u conexao_esporte unzip -q ~/conexao-esporte.zip -d /home/conexao_esporte/conexao-esporte
 rm ~/conexao-esporte.zip
 ```
 
 Confira que ficou com a cara certa antes de seguir para o resto do passo 3:
 
 ```bash
-ls /home/servidor/conexao-esporte
+ls /home/conexao_esporte/conexao-esporte
 # deve mostrar: backend  frontend  database  deploy  DEPLOY.md  README.md ...
 ```
 
 Crie o `.env` de produção a partir do exemplo, restringindo a leitura só
-ao dono (o servidor tem outro app rodando, então outras contas locais
-podem existir):
+ao dono (agora o usuário dedicado `conexao_esporte` — nem o `servidor`
+consegue ler):
 
 ```bash
-cp .env.example .env
-chmod 600 .env
-nano .env
+sudo -u conexao_esporte cp .env.example .env
+sudo -u conexao_esporte chmod 600 .env
+sudo -u conexao_esporte nano .env
 ```
 
 Preencha `DATABASE_URL` e `JWT_SECRET_KEY` com o bloco 2 que o
@@ -353,7 +378,7 @@ ENVIRONMENT=production
 # Enquanto não tem domínio, libere a porta temporária; troque para
 # https://esporte.institutonata.org.br assim que o domínio estiver pronto.
 CORS_ORIGINS=http://SEU_IP:8080
-UPLOAD_DIR=/home/servidor/conexao-esporte/backend/uploads/documentos
+UPLOAD_DIR=/home/conexao_esporte/conexao-esporte/backend/uploads/documentos
 ```
 
 `ENVIRONMENT=production` faz duas coisas automaticamente: a aplicação se
@@ -364,8 +389,8 @@ ficam desligados.
 Crie o primeiro usuário MASTER:
 
 ```bash
-cd /home/servidor/conexao-esporte/backend
-.venv/bin/python scripts/criar_usuario_master.py
+cd /home/conexao_esporte/conexao-esporte/backend
+sudo -u conexao_esporte .venv/bin/python scripts/criar_usuario_master.py
 ```
 
 Teste manualmente antes de criar o serviço (porta `8010`, para não colidir
@@ -375,7 +400,7 @@ processos — reinicia worker que travar, faz reload gradual sem derrubar
 conexão — e o Uvicorn é quem entende async/FastAPI de fato):
 
 ```bash
-.venv/bin/gunicorn app.main:app \
+sudo -u conexao_esporte .venv/bin/gunicorn app.main:app \
   --worker-class uvicorn.workers.UvicornWorker --workers 2 --bind 127.0.0.1:8010
 # noutro terminal:
 curl http://127.0.0.1:8010/
@@ -388,9 +413,9 @@ curl http://127.0.0.1:8010/
 > globalmente, evitando que uma atualização de um quebre o outro.
 
 Instale como serviço systemd — o arquivo em `deploy/` já usa Gunicorn +
-Uvicorn workers na porta `8010`, `User=servidor`/`Group=servidor` e o
-caminho `/home/servidor/conexao-esporte`, então não precisa editar nada se
-você seguiu os caminhos deste guia:
+Uvicorn workers na porta `8010`, `User=conexao_esporte`/`Group=conexao_esporte`
+e o caminho `/home/conexao_esporte/conexao-esporte`, então não precisa
+editar nada se você seguiu os caminhos deste guia:
 
 ```bash
 sudo cp deploy/conexao-esporte-api.service /etc/systemd/system/
@@ -412,9 +437,9 @@ sudo journalctl -u conexao-esporte-api -f
 Build local (na sua máquina ou direto no servidor — precisa de Node 20+):
 
 ```bash
-cd /home/servidor/conexao-esporte/frontend
-npm install
-npm run build   # gera frontend/dist
+cd /home/conexao_esporte/conexao-esporte/frontend
+sudo -u conexao_esporte npm install
+sudo -u conexao_esporte npm run build   # gera frontend/dist
 ```
 
 Como o Apache serve o frontend e a API na **mesma origem** (via proxy em
@@ -422,11 +447,15 @@ Como o Apache serve o frontend e a API na **mesma origem** (via proxy em
 caminho relativo `/api/v1` por padrão. Isso continua valendo tanto na
 porta temporária `8080` quanto depois no domínio final.
 
-Como tudo já está dentro da home de `servidor`, o Apache aponta direto pra
-`frontend/dist` — não precisa copiar pra lugar nenhum (isso só seria
-necessário se o build ficasse fora do alcance de leitura do Apache, o que
-não é o caso aqui: `/home/servidor` é `755`, então o worker do Apache
-consegue ler os arquivos normalmente).
+O Apache aponta direto pra `frontend/dist` — não precisa copiar pra lugar
+nenhum. Isso funciona graças ao esquema de permissões do passo 3 (`backend/`
+travado, resto só com bit de travessia): falta só liberar leitura no
+conteúdo do `dist/` recém-gerado, que é estático e já público de qualquer
+forma:
+
+```bash
+sudo -u conexao_esporte chmod -R o+rX /home/conexao_esporte/conexao-esporte/frontend/dist
+```
 
 ---
 
@@ -520,7 +549,7 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Senha mínima de 8 caracteres na criação/troca de senha (`usuario_schemas.py`, `auth_schemas.py`).
 - [x] `JWT_SECRET_KEY` forte e exclusivo de produção (`openssl rand -hex 32`); a app recusa subir com o valor padrão quando `ENVIRONMENT=production`.
 - [x] `DATABASE_URL` com usuário/senha dedicados (nunca `postgres`/`postgres`); a app recusa subir com essa credencial padrão quando `ENVIRONMENT=production` (mesma trava do JWT, ver `app/core/config.py`).
-- [x] `backend/.env` com permissão `600` (leitura restrita ao dono do arquivo, `servidor`).
+- [x] `backend/.env` com permissão `600` (leitura restrita ao dono do arquivo, `conexao_esporte` — nem o usuário do outro app consegue ler).
 - [x] Autenticação via Bearer JWT puro (`HTTPBearer`) em todas as rotas protegidas.
 - [x] Rate limiting em `/auth/login` e `PATCH /auth/senha` (10 tentativas/minuto por IP) — ver `app/core/rate_limit.py`.
 - [x] Security headers em toda resposta (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security` quando HTTPS) — ver middleware em `app/main.py`.
@@ -531,7 +560,7 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Usuário de banco dedicado (`conexao_esporte_app`), sem privilégio de superusuário.
 - [x] `CORS_ORIGINS` restrito à origem real do frontend (porta temporária agora, domínio HTTPS depois).
 - [x] Swagger/ReDoc desligados em produção (`ENVIRONMENT=production`).
-- [x] Backend rodando como usuário Linux sem privilégios (`servidor`, nunca root), isolado do resto do sistema via *sandboxing* do systemd (`ProtectSystem=strict`, `ProtectHome=read-only`, `ReadWritePaths` só em `uploads/`).
+- [x] Backend rodando sob usuário Linux dedicado (`conexao_esporte`, nunca root nem o `servidor` que roda o outro app), isolado do resto do sistema via *sandboxing* do systemd (`ProtectSystem=strict`, `ProtectHome=read-only`, `ReadWritePaths` só em `uploads/`) e via permissões de arquivo (`backend/` em `700`, ilegível por qualquer outro usuário, incluindo o do outro app).
 - [x] Aba "Alterar senha" disponível para todo usuário logado trocar a própria senha.
 - [ ] Migrar para HTTPS assim que o domínio estiver pronto (passo 5.2) — não deixe rodando só em HTTP por muito tempo, principalmente com dados de menores de idade envolvidos.
 - [ ] Configure backups periódicos do banco (passo 7).
@@ -571,22 +600,23 @@ disco.
 
 ## 8. Atualizando depois do primeiro deploy
 
-Primeiro, atualize o código em `/home/servidor/conexao-esporte` (é sua
-própria home, nenhum comando abaixo precisa de `sudo` além do restart do
-serviço):
+Primeiro, atualize o código em `/home/conexao_esporte/conexao-esporte`.
+Como esses arquivos são donos do usuário dedicado, os comandos que gravam
+ali continuam levando `sudo -u conexao_esporte` (só o restart do serviço
+precisa de `sudo` puro):
 
 **Via Git:**
 
 ```bash
-cd /home/servidor/conexao-esporte
-git pull
+cd /home/conexao_esporte/conexao-esporte
+sudo -u conexao_esporte git pull
 ```
 
 **Via WinSCP + PuTTY (zip)** — gere um novo zip como na seção 3.1, suba
 pra sua home no servidor via WinSCP e, no PuTTY:
 
 ```bash
-unzip -oq ~/conexao-esporte.zip -d /home/servidor/conexao-esporte   # -o sobrescreve sem perguntar
+sudo -u conexao_esporte unzip -oq ~/conexao-esporte.zip -d /home/conexao_esporte/conexao-esporte   # -o sobrescreve sem perguntar
 rm ~/conexao-esporte.zip
 ```
 
@@ -598,13 +628,13 @@ rm ~/conexao-esporte.zip
 Depois, com o código atualizado (por qualquer um dos dois caminhos):
 
 ```bash
-cd /home/servidor/conexao-esporte
+cd /home/conexao_esporte/conexao-esporte
 
 # Backend: reaplica o schema (é idempotente — só cria/altera o que mudou)
 PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app \
   -d conexao_esporte -f database/schema.sql
 cd backend
-.venv/bin/pip install -r requirements.txt
+sudo -u conexao_esporte .venv/bin/pip install -r requirements.txt
 sudo systemctl restart conexao-esporte-api
 # Alternativa sem downtime (não use se as dependências do requirements.txt
 # mudaram — aí precisa do restart completo acima, que já carrega o venv novo):
@@ -613,6 +643,7 @@ sudo systemctl restart conexao-esporte-api
 # Frontend (build local no Windows e sobe via WinSCP, ou direto no servidor
 # se ele tiver Node instalado — os dois funcionam, escolha o mais simples)
 cd ../frontend
-npm install && npm run build
+sudo -u conexao_esporte npm install && sudo -u conexao_esporte npm run build
+sudo -u conexao_esporte chmod -R o+rX dist
 # Nada pra copiar — o Apache já lê direto de frontend/dist.
 ```

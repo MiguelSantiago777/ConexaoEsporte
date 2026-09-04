@@ -6,7 +6,7 @@
 #   bash deploy/gerar_segredos.sh
 set -euo pipefail
 
-DB_PASSWORD=$(openssl rand -base64 24)
+DB_PASSWORD=$(openssl rand -hex 24)
 JWT_SECRET=$(openssl rand -hex 32)
 
 echo "===================================================================="
