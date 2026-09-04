@@ -13,7 +13,7 @@ Plataforma de gestão de projetos esportivos — cadastro e acompanhamento de **
 | Frontend | React (Vite + TypeScript) + TailwindCSS |
 | Banco | PostgreSQL — servidor próprio, sem dependência de terceiros |
 | Autenticação | JWT (Access + Refresh Token), esquema Bearer puro |
-| Produção | Instalação nativa (systemd + Gunicorn/Uvicorn + Nginx) — ver [`DEPLOY.md`](./DEPLOY.md) |
+| Produção | Instalação nativa (systemd + Gunicorn/Uvicorn + Apache) — ver [`DEPLOY.md`](./DEPLOY.md) |
 
 ## Perfis de acesso (RBAC)
 
@@ -44,7 +44,7 @@ conexao-esporte/
 ├── database/
 │   ├── schema.sql               # tabelas, enums, FKs, índices (idempotente)
 │   └── seed.sql                 # dados de teste (NÃO usar em produção)
-├── deploy/                      # assets de produção: systemd, Nginx, gerador de segredos
+├── deploy/                      # assets de produção: systemd, Apache, gerador de segredos
 ├── DEPLOY.md                    # passo a passo completo de deploy num servidor Linux próprio
 ├── docker-compose.yml           # ambiente de desenvolvimento local (Postgres + API)
 └── frontend/                    # React + Vite + TS + Tailwind
