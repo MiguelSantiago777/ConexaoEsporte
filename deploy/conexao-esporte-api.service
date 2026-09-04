@@ -5,10 +5,10 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=servidor
-Group=servidor
-WorkingDirectory=/home/servidor/conexao-esporte/backend
-ExecStart=/home/servidor/conexao-esporte/backend/.venv/bin/gunicorn app.main:app \
+User=conexao_esporte
+Group=conexao_esporte
+WorkingDirectory=/home/conexao_esporte/conexao-esporte/backend
+ExecStart=/home/conexao_esporte/conexao-esporte/backend/.venv/bin/gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers 4 \
     --bind 127.0.0.1:8010 \
@@ -24,10 +24,10 @@ RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-# Mudar para read-only permite que o serviço acesse a /home/servidor sem bloquear o boot
+# Mudar para read-only permite que o serviço acesse /home/conexao_esporte sem bloquear o boot
 ProtectHome=read-only
 # Libera permissão de escrita especificamente para a pasta de uploads
-ReadWritePaths=/home/servidor/conexao-esporte/backend/uploads
+ReadWritePaths=/home/conexao_esporte/conexao-esporte/backend/uploads
 
 [Install]
 WantedBy=multi-user.target

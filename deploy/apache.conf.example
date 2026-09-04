@@ -16,15 +16,24 @@
 # reverso na frente. Depois rode o certbot (--apache) para HTTPS, igual já
 # foi feito para o outro domínio deste servidor. Ver a ressalva completa no
 # passo 5.2 do DEPLOY.md antes de mexer nisso.
+#
+# Pré-requisito de permissão: o backend roda sob um usuário Linux dedicado
+# (ver passo 1 do DEPLOY.md), não o www-data do Apache. Pra ele conseguir
+# servir frontend/dist, os diretórios até lá (home do usuário dedicado,
+# a pasta do projeto, frontend/) precisam ter bit de execução para "outros"
+# (o+x, só travessia, sem listagem) e frontend/dist precisa ser legível
+# (o+rx) — são arquivos estáticos já públicos, sem problema nenhum em serem
+# lidos por outro usuário do sistema. backend/ (código, venv, .env, uploads)
+# continua sem nenhum acesso a "outros".
 
 Listen 8080
 
 <VirtualHost *:8080>
     ServerName _default_
 
-    DocumentRoot /home/servidor/conexao-esporte/frontend/dist
+    DocumentRoot /home/conexao_esporte/conexao-esporte/frontend/dist
 
-    <Directory /home/servidor/conexao-esporte/frontend/dist>
+    <Directory /home/conexao_esporte/conexao-esporte/frontend/dist>
         Options -Indexes -FollowSymLinks
         AllowOverride None
         Require all granted
