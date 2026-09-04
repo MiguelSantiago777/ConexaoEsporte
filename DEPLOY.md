@@ -45,7 +45,7 @@ Internet ──8080──> Apache (VirtualHost novo) ──┬─ arquivos está
 Internet ──80/443──> Apache (VirtualHost do outro app, sem mexer)
 
 Depois (com domínio) — mesmo Apache, dois VirtualHosts dividindo a porta pelo ServerName:
-Internet ──443──> Apache (ServerName esporte.institutonata.org.br) ──> mesma coisa
+Internet ──443──> Apache (ServerName conexaoesporte.institutonata.org.br) ──> mesma coisa
 Internet ──443──> Apache (ServerName galeria.institutonata.org.br) ──> outro app, sem mexer
 ```
 
@@ -376,7 +376,7 @@ DATABASE_URL=postgresql://conexao_esporte_app:SUA_SENHA_GERADA@localhost:5432/co
 JWT_SECRET_KEY=sua_jwt_secret_gerada
 ENVIRONMENT=production
 # Enquanto não tem domínio, libere a porta temporária; troque para
-# https://esporte.institutonata.org.br assim que o domínio estiver pronto.
+# https://conexaoesporte.institutonata.org.br assim que o domínio estiver pronto.
 CORS_ORIGINS=http://SEU_IP:8080
 UPLOAD_DIR=/home/conexao_esporte/conexao-esporte/backend/uploads/documentos
 ```
@@ -507,7 +507,7 @@ IP, por exemplo), então o ideal é que o Conexão Esporte não vire esse
 default sem querer.
 
 Aponte o DNS (registro `A`) do domínio/subdomínio escolhido
-(ex.: `esporte.institutonata.org.br`) para o IP deste servidor. Depois:
+(ex.: `conexaoesporte.institutonata.org.br`) para o IP deste servidor. Depois:
 
 ```bash
 sudo apt install -y certbot python3-certbot-apache
@@ -516,12 +516,12 @@ sudo nano /etc/apache2/sites-available/conexao-esporte.conf
 
 Troque `Listen 8080` / `<VirtualHost *:8080>` por `<VirtualHost *:80>`, e
 `ServerName _default_` pelo domínio real
-(`ServerName esporte.institutonata.org.br`). Depois:
+(`ServerName conexaoesporte.institutonata.org.br`). Depois:
 
 ```bash
 sudo apachectl configtest
 sudo systemctl reload apache2
-sudo certbot --apache -d esporte.institutonata.org.br
+sudo certbot --apache -d conexaoesporte.institutonata.org.br
 ```
 
 O certbot edita o VirtualHost automaticamente para servir em 443 com
@@ -535,7 +535,7 @@ Depois disso, atualize também:
 
 ```bash
 # backend/.env
-CORS_ORIGINS=https://esporte.institutonata.org.br
+CORS_ORIGINS=https://conexaoesporte.institutonata.org.br
 ```
 
 e reinicie o serviço (`sudo systemctl restart conexao-esporte-api`). Pode
