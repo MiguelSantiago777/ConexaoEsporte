@@ -1,0 +1,59 @@
+# Copie para /etc/apache2/sites-available/conexao-esporte.conf, habilite
+# com "sudo a2ensite conexao-esporte" e recarregue o Apache (ver DEPLOY.md).
+#
+# Este servidor já tem outro app rodando no Apache, nas portas 80/443, com
+# domínio próprio e ServerName explícito (não é um "catch-all" pegando tudo)
+# — então este VirtualHost novo não disputa nada com o dele. Como o Conexão
+# Esporte ainda não tem domínio definido, este bloco sobe TEMPORARIAMENTE
+# numa porta alternativa (8080), acessível em http://SEU_IP:8080 enquanto
+# isso.
+#
+# Quando o domínio estiver pronto: troque "Listen 8080" / "<VirtualHost
+# *:8080>" por "<VirtualHost *:80>" e "ServerName _default_" pelo domínio
+# real (ex.: "ServerName esporte.seudominio.com.br"). Como o outro app já usa
+# ServerName explícito, os dois VirtualHosts passam a dividir a porta 80
+# nativamente — o Apache roteia pelo header Host, sem precisar de proxy
+# reverso na frente. Depois rode o certbot (--apache) para HTTPS, igual já
+# foi feito para o outro domínio deste servidor. Ver a ressalva completa no
+# passo 5.2 do DEPLOY.md antes de mexer nisso.
+
+Listen 8080
+
+<VirtualHost *:8080>
+    ServerName _default_
+
+    DocumentRoot /home/servidor/conexao-esporte/frontend/dist
+
+    <Directory /home/servidor/conexao-esporte/frontend/dist>
+        Options -Indexes -FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    # API — proxy para o backend Gunicorn/Uvicorn, que escuta só em 127.0.0.1:8010.
+    ProxyPreserveHost On
+    ProxyPass /api/ http://127.0.0.1:8010/
+    ProxyPassReverse /api/ http://127.0.0.1:8010/
+
+    # Rejeita uploads grandes aqui mesmo, antes de gastar memória do backend
+    # lendo o corpo da requisição. UPLOAD_MAX_SIZE_MB no backend é 10MB por
+    # arquivo — 12MB (em bytes) dá folga para o overhead do multipart.
+    <Location /api/>
+        LimitRequestBody 12582912
+    </Location>
+
+    # Assets com hash no nome (Vite) — cache longo e imutável.
+    <FilesMatch "\.(?:js|css|png|jpe?g|gif|svg|ico|webp|woff2?)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
+    </FilesMatch>
+
+    # SPA: qualquer rota desconhecida (que não seja /api/ nem um arquivo
+    # real em frontend/dist) cai no index.html (React Router).
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/api/
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+    RewriteRule ^ /index.html [L]
+
+    ErrorLog ${APACHE_LOG_DIR}/conexao-esporte-error.log
+    CustomLog ${APACHE_LOG_DIR}/conexao-esporte-access.log combined
+</VirtualHost>

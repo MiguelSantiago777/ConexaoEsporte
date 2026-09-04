@@ -4,9 +4,10 @@ Guia de instalação nativa (sem Docker): PostgreSQL, backend (FastAPI) e
 frontend (React) rodando direto no servidor.
 
 **Este servidor já tem outro app usando as portas 80, 443 e 8000 (Apache
-na 80/443, um Gunicorn dele na 8000) — mas não tem Postgres instalado. O
-domínio do Conexão Esporte ainda vai ser configurado depois.** O guia
-abaixo já foi ajustado pra conviver com isso:
+na 80/443, com domínio próprio — `galeria.institutonata.org.br` — e um
+Gunicorn dele na 8000) — mas não tem Postgres instalado. O domínio do
+Conexão Esporte ainda vai ser configurado depois.** O guia abaixo já foi
+ajustado pra conviver com isso:
 
 - **Postgres (5432):** este servidor não tinha Postgres instalado
   (confirmado via `systemctl`, `ss`, `dpkg` e `docker ps` — nada achado),
@@ -17,20 +18,18 @@ abaixo já foi ajustado pra conviver com isso:
 - **Backend Uvicorn:** porta `8010` em vez de `8000` (só em `127.0.0.1`,
   nunca exposta — o número em si não importa muito, só não pode colidir
   com o Gunicorn do outro app, que já ocupa a `8000`).
-- **Frontend/Nginx (80/443):** o outro app usa **Apache** nessas portas,
-  não Nginx — então `apt install nginx` não mexe em nada dele. Como ainda
-  não tem domínio, o site do Conexão Esporte sobe temporariamente na porta
-  `8080` (`http://SEU_IP:8080`), sem conflito nenhum com o Apache. **Ponto
-  de atenção pra quando o domínio estiver pronto (passo 5.2):** Nginx e
-  Apache não escutam a mesma porta 80/443 ao mesmo tempo do jeito simples
-  — como o Apache já é dono dessas portas, nessa hora vai ser preciso
-  decidir entre (a) colocar o Nginx na frente roteando por domínio e mover
-  o Apache pra escutar só internamente (ex.: `127.0.0.1:8081`, com o
-  próprio Nginx fazendo proxy pro site dele também), ou (b) publicar o
-  Conexão Esporte como mais um `VirtualHost`/proxy dentro do próprio
-  Apache em vez de instalar Nginx pra valer. Não é bloqueio agora — só não
-  é tão simples quanto "múltiplos `server_name` dividem a mesma porta",
-  como seria se o outro app já usasse Nginx.
+- **Frontend/Apache (80/443):** o outro app já roda em **Apache**, então
+  o Conexão Esporte usa o mesmo Apache em vez de instalar Nginx — evita
+  ter dois servidores web concorrendo pela mesma porta. Como ainda não tem
+  domínio, o site do Conexão Esporte sobe temporariamente num
+  `VirtualHost` numa porta alternativa (`8080`, `http://SEU_IP:8080`), sem
+  conflito nenhum com o VirtualHost do outro app. **Quando o domínio
+  estiver pronto (passo 5.2):** como o outro app já usa `ServerName`
+  explícito (`galeria.institutonata.org.br`, não é um "catch-all"), basta
+  o Conexão Esporte virar mais um `VirtualHost` na porta 80/443 com o
+  próprio `ServerName` — o Apache roteia nativamente pelo header `Host`,
+  sem precisar mover nada do outro app nem colocar um proxy reverso na
+  frente dos dois.
 
 Comandos testados para Ubuntu/Debian (`apt`); em outra distro troque o
 gerenciador de pacotes, o resto é igual.
@@ -41,16 +40,17 @@ gerenciador de pacotes, o resto é igual.
 
 ```
 Agora (sem domínio):
-Internet ──8080──> Nginx ──┬─ arquivos estáticos (frontend/dist)
-                            └─ /api/* ──> Uvicorn (127.0.0.1:8010) ──> PostgreSQL (127.0.0.1:5432, instalado só pra este app)
-Internet ──80/443──> Apache (outro app, sem mexer)
+Internet ──8080──> Apache (VirtualHost novo) ──┬─ arquivos estáticos (frontend/dist)
+                                                 └─ /api/* ──> Uvicorn (127.0.0.1:8010) ──> PostgreSQL (127.0.0.1:5432, instalado só pra este app)
+Internet ──80/443──> Apache (VirtualHost do outro app, sem mexer)
 
-Depois (com domínio) — ver ressalva do passo 5.2 sobre dividir a 80/443 com o Apache:
-Internet ──443──> Nginx (server_name esporte.seudominio.com.br) ──> mesma coisa
+Depois (com domínio) — mesmo Apache, dois VirtualHosts dividindo a porta pelo ServerName:
+Internet ──443──> Apache (ServerName esporte.institutonata.org.br) ──> mesma coisa
+Internet ──443──> Apache (ServerName galeria.institutonata.org.br) ──> outro app, sem mexer
 ```
 
 - Postgres e o backend só escutam em `127.0.0.1` — nunca ficam expostos
-  diretamente à internet, só o Nginx.
+  diretamente à internet, só o Apache.
 - O backend roda como serviço systemd, sem `--reload`, com o mesmo usuário
   Linux `servidor` que já roda o outro app neste servidor — sem privilégio
   de root. O isolamento entre os dois apps vem de *sandboxing* do próprio
@@ -206,7 +206,7 @@ PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app -d conexao_espor
 Primeiro, coloque o código em `/home/servidor/conexao-esporte` (a pasta
 criada no passo 1, ao lado da galerianata). Como está tudo dentro da sua
 própria home, nenhum comando daqui pra baixo precisa de `sudo` — só os que
-mexem em pacotes do sistema ou no systemd/Nginx. Duas formas de trazer o
+mexem em pacotes do sistema ou no systemd/Apache. Duas formas de trazer o
 código — use a que preferir:
 
 **Via `git clone`** (repositório é público no GitHub):
@@ -351,7 +351,7 @@ DATABASE_URL=postgresql://conexao_esporte_app:SUA_SENHA_GERADA@localhost:5432/co
 JWT_SECRET_KEY=sua_jwt_secret_gerada
 ENVIRONMENT=production
 # Enquanto não tem domínio, libere a porta temporária; troque para
-# https://esporte.seudominio.com.br assim que o domínio estiver pronto.
+# https://esporte.institutonata.org.br assim que o domínio estiver pronto.
 CORS_ORIGINS=http://SEU_IP:8080
 UPLOAD_DIR=/home/servidor/conexao-esporte/backend/uploads/documentos
 ```
@@ -417,96 +417,96 @@ npm install
 npm run build   # gera frontend/dist
 ```
 
-Como o Nginx serve o frontend e a API na **mesma origem** (via proxy em
+Como o Apache serve o frontend e a API na **mesma origem** (via proxy em
 `/api/`), não é preciso configurar `VITE_API_URL` — o `api.ts` já usa o
 caminho relativo `/api/v1` por padrão. Isso continua valendo tanto na
 porta temporária `8080` quanto depois no domínio final.
 
-Como tudo já está dentro da home de `servidor`, o Nginx aponta direto pra
+Como tudo já está dentro da home de `servidor`, o Apache aponta direto pra
 `frontend/dist` — não precisa copiar pra lugar nenhum (isso só seria
-necessário se o build ficasse fora do alcance de leitura do Nginx, o que
-não é o caso aqui: `/home/servidor` é `755`, então o worker do Nginx
+necessário se o build ficasse fora do alcance de leitura do Apache, o que
+não é o caso aqui: `/home/servidor` é `755`, então o worker do Apache
 consegue ler os arquivos normalmente).
 
 ---
 
-## 5. Nginx
+## 5. Apache
+
+O outro app já roda em Apache — em vez de instalar Nginx e ter dois
+servidores web na máquina, o Conexão Esporte entra como mais um
+`VirtualHost` no mesmo Apache. O arquivo do outro app (o que serve
+`galeria.institutonata.org.br`) não é tocado em nenhum passo abaixo.
 
 ### 5.1 Agora — sem domínio, porta 8080
 
 ```bash
-# O outro app usa Apache (80/443) — apt install nginx instala do zero,
-# sem mexer nele. Nginx só vai escutar na 8080 por enquanto.
-sudo apt install -y nginx
+# Módulos necessários (proxy reverso pro backend, reescrita de URL pro
+# SPA e o header de cache dos assets). Habilitar módulo não afeta o outro
+# app, só amplia o que o Apache sabe fazer; o reload é gracioso.
+sudo a2enmod proxy proxy_http rewrite headers
 
-sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/conexao-esporte
-sudo ln -s /etc/nginx/sites-available/conexao-esporte /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+sudo cp deploy/apache.conf.example /etc/apache2/sites-available/conexao-esporte.conf
+sudo a2ensite conexao-esporte
+sudo apachectl configtest
+sudo systemctl reload apache2
 ```
 
-Não mexa em `sites-enabled/default` nem nos arquivos do outro app — o
-bloco novo escuta só na `8080`, então não briga com o que já existe.
+Não mexa no site do outro app (`sites-enabled/`, procure pelo arquivo com
+`ServerName galeria.institutonata.org.br`) — o VirtualHost novo escuta só
+na `8080`, então não briga com o que já existe.
 
 Acesse `http://SEU_IP:8080` e faça login com o usuário MASTER criado no
 passo 3.
 
 ### 5.2 Depois — quando o domínio estiver pronto
 
-**Ressalva importante (já avisada na Visão geral):** como o outro app usa
-**Apache** nas portas 80/443 — não Nginx —, não dá pra simplesmente trocar
-`listen 8080;` por `listen 80;` no Nginx: as duas portas já têm dono
-(Apache) e dois processos não escutam a mesma porta ao mesmo tempo. Antes
-de mexer em DNS/certbot, decida um dos dois caminhos:
+Como o outro app já usa `ServerName` explícito (não é um "catch-all"
+pegando qualquer requisição sem domínio reconhecido), não tem a
+complicação de dois processos disputando a mesma porta — os dois
+VirtualHosts simplesmente dividem a 80/443, cada um roteado pelo Apache
+via header `Host`. Antes de mexer em DNS/certbot, confirme isso:
 
-- **(a) Nginx assume a porta 80/443, Apache passa a escutar só
-  internamente.** Reconfigura o Apache pra ouvir em algo tipo
-  `127.0.0.1:8081` (editar `Listen` e o `VirtualHost` do Apache) e o Nginx
-  ganha um segundo `server_name` fazendo proxy pra lá, além do
-  `server_name` do Conexão Esporte. Deixa os dois apps atrás do mesmo
-  Nginx, cada um por `server_name`/domínio.
-- **(b) Publica o Conexão Esporte dentro do próprio Apache**, com um novo
-  `VirtualHost`/`ServerName` pro domínio dele e `mod_proxy`/`mod_proxy_http`
-  encaminhando `/api/` pro backend (`127.0.0.1:8010`) e servindo
-  `frontend/dist` como arquivos estáticos — sem nunca colocar o Nginx pra
-  valer em produção (ele fica só como preview temporário na 8080, e dá pra
-  desinstalar depois).
+```bash
+sudo apachectl -S
+```
 
-Este guia documenta o caminho com Nginx (opção a) por ser o mais comum,
-mas os comandos abaixo assumem que a porta 80/443 **já está livre pro
-Nginx** — ou seja, o Apache já foi movido pra outra porta antes de rodar
-isso. Se preferir a opção (b), a configuração de `VirtualHost`+proxy do
-Apache não está coberta aqui.
+Confirme que o VirtualHost do outro app aparece com
+`ServerName galeria.institutonata.org.br` (não como `_default_` ou sem
+`ServerName`) — se ele for o "default" da porta 80/443, é ele quem
+responde a qualquer requisição sem domínio reconhecido (acesso direto por
+IP, por exemplo), então o ideal é que o Conexão Esporte não vire esse
+default sem querer.
 
 Aponte o DNS (registro `A`) do domínio/subdomínio escolhido
-(ex.: `esporte.seudominio.com.br`) para o IP deste servidor. Depois:
+(ex.: `esporte.institutonata.org.br`) para o IP deste servidor. Depois:
 
 ```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo nano /etc/nginx/sites-available/conexao-esporte
+sudo apt install -y certbot python3-certbot-apache
+sudo nano /etc/apache2/sites-available/conexao-esporte.conf
 ```
 
-Troque `listen 8080;` / `listen [::]:8080;` por `listen 80;` /
-`listen [::]:80;`, e `server_name _;` pelo domínio real
-(`server_name esporte.seudominio.com.br;`). Depois:
+Troque `Listen 8080` / `<VirtualHost *:8080>` por `<VirtualHost *:80>`, e
+`ServerName _default_` pelo domínio real
+(`ServerName esporte.institutonata.org.br`). Depois:
 
 ```bash
-sudo nginx -t
-sudo systemctl reload nginx
-sudo certbot --nginx -d esporte.seudominio.com.br
+sudo apachectl configtest
+sudo systemctl reload apache2
+sudo certbot --apache -d esporte.institutonata.org.br
 ```
 
-O certbot edita o server block automaticamente para servir em 443 com
-HTTPS e redirecionar HTTP→HTTPS; a renovação automática já vem
-configurada (`systemctl status certbot.timer`). Com a opção (a) já feita
-(Apache movido pra outra porta e reconfigurado como segundo `server_name`
-no Nginx), os dois apps continuam respondendo, cada um pelo seu domínio.
+O certbot edita o VirtualHost automaticamente para servir em 443 com
+HTTPS e redirecionar HTTP→HTTPS — o mesmo certbot já usado para
+`galeria.institutonata.org.br`, então a renovação automática (
+`systemctl status certbot.timer`) já cobre os dois domínios sem
+configuração extra. Os dois apps continuam respondendo, cada um pelo seu
+`ServerName`, sem que um interfira no outro.
 
 Depois disso, atualize também:
 
 ```bash
 # backend/.env
-CORS_ORIGINS=https://esporte.seudominio.com.br
+CORS_ORIGINS=https://esporte.institutonata.org.br
 ```
 
 e reinicie o serviço (`sudo systemctl restart conexao-esporte-api`). Pode
@@ -524,7 +524,7 @@ fechar a porta 8080 no firewall (`sudo ufw delete allow 8080/tcp`).
 - [x] Autenticação via Bearer JWT puro (`HTTPBearer`) em todas as rotas protegidas.
 - [x] Rate limiting em `/auth/login` e `PATCH /auth/senha` (10 tentativas/minuto por IP) — ver `app/core/rate_limit.py`.
 - [x] Security headers em toda resposta (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security` quando HTTPS) — ver middleware em `app/main.py`.
-- [x] `client_max_body_size` no Nginx, alinhado ao limite de upload do backend (`deploy/nginx.conf.example`).
+- [x] `LimitRequestBody` no Apache, alinhado ao limite de upload do backend (`deploy/apache.conf.example`).
 - [x] Validação de que `professor_id` vinculado a uma turma é de fato um PROFESSOR do mesmo polo (evita vazamento de acesso entre polos).
 - [x] Nome de arquivo de documentos sanitizado antes de entrar no header `Content-Disposition` no download.
 - [x] Postgres e backend acessíveis só via `127.0.0.1` — nunca exponha as portas 5432/8010 no firewall.
@@ -614,5 +614,5 @@ sudo systemctl restart conexao-esporte-api
 # se ele tiver Node instalado — os dois funcionam, escolha o mais simples)
 cd ../frontend
 npm install && npm run build
-# Nada pra copiar — o Nginx já lê direto de frontend/dist.
+# Nada pra copiar — o Apache já lê direto de frontend/dist.
 ```
