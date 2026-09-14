@@ -54,6 +54,26 @@ class Settings(BaseSettings):
     UPLOAD_DIR_ESTOQUE: str = "uploads/estoque"
     UPLOAD_DIR_COMPROVANTES_ENTREGA: str = "uploads/comprovantes_entrega"
 
+    # ── Email (Gmail via OAuth2/XOAUTH2) ────────────────────────────────
+    # Mesmo esquema do app de referência em PHPMailer: um app OAuth2 no
+    # Google Cloud (escopo "https://mail.google.com/") autoriza esta
+    # aplicação a enviar como uma conta Gmail/Workspace, sem senha de app.
+    # Ver DEPLOY.md / .env.example para o passo a passo de como gerar essas
+    # credenciais. Enquanto qualquer uma delas estiver vazia, o envio de
+    # email fica automaticamente desligado (ver app/infrastructure/email) —
+    # nunca falha o boot da aplicação nem quebra o ambiente de dev/testes.
+    GOOGLE_OAUTH_CLIENT_ID: str = ""
+    GOOGLE_OAUTH_CLIENT_SECRET: str = ""
+    GOOGLE_OAUTH_REFRESH_TOKEN: str = ""
+    EMAIL_REMETENTE: str = ""  # endereço Gmail/Workspace dono da autorização OAuth2
+    EMAIL_REMETENTE_NOME: str = "Conexão Esporte"
+
+    # Domínio do frontend em produção — usado para montar os links clicáveis
+    # nos emails (ex.: link de redefinição de senha). Mesma variável que
+    # alimenta CORS_ORIGINS na prática, mas mantida separada porque o uso é
+    # outro (link para humano clicar, não política de CORS do navegador).
+    FRONTEND_URL: str = "http://localhost:5173"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]

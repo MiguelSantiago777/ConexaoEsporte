@@ -105,6 +105,23 @@ def test_baixar_comprovante_da_entrada(client, seed_basico):
     assert resp.content == b"conteudo-nota-fiscal"
 
 
+def test_baixar_comprovante_retorna_404_quando_arquivo_falta_no_disco(client, seed_basico):
+    """Regressão: o registro no banco pode sobreviver à perda do arquivo em
+    disco (rebuild de container sem volume persistente, migração de storage,
+    exclusão manual) — antes do fix isso derrubava a rota com 500 em vez do
+    404 limpo que o resto do código já espera (ver ArmazenamentoLocalDocumentos.abrir)."""
+    token_master = login(client, "master@test.com")
+    produto = _criar_produto(client, token_master)
+    almoxarifado = _criar_almoxarifado(client, token_master)
+    entrada = _registrar_entrada(client, token_master, produto["id"], almoxarifado["id"], 10)
+
+    shutil.rmtree(Path("uploads/estoque") / produto["id"], ignore_errors=True)
+
+    resp = client.get(f"/api/v1/movimentos-estoque/{entrada['id']}/arquivo", headers={"Authorization": f"Bearer {token_master}"})
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Arquivo não encontrado."
+
+
 def test_entrega_com_produto_baixa_estoque_do_almoxarifado_escolhido(client, seed_basico):
     token_master = login(client, "master@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)

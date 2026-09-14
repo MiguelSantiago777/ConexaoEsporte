@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Conexão Esporte{% endblock %}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef1f5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+          <tr>
+            <td style="background-color:#00417d; border-radius:12px 12px 0 0; padding:24px 32px;">
+              <span style="font-family: Georgia, 'Times New Roman', serif; font-weight:700; font-size:20px; color:#ffffff; letter-spacing:-0.01em;">Conexão Esporte</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff; border-radius:0 0 12px 12px; padding:32px;">
+              {% block conteudo %}{% endblock %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 8px 0; text-align:center;">
+              <span style="font-family: Arial, 'Segoe UI', sans-serif; font-size:12px; color:#5f6b7a;">Este é um email automático do sistema Conexão Esporte — não é necessário responder.</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

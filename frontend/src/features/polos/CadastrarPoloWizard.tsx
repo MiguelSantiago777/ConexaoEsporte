@@ -101,7 +101,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
         latitude, longitude,
       });
       poloId = data.id;
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar polo."));
       setSalvando(false);
       return;
@@ -119,7 +119,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
       });
       await api.patch(`/polos/${poloId}`, { gestor_responsavel_id: gestor.id });
       toast.success("Polo e acesso do gestor cadastrados com sucesso.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
         `Polo cadastrado, mas houve um problema ao criar o acesso do gestor: ${
           mensagemErroApi(err, "erro desconhecido")

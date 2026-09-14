@@ -21,6 +21,15 @@ class AlterarSenhaRequest(BaseModel):
     nova_senha: str = Field(..., min_length=8, examples=["nova-senha-forte-456"])
 
 
+class SolicitarRedefinicaoSenhaRequest(BaseModel):
+    email: EmailStr
+
+
+class RedefinirSenhaRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    nova_senha: str = Field(..., min_length=8, examples=["nova-senha-forte-456"])
+
+
 class UsuarioLogadoResponse(BaseModel):
     id: UUID
     nome: str

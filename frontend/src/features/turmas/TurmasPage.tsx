@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -69,11 +69,13 @@ export function TurmasPage() {
   const [exportForm, setExportForm] = useState({ turma_id: "", mes: MES_ATUAL, ano: ANO_ATUAL });
 
   // Gestor de polo já vem com o polo pré-selecionado.
-  useEffect(() => {
+  const [usuarioAnterior, setUsuarioAnterior] = useState(usuario);
+  if (usuario !== usuarioAnterior) {
+    setUsuarioAnterior(usuario);
     if (usuario?.polo_id) {
       setForm((f) => (f.polo_id ? f : { ...f, polo_id: usuario.polo_id! }));
     }
-  }, [usuario]);
+  }
 
   const atribuirProfessorMutation = useMutation({
     mutationFn: ({ turmaId, professorId }: { turmaId: string; professorId: string }) =>
@@ -82,7 +84,7 @@ export function TurmasPage() {
       toast.success("Professor atualizado.");
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao atualizar o professor da turma."));
     },
   });
@@ -97,7 +99,7 @@ export function TurmasPage() {
       toast.success("Turma excluída.");
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao excluir a turma."));
     },
   });
@@ -144,7 +146,7 @@ export function TurmasPage() {
       });
       toast.success("Turma cadastrada com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar turma."));
     } finally {
       setSalvando(false);
@@ -160,7 +162,7 @@ export function TurmasPage() {
         `/turmas/${exportForm.turma_id}/lista-presenca/exportar?mes=${exportForm.mes}&ano=${exportForm.ano}`,
         `Lista de Presenca - ${String(exportForm.mes).padStart(2, "0")}-${exportForm.ano}.xlsx`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao exportar a Lista de Presença."));
     } finally {
       setExportando(false);

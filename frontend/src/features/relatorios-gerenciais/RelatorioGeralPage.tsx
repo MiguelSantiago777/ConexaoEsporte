@@ -83,7 +83,7 @@ export function RelatorioGeralPage() {
         params: { data_inicio: dataInicio, data_fim: dataFim },
       });
       setRelatorio(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao gerar o relatório."));
       setRelatorio(null);
     } finally {
@@ -92,6 +92,10 @@ export function RelatorioGeralPage() {
   }
 
   useEffect(() => {
+    // Busca o relatório ao montar a página — setCarregando(true) roda
+    // síncrono antes do primeiro await de propósito, pra já exibir o
+    // spinner no primeiro frame.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     gerar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -172,7 +176,7 @@ export function RelatorioGeralPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: any) => `${v}%`} />
+                    <Tooltip formatter={(v) => `${v}%`} />
                     <Bar dataKey="valor" fill="#00417d" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -189,7 +193,7 @@ export function RelatorioGeralPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: any) => `${v}%`} />
+                  <Tooltip formatter={(v) => `${v}%`} />
                   <Line type="monotone" dataKey="valor" stroke="#fcba27" strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>

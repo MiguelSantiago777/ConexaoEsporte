@@ -29,6 +29,24 @@ def _resetar_rate_limiter():
     limiter.reset()
     yield
 
+
+@pytest.fixture(autouse=True)
+def _sem_envio_real_de_email(monkeypatch):
+    """Testes nunca podem disparar um email de verdade — troca o enviador
+    (ver app/infrastructure/email/enviador.py) por um dublê que só registra
+    a chamada, independente de existirem credenciais reais do Google OAuth2
+    configuradas na máquina que roda os testes."""
+    from app.infrastructure.email import enviador as enviador_module
+
+    emails_enviados: list[dict] = []
+
+    class _EnviadorEmailFalso:
+        def enviar(self, destinatario, assunto, html, texto_alternativo=None):
+            emails_enviados.append({"destinatario": destinatario, "assunto": assunto, "html": html})
+
+    monkeypatch.setattr(enviador_module, "enviador_email", _EnviadorEmailFalso())
+    yield emails_enviados
+
 # SQLite em memória compartilhada entre conexões
 engine = create_engine(
     "sqlite://",

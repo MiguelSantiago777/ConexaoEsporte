@@ -60,10 +60,11 @@ export function RelatorioPoloPage() {
   const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const [polosAnterior, setPolosAnterior] = useState(polos);
+  if (polos !== polosAnterior) {
+    setPolosAnterior(polos);
     if (!poloId && polos.length > 0) setPoloId(polos[0].id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [polos]);
+  }
 
   async function baixarPdf() {
     if (!conteudoRef.current) return;
@@ -100,7 +101,7 @@ export function RelatorioPoloPage() {
         params: { data_inicio: dataInicio, data_fim: dataFim },
       });
       setRelatorio(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao gerar o relatório."));
       setRelatorio(null);
     } finally {
@@ -109,6 +110,10 @@ export function RelatorioPoloPage() {
   }
 
   useEffect(() => {
+    // Busca o relatório quando o polo selecionado muda — setCarregando(true)
+    // roda síncrono antes do primeiro await de propósito, pra já exibir o
+    // spinner no primeiro frame.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (poloId) gerar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poloId]);
@@ -198,7 +203,7 @@ export function RelatorioPoloPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: any) => `${v}%`} />
+                    <Tooltip formatter={(v) => `${v}%`} />
                     <Bar dataKey="valor" fill="#00417d" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -215,7 +220,7 @@ export function RelatorioPoloPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: any) => `${v}%`} />
+                  <Tooltip formatter={(v) => `${v}%`} />
                   <Line type="monotone" dataKey="valor" stroke="#fcba27" strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { EntregaMaterial } from "@/types";
@@ -24,13 +24,15 @@ export function ConfirmarRecebimentoModal({ entrega, onClose, onSalvo }: Props) 
   const [recebidoPor, setRecebidoPor] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [entregaAnterior, setEntregaAnterior] = useState(entrega);
 
-  useEffect(() => {
+  if (entrega !== entregaAnterior) {
+    setEntregaAnterior(entrega);
     if (entrega) {
       setRecebidoPor(entrega.coordenador_nome ?? "");
       setArquivo(null);
     }
-  }, [entrega]);
+  }
 
   if (!entrega) return null;
 
@@ -44,7 +46,7 @@ export function ConfirmarRecebimentoModal({ entrega, onClose, onSalvo }: Props) 
       if (recebidoPor.trim()) dados.append("recebido_por", recebidoPor.trim());
       await api.post(`/entregas-materiais/${entrega.id}/comprovante`, dados);
       onSalvo();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao anexar o comprovante."));
     } finally {
       setEnviando(false);

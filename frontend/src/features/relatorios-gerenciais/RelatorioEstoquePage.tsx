@@ -44,7 +44,7 @@ export function RelatorioEstoquePage() {
         params: { data_inicio: dataInicio, data_fim: dataFim },
       });
       setRelatorio(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao gerar o relatório."));
       setRelatorio(null);
     } finally {
@@ -53,6 +53,10 @@ export function RelatorioEstoquePage() {
   }
 
   useEffect(() => {
+    // Busca o relatório ao montar a página — setCarregando(true) roda
+    // síncrono antes do primeiro await de propósito, pra já exibir o
+    // spinner no primeiro frame.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     gerar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

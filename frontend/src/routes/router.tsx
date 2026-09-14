@@ -2,6 +2,10 @@ import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { EsqueciSenhaPage } from "@/features/auth/pages/EsqueciSenhaPage";
+import { RedefinirSenhaPage } from "@/features/auth/pages/RedefinirSenhaPage";
+import { InscricaoListaEsperaPage } from "@/features/lista-espera/InscricaoListaEsperaPage";
+import { ListaEsperaPage } from "@/features/lista-espera/ListaEsperaPage";
 import { DashboardPage } from "@/features/auth/pages/DashboardPage";
 import { AlterarSenhaPage } from "@/features/auth/pages/AlterarSenhaPage";
 import { PolosPage } from "@/features/polos/PolosPage";
@@ -25,6 +29,9 @@ import { PapeisPage } from "@/features/papeis/PapeisPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/esqueci-senha", element: <EsqueciSenhaPage /> },
+  { path: "/redefinir-senha", element: <RedefinirSenhaPage /> },
+  { path: "/inscricao-lista-espera", element: <InscricaoListaEsperaPage /> },
   { path: "/sem-acesso", element: <div className="p-8">Você não tem acesso a esta área.</div> },
   {
     element: <ProtectedRoute />,
@@ -55,6 +62,7 @@ export const router = createBrowserRouter([
               { path: "/modalidades", element: <ModalidadesPage /> },
               { path: "/turmas", element: <TurmasPage /> },
               { path: "/beneficiarios", element: <BeneficiariosPage /> },
+              { path: "/lista-espera", element: <ListaEsperaPage /> },
               { path: "/beneficiarios/:id/autorizacao-imagem", element: <AutorizacaoImagemPage /> },
               { path: "/professores", element: <ProfessoresPage /> },
               { path: "/almoxarifados", element: <AlmoxarifadosPage /> },

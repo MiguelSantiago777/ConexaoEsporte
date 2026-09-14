@@ -81,7 +81,7 @@ export function ProfessoresPage() {
       toast.success("Acesso do professor desativado.");
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao desativar o professor."));
     },
   });
@@ -140,7 +140,7 @@ export function ProfessoresPage() {
       try {
         await api.patch(`/turmas/${form.turma_id}`, { professor_id: criado.id });
         toast.success("Professor cadastrado e vinculado à turma com sucesso.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error(
           `Professor cadastrado, mas houve um problema ao vincular à turma: ${
             mensagemErroApi(err, "erro desconhecido")
@@ -151,7 +151,7 @@ export function ProfessoresPage() {
       setArquivos(ARQUIVOS_INICIAL);
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar professor."));
     } finally {
       setSalvando(false);

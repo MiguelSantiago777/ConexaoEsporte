@@ -42,7 +42,7 @@ export function UsuarioAnexosTab({
       setArquivo(null);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, `Erro ao enviar ${label.toLowerCase()}.`)),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, `Erro ao enviar ${label.toLowerCase()}.`)),
   });
 
   const removerMutation = useMutation({
@@ -51,7 +51,7 @@ export function UsuarioAnexosTab({
       toast.success("Anexo removido.");
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover anexo.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover anexo.")),
   });
 
   async function baixar(doc: UsuarioDocumento) {

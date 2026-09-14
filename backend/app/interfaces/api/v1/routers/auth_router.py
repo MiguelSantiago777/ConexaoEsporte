@@ -9,7 +9,9 @@ from app.core.dependencies import CurrentUser, DbSession
 from app.core.rate_limit import limiter
 from app.interfaces.api.v1.schemas.auth_schemas import (
     AlterarSenhaRequest,
+    RedefinirSenhaRequest,
     RefreshTokenRequest,
+    SolicitarRedefinicaoSenhaRequest,
     TokenResponse,
     UsuarioLogadoResponse,
 )
@@ -86,3 +88,30 @@ def me(usuario: CurrentUser, db: DbSession) -> UsuarioLogadoResponse:
 def alterar_senha(request: Request, body: AlterarSenhaRequest, usuario: CurrentUser, db: DbSession) -> None:
     service = AuthService(db)
     service.alterar_senha(usuario.id, senha_atual=body.senha_atual, nova_senha=body.nova_senha)
+
+
+@router.post(
+    "/esqueci-senha",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Solicitar redefinição de senha por email",
+    description="Envia por email um link de redefinição de senha, válido por 1 hora, para o email "
+    "informado — **se ele estiver cadastrado**. A resposta é sempre 204, exista ou não o email, para "
+    "não revelar quais emails têm conta no sistema. Limitado a 5 tentativas por minuto por IP.",
+)
+@limiter.limit("5/minute")
+def esqueci_senha(request: Request, body: SolicitarRedefinicaoSenhaRequest, db: DbSession) -> None:
+    service = AuthService(db)
+    service.solicitar_redefinicao_senha(body.email)
+
+
+@router.post(
+    "/redefinir-senha",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Redefinir a senha com o token recebido por email",
+    description="Recebe o `token` do link enviado por `POST /auth/esqueci-senha` e a nova senha. O token "
+    "só pode ser usado uma vez e expira em 1 hora. Limitado a 10 tentativas por minuto por IP.",
+)
+@limiter.limit("10/minute")
+def redefinir_senha(request: Request, body: RedefinirSenhaRequest, db: DbSession) -> None:
+    service = AuthService(db)
+    service.redefinir_senha(body.token, body.nova_senha)

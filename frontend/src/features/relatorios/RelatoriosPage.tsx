@@ -40,7 +40,7 @@ export function RelatoriosPage() {
       setForm({ ...form, conteudo_trabalhado: "", observacoes: "" });
       toast.success("Relatório emitido com sucesso.");
       queryClient.invalidateQueries({ queryKey: relatoriosQueryKey });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao emitir relatório."));
     } finally {
       setSalvando(false);

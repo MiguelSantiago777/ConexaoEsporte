@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Inscrição recebida — Conexão Esporte{% endblock %}
+{% block conteudo %}
+<h1 style="margin:0 0 16px; font-family: Georgia, 'Times New Roman', serif; font-weight:700; font-size:22px; color:#10233a;">Inscrição recebida</h1>
+<p style="margin:0 0 16px; font-family: Arial, 'Segoe UI', sans-serif; font-size:15px; line-height:1.5; color:#10233a;">Olá, {{ nome_responsavel_ou_participante }}.</p>
+<p style="margin:0 0 16px; font-family: Arial, 'Segoe UI', sans-serif; font-size:15px; line-height:1.5; color:#10233a;">Recebemos a inscrição de <strong>{{ nome_participante }}</strong> na lista de espera do Conexão Esporte, para a modalidade <strong>{{ modalidade_nome }}</strong> no polo <strong>{{ polo_nome }}</strong>.</p>
+<p style="margin:0 0 24px; font-family: Arial, 'Segoe UI', sans-serif; font-size:15px; line-height:1.5; color:#10233a;">A equipe do polo vai analisar a disponibilidade de vagas e entrar em contato pelo WhatsApp ou email informados assim que houver uma posição disponível.</p>
+<p style="margin:0; font-family: Arial, 'Segoe UI', sans-serif; font-size:13px; line-height:1.5; color:#5f6b7a;">Nenhuma ação é necessária da sua parte agora — só aguarde nosso contato.</p>
+{% endblock %}

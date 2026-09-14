@@ -35,7 +35,7 @@ export function AlterarSenhaPage() {
       setNovaSenha("");
       setConfirmarSenha("");
       toast.success("Senha alterada com sucesso.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao alterar a senha."));
     } finally {
       setSalvando(false);

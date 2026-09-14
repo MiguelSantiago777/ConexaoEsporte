@@ -10,6 +10,8 @@ from app.domain.anexo_geral.entities import AnexoGeral
 from app.domain.shared.exceptions import ArquivoMuitoGrande, RecursoNaoEncontrado, TipoArquivoNaoSuportado
 from app.infrastructure.repositories.almoxarifado_repository import AlmoxarifadoRepository
 from app.infrastructure.repositories.anexo_geral_repository import AnexoGeralRepository
+from app.infrastructure.repositories.beneficiario_documento_repository import BeneficiarioDocumentoRepository
+from app.infrastructure.repositories.beneficiario_repository import BeneficiarioRepository
 from app.infrastructure.repositories.chamada_evidencia_repository import ChamadaEvidenciaRepository
 from app.infrastructure.repositories.entrega_material_repository import EntregaMaterialRepository
 from app.infrastructure.repositories.modalidade_repository import ModalidadeRepository
@@ -23,6 +25,14 @@ from app.infrastructure.storage.armazenamento_documentos import armazenamento_an
 from app.interfaces.api.v1.schemas.anexo_geral_schemas import DocumentoConsolidadoResponse
 
 CONTENT_TYPES_ACEITOS = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+
+LABEL_TIPO_DOCUMENTO_BENEFICIARIO = {
+    "foto": "Foto do beneficiário",
+    "certidao_nascimento_ou_identidade": "Certidão de nascimento ou identidade",
+    "identidade_responsavel": "Identidade do responsável",
+    "comprovante_residencia": "Comprovante de residência",
+    "comprovante_escolar": "Comprovante escolar",
+}
 
 
 class AnexoGeralService:
@@ -38,6 +48,8 @@ class AnexoGeralService:
         self.movimento_repo = MovimentoEstoqueRepository(db)
         self.entrega_repo = EntregaMaterialRepository(db)
         self.almoxarifado_repo = AlmoxarifadoRepository(db)
+        self.beneficiario_repo = BeneficiarioRepository(db)
+        self.beneficiario_documento_repo = BeneficiarioDocumentoRepository(db)
 
     def listar(self, polo_id: UUID | None = None) -> list[AnexoGeral]:
         return self.repo.listar(polo_id=polo_id)
@@ -46,7 +58,8 @@ class AnexoGeralService:
         """Visão somente leitura reunindo, por ordem de envio mais recente:
         os Anexos Gerais enviados pelos polos/gestores, as fotos de evidência
         e as observações de relatório de aula que os professores registram
-        ao lançar a chamada."""
+        ao lançar a chamada, e os documentos de cadastro de cada beneficiário
+        (foto, certidão, identidade do responsável etc.)."""
         polos_por_id = {p.id: p.nome for p in self.polo_repo.listar()}
         modalidades_por_id = {m.id: m.nome for m in self.modalidade_repo.listar()}
         turmas = self.turma_repo.listar(polo_id=polo_id)
@@ -161,6 +174,25 @@ class AnexoGeralService:
                     autor_nome=nome_usuario(entrega.criado_por_id),
                     data_evento=data_evento, criado_em=entrega.criado_em,
                     nome_arquivo=entrega.comprovante_nome_arquivo, content_type=entrega.comprovante_content_type,
+                    possui_arquivo=True,
+                )
+            )
+
+        beneficiarios = self.beneficiario_repo.listar(polo_id=polo_id)
+        beneficiarios_por_id = {b.id: b for b in beneficiarios}
+        for doc_beneficiario in self.beneficiario_documento_repo.listar_por_beneficiarios(list(beneficiarios_por_id)):
+            beneficiario = beneficiarios_por_id.get(doc_beneficiario.beneficiario_id)
+            if not beneficiario:
+                continue
+            documentos.append(
+                DocumentoConsolidadoResponse(
+                    id=doc_beneficiario.id, tipo="BENEFICIARIO_DOCUMENTO",
+                    titulo=LABEL_TIPO_DOCUMENTO_BENEFICIARIO.get(doc_beneficiario.tipo, doc_beneficiario.tipo),
+                    descricao=beneficiario.nome_completo,
+                    polo_id=beneficiario.polo_id, polo_nome=polos_por_id.get(beneficiario.polo_id, "—"),
+                    autor_nome=nome_usuario(doc_beneficiario.enviado_por_id),
+                    data_evento=(doc_beneficiario.criado_em or agora).date(), criado_em=doc_beneficiario.criado_em,
+                    nome_arquivo=doc_beneficiario.nome_arquivo, content_type=doc_beneficiario.content_type,
                     possui_arquivo=True,
                 )
             )

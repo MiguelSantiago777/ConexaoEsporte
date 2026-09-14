@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -18,12 +18,14 @@ interface Props {
 export function EditarPapelModal({ papel, modulos, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState({ nome: "", descricao: "", modulos: [] as string[], ativo: true });
+  const [papelAnterior, setPapelAnterior] = useState(papel);
 
-  useEffect(() => {
+  if (papel !== papelAnterior) {
+    setPapelAnterior(papel);
     if (papel) {
       setForm({ nome: papel.nome, descricao: papel.descricao ?? "", modulos: papel.modulos, ativo: papel.ativo });
     }
-  }, [papel]);
+  }
 
   function alternarModulo(chave: string) {
     setForm((f) => ({
@@ -41,7 +43,7 @@ export function EditarPapelModal({ papel, modulos, onClose, onSalvo }: Props) {
         ativo: payload.ativo,
       }),
     onSuccess: () => onSalvo(),
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
   });
 
   if (!papel) return null;

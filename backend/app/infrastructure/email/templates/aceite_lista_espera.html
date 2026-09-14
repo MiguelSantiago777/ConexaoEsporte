@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Inscrição aceita — Conexão Esporte{% endblock %}
+{% block conteudo %}
+<h1 style="margin:0 0 16px; font-family: Georgia, 'Times New Roman', serif; font-weight:700; font-size:22px; color:#10233a;">Boas-vindas ao Conexão Esporte!</h1>
+<p style="margin:0 0 16px; font-family: Arial, 'Segoe UI', sans-serif; font-size:15px; line-height:1.5; color:#10233a;">Olá, {{ nome_responsavel_ou_participante }}.</p>
+<p style="margin:0 0 16px; font-family: Arial, 'Segoe UI', sans-serif; font-size:15px; line-height:1.5; color:#10233a;">Temos uma ótima notícia: <strong>{{ nome_participante }}</strong> foi aceito(a) no Conexão Esporte e já está matriculado(a) na turma de <strong>{{ modalidade_nome }}</strong> no polo <strong>{{ polo_nome }}</strong>.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px; width:100%; background-color:#f7f9fb; border-radius:8px;">
+  <tr>
+    <td style="padding:16px 20px; font-family: Arial, 'Segoe UI', sans-serif; font-size:14px; line-height:1.7; color:#10233a;">
+      <strong>Dias de aula:</strong> {{ dias_semana }}<br>
+      <strong>Horário:</strong> {{ horario_inicio }} às {{ horario_fim }}
+    </td>
+  </tr>
+</table>
+<p style="margin:0; font-family: Arial, 'Segoe UI', sans-serif; font-size:13px; line-height:1.5; color:#5f6b7a;">Em caso de dúvidas, procure a equipe do polo. Nos vemos na quadra!</p>
+{% endblock %}

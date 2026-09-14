@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -17,15 +17,17 @@ interface Props {
 export function EditarProdutoModal({ produto, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState({ nome: "", unidade_medida: "", descricao: "", ativo: true });
+  const [produtoAnterior, setProdutoAnterior] = useState(produto);
 
-  useEffect(() => {
+  if (produto !== produtoAnterior) {
+    setProdutoAnterior(produto);
     if (produto) {
       setForm({
         nome: produto.nome, unidade_medida: produto.unidade_medida,
         descricao: produto.descricao ?? "", ativo: produto.ativo,
       });
     }
-  }, [produto]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (payload: { id: string } & typeof form) =>
@@ -34,7 +36,7 @@ export function EditarProdutoModal({ produto, onClose, onSalvo }: Props) {
         descricao: payload.descricao || null, ativo: payload.ativo,
       }),
     onSuccess: () => onSalvo(),
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
   });
 
   if (!produto) return null;

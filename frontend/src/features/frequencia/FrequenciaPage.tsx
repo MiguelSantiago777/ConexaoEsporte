@@ -128,7 +128,7 @@ export function FrequenciaPage() {
         ],
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: fichaQueryKey }),
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao atualizar a chamada.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao atualizar a chamada.")),
   });
 
   const impeditivoMutation = useMutation({
@@ -138,7 +138,7 @@ export function FrequenciaPage() {
       toast.success("Impeditivo de aula registrado.");
       queryClient.invalidateQueries({ queryKey: fichaQueryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao registrar o impeditivo.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao registrar o impeditivo.")),
   });
 
   const removerImpeditivoMutation = useMutation({
@@ -147,7 +147,7 @@ export function FrequenciaPage() {
       toast.success("Impeditivo removido.");
       queryClient.invalidateQueries({ queryKey: fichaQueryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover o impeditivo.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover o impeditivo.")),
   });
 
   function alternarPresenca(beneficiarioId: string, dataIso: string, statusAtual: StatusDia) {
@@ -196,12 +196,13 @@ export function FrequenciaPage() {
   const [novoImpeditivoData, setNovoImpeditivoData] = useState("");
   const [novoImpeditivoTexto, setNovoImpeditivoTexto] = useState("Feriado, ponto facultativo ou data comemorativa");
 
-  useEffect(() => {
+  const [fichaAnteriorImpeditivo, setFichaAnteriorImpeditivo] = useState(ficha);
+  if (ficha !== fichaAnteriorImpeditivo) {
+    setFichaAnteriorImpeditivo(ficha);
     if (!datasSemImpeditivo.includes(novoImpeditivoData)) {
       setNovoImpeditivoData(datasSemImpeditivo[0] ?? "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ficha]);
+  }
 
   function registrarNovoImpeditivo() {
     if (!novoImpeditivoData || !novoImpeditivoTexto.trim()) return;
@@ -213,13 +214,13 @@ export function FrequenciaPage() {
   const [dataEvidencia, setDataEvidencia] = useState("");
   const [enviandoFotos, setEnviandoFotos] = useState(false);
 
-  useEffect(() => {
-    if (!ficha) return;
-    if (!ficha.datas.includes(dataEvidencia)) {
+  const [fichaAnteriorEvidencia, setFichaAnteriorEvidencia] = useState(ficha);
+  if (ficha !== fichaAnteriorEvidencia) {
+    setFichaAnteriorEvidencia(ficha);
+    if (ficha && !ficha.datas.includes(dataEvidencia)) {
       setDataEvidencia(ficha.datas[0] ?? "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ficha]);
+  }
 
   const evidenciasQueryKey = ["frequencias", "evidencias", turmaId, dataEvidencia];
   const { data: evidencias = [] } = useQuery({
@@ -243,7 +244,7 @@ export function FrequenciaPage() {
       const resp = await api.post<ChamadaEvidencia[]>("/frequencias/evidencias", formData);
       queryClient.invalidateQueries({ queryKey: evidenciasQueryKey });
       toast.success(`${resp.data.length} foto(s) anexada(s) como comprovação da aula.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao enviar as fotos."));
     } finally {
       setEnviandoFotos(false);
@@ -264,7 +265,7 @@ export function FrequenciaPage() {
         `/turmas/${turmaId}/lista-presenca/exportar?mes=${mesExportacao}&ano=${anoExportacao}`,
         `Lista de Presenca - ${String(mesExportacao).padStart(2, "0")}-${anoExportacao}.xlsx`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao exportar a Lista de Presença."));
     } finally {
       setExportando(false);

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -19,8 +19,10 @@ interface Props {
 export function EditarCoordenadorModal({ coordenador, almoxarifados, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState({ nome: "", almoxarifado_id: "", ativo: true });
+  const [coordenadorAnterior, setCoordenadorAnterior] = useState(coordenador);
 
-  useEffect(() => {
+  if (coordenador !== coordenadorAnterior) {
+    setCoordenadorAnterior(coordenador);
     if (coordenador) {
       setForm({
         nome: coordenador.nome,
@@ -28,7 +30,7 @@ export function EditarCoordenadorModal({ coordenador, almoxarifados, onClose, on
         ativo: coordenador.ativo,
       });
     }
-  }, [coordenador]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (payload: { id: string } & typeof form) =>
@@ -36,7 +38,7 @@ export function EditarCoordenadorModal({ coordenador, almoxarifados, onClose, on
         nome: payload.nome, almoxarifado_id: payload.almoxarifado_id || null, ativo: payload.ativo,
       }),
     onSuccess: () => onSalvo(),
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
   });
 
   if (!coordenador) return null;

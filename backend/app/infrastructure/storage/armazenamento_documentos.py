@@ -16,6 +16,8 @@ import uuid
 from pathlib import Path
 from typing import BinaryIO
 
+from fastapi import HTTPException, status
+
 from app.core.config import settings
 
 
@@ -34,7 +36,19 @@ class ArmazenamentoLocalDocumentos:
         return caminho_relativo
 
     def abrir(self, caminho_relativo: str) -> BinaryIO:
-        return (self.base_dir / caminho_relativo).open("rb")
+        """Abre o arquivo referenciado pelo registro no banco. O registro e o
+        arquivo em disco podem divergir (rebuild de container sem volume
+        persistente, migração de storage, exclusão manual) — sem esse guard,
+        toda rota `.../arquivo` (estoque, anexos gerais, documentos de
+        beneficiário/usuário, evidências de chamada, comprovante de entrega)
+        derrubava com 500 em vez do 404 que o chamador já está preparado
+        para tratar."""
+        try:
+            return (self.base_dir / caminho_relativo).open("rb")
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado."
+            ) from None
 
     def remover(self, caminho_relativo: str) -> None:
         (self.base_dir / caminho_relativo).unlink(missing_ok=True)

@@ -34,7 +34,7 @@ export function ModalidadesPage() {
       setForm({ nome: "", descricao: "" });
       toast.success("Modalidade cadastrada com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["modalidades"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar modalidade."));
     } finally {
       setSalvando(false);
@@ -47,7 +47,7 @@ export function ModalidadesPage() {
       toast.success("Modalidade removida.");
       queryClient.invalidateQueries({ queryKey: ["modalidades"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover modalidade.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover modalidade.")),
   });
 
   function removerModalidade(m: Modalidade) {

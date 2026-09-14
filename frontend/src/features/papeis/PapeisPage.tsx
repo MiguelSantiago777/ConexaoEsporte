@@ -45,7 +45,7 @@ export function PapeisPage() {
       setForm({ nome: "", descricao: "", modulos: [] });
       toast.success("Papel cadastrado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["papeis"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar papel."));
     } finally {
       setSalvando(false);
@@ -58,7 +58,7 @@ export function PapeisPage() {
       toast.success("Papel removido.");
       queryClient.invalidateQueries({ queryKey: ["papeis"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover papel.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover papel.")),
   });
 
   function removerPapel(p: Papel) {

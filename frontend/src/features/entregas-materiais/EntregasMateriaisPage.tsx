@@ -72,10 +72,11 @@ export function EntregasMateriaisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itens]);
 
-  useEffect(() => {
+  const [usuarioAnterior, setUsuarioAnterior] = useState(usuario);
+  if (usuario !== usuarioAnterior) {
+    setUsuarioAnterior(usuario);
     if (!ehMaster && usuario?.polo_id) setPoloId(usuario.polo_id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario]);
+  }
 
   function poloNome(id: string) {
     return polos.find((p) => p.id === id)?.nome ?? "—";
@@ -143,7 +144,7 @@ export function EntregasMateriaisPage() {
       setItens([{ ...ITEM_VAZIO }]);
       toast.success("Entrega de materiais registrada.");
       queryClient.invalidateQueries({ queryKey: ["entregas-materiais"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao registrar a entrega."));
     } finally {
       setSalvando(false);
@@ -154,8 +155,8 @@ export function EntregasMateriaisPage() {
     setExportando(entrega.id);
     try {
       await baixarExportacao(
-        `/entregas-materiais/${entrega.id}/exportar`,
-        `Termo de Entrega de Materiais - ${poloNome(entrega.polo_id)}.docx`
+        `/entregas-materiais/${entrega.id}/exportar?formato=pdf`,
+        `Termo de Entrega de Materiais - ${poloNome(entrega.polo_id)}.pdf`
       );
     } catch {
       toast.error("Não foi possível exportar o termo.");
@@ -278,7 +279,7 @@ export function EntregasMateriaisPage() {
                   </div>
                   <div className="flex flex-col gap-2 mt-3">
                     <Button variant="secondary" onClick={() => exportar(e)} disabled={exportando === e.id}>
-                      {exportando === e.id ? "Exportando…" : "Exportar .docx"}
+                      {exportando === e.id ? "Exportando…" : "Exportar termo (PDF)"}
                     </Button>
                     {e.comprovante_nome_arquivo ? (
                       <Button variant="secondary" onClick={() => verComprovante(e)} disabled={baixandoComprovante === e.id}>
@@ -328,7 +329,7 @@ export function EntregasMateriaisPage() {
                       </td>
                       <td className="px-3 text-right pr-8">
                         <Button variant="secondary" onClick={() => exportar(e)} disabled={exportando === e.id}>
-                          {exportando === e.id ? "Exportando…" : "Exportar .docx"}
+                          {exportando === e.id ? "Exportando…" : "Exportar termo (PDF)"}
                         </Button>
                       </td>
                     </tr>

@@ -24,7 +24,7 @@ function ForcarCentro({ centro, zoom }: { centro: [number, number]; zoom: number
     map.invalidateSize();
     map.setView(centro, zoom);
 
-  }, [map]);
+  }, [map, centro, zoom]);
   return null;
 }
 

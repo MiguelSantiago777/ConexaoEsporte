@@ -637,4 +637,50 @@ CREATE TABLE IF NOT EXISTS configuracao_geral (
     atualizado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ---------------------------------------------------------------------
+-- TABELA: redefinicoes_senha — token de uso único do fluxo "esqueci minha
+-- senha", enviado por email (ver app/application/auth/service.py). Guarda
+-- só o hash SHA-256 do token, nunca o valor em texto puro.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS redefinicoes_senha (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id      UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token_hash      VARCHAR(64) NOT NULL UNIQUE,
+    expira_em       TIMESTAMPTZ NOT NULL,
+    usado_em        TIMESTAMPTZ,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_redefinicoes_senha_usuario ON redefinicoes_senha(usuario_id);
+
+-- ---------------------------------------------------------------------
+-- TABELA: inscricoes_lista_espera — pré-cadastro público de interesse
+-- (formulário embutido na landing page do projeto). Vira Beneficiário +
+-- Matrícula quando um GESTOR_POLO/MASTER aceita (ver
+-- app/application/lista_espera/service.py). `beneficiario_id` nulo =
+-- ainda pendente de análise.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS inscricoes_lista_espera (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome_completo     VARCHAR(150) NOT NULL,
+    data_nascimento   DATE NOT NULL,
+    documento         VARCHAR(20) NOT NULL,
+    nome_responsavel  VARCHAR(150),
+    documento_responsavel VARCHAR(20),
+    telefone_whatsapp VARCHAR(20) NOT NULL,
+    email             VARCHAR(150) NOT NULL,
+    bairro            VARCHAR(100),
+    cidade            VARCHAR(100),
+    modalidade_id     UUID NOT NULL REFERENCES modalidades(id),
+    polo_id           UUID NOT NULL REFERENCES polos(id),
+    como_conheceu     VARCHAR(200),
+    beneficiario_id   UUID REFERENCES beneficiarios(id) ON DELETE SET NULL,
+    turma_id          UUID REFERENCES turmas(id) ON DELETE SET NULL,
+    aceito_por_id     UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    aceito_em         TIMESTAMPTZ,
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inscricoes_lista_espera_polo ON inscricoes_lista_espera(polo_id);
+
 ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_projeto VARCHAR(200);

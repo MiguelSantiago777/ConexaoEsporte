@@ -19,7 +19,8 @@ class AnexoGeralResponse(BaseModel):
 
 
 TipoDocumentoConsolidado = Literal[
-    "ANEXO_GERAL", "EVIDENCIA_CHAMADA", "OBSERVACAO_AULA", "ESTOQUE_ENTRADA", "ENTREGA_MATERIAIS"
+    "ANEXO_GERAL", "EVIDENCIA_CHAMADA", "OBSERVACAO_AULA", "ESTOQUE_ENTRADA", "ENTREGA_MATERIAIS",
+    "BENEFICIARIO_DOCUMENTO",
 ]
 
 
@@ -27,10 +28,12 @@ class DocumentoConsolidadoResponse(BaseModel):
     """Item da visão consolidada e somente leitura de tudo que foi anexado
     pelos polos (Anexos Gerais), pelos gestores de polo, pelos professores ao
     lançar a chamada (fotos de evidência e observações do relatório de aula),
-    ou gerado pelo módulo de Estoque (nota fiscal da Entrada, comprovante de
-    recebimento no polo de uma Entrega de Materiais). `polo_id`/`polo_nome`
-    ficam nulos só para a Entrada de estoque, que é um lançamento central e
-    não pertence a nenhum polo específico."""
+    os documentos de cadastro de um beneficiário (foto, certidão, identidade
+    do responsável, comprovante de residência/escolar), ou gerado pelo
+    módulo de Estoque (nota fiscal da Entrada, comprovante de recebimento no
+    polo de uma Entrega de Materiais). `polo_id`/`polo_nome` ficam nulos só
+    para a Entrada de estoque, que é um lançamento central e não pertence a
+    nenhum polo específico."""
 
     id: UUID
     tipo: TipoDocumentoConsolidado

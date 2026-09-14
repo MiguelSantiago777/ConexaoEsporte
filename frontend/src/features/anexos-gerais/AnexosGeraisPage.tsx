@@ -14,7 +14,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
-import { PaperclipIcon, CameraIcon, DocumentTextIcon, StackIcon, BoxIcon } from "@/components/ui/icons";
+import { PaperclipIcon, CameraIcon, DocumentTextIcon, StackIcon, BoxIcon, IdentificationIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 export function AnexosGeraisPage() {
@@ -32,6 +32,7 @@ const ABAS_TIPO: { id: TipoDocumentoConsolidado | "TODOS"; label: string }[] = [
   { id: "ANEXO_GERAL", label: "Anexos dos polos" },
   { id: "EVIDENCIA_CHAMADA", label: "Fotos de chamada" },
   { id: "OBSERVACAO_AULA", label: "Observações de aula" },
+  { id: "BENEFICIARIO_DOCUMENTO", label: "Documentos de beneficiários" },
   { id: "ESTOQUE_ENTRADA", label: "Entradas de estoque" },
   { id: "ENTREGA_MATERIAIS", label: "Recebimento nos polos" },
 ];
@@ -40,6 +41,7 @@ const INFO_TIPO: Record<TipoDocumentoConsolidado, { icone: typeof PaperclipIcon;
   ANEXO_GERAL: { icone: PaperclipIcon, badge: "brand" },
   EVIDENCIA_CHAMADA: { icone: CameraIcon, badge: "accent" },
   OBSERVACAO_AULA: { icone: DocumentTextIcon, badge: "gray" },
+  BENEFICIARIO_DOCUMENTO: { icone: IdentificationIcon, badge: "brand" },
   ESTOQUE_ENTRADA: { icone: StackIcon, badge: "brand" },
   ENTREGA_MATERIAIS: { icone: BoxIcon, badge: "accent" },
 };
@@ -47,6 +49,7 @@ const INFO_TIPO: Record<TipoDocumentoConsolidado, { icone: typeof PaperclipIcon;
 function urlArquivo(doc: DocumentoConsolidado): string | null {
   if (doc.tipo === "ANEXO_GERAL") return `/anexos-gerais/${doc.id}/arquivo`;
   if (doc.tipo === "EVIDENCIA_CHAMADA") return `/frequencias/evidencias/${doc.id}/arquivo`;
+  if (doc.tipo === "BENEFICIARIO_DOCUMENTO") return `/beneficiarios/documentos/${doc.id}/arquivo`;
   if (doc.tipo === "ESTOQUE_ENTRADA") return `/movimentos-estoque/${doc.id}/arquivo`;
   if (doc.tipo === "ENTREGA_MATERIAIS") return `/entregas-materiais/${doc.id}/comprovante`;
   return null;
@@ -89,6 +92,11 @@ function VisaoConsolidadaDocumentos() {
       const resp = await api.get(url, { responseType: "blob" });
       const objectUrl = window.URL.createObjectURL(resp.data);
       if (doc.content_type?.startsWith("image/") || doc.content_type === "application/pdf") {
+        // Não revoga a URL aqui: a aba nova ainda está carregando o
+        // blob de forma assíncrona quando window.open() retorna, e
+        // revogar antes dela terminar é o que causava a tela preta (o
+        // PDF/imagem nunca chegava a renderizar). Fica pra o navegador
+        // liberar quando a aba fechar ou a página recarregar.
         window.open(objectUrl, "_blank");
       } else {
         const a = document.createElement("a");
@@ -97,8 +105,8 @@ function VisaoConsolidadaDocumentos() {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        window.URL.revokeObjectURL(objectUrl);
       }
-      window.URL.revokeObjectURL(objectUrl);
     } catch {
       toast.error("Não foi possível abrir o arquivo.");
     } finally {
@@ -201,7 +209,7 @@ function AnexosGeraisDoPolo() {
       setArquivo(null);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao enviar anexo.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao enviar anexo.")),
   });
 
   const removerMutation = useMutation({
@@ -210,7 +218,7 @@ function AnexosGeraisDoPolo() {
       toast.success("Anexo removido.");
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover anexo.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover anexo.")),
   });
 
   const [baixando, setBaixando] = useState<string | null>(null);

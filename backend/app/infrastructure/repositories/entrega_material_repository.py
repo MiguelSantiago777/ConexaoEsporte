@@ -23,18 +23,22 @@ class EntregaMaterialRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def listar(self, polo_id: UUID | None = None) -> list[EntregaMaterial]:
+    def listar(self, polo_id: UUID | None = None, criado_por_id: UUID | None = None) -> list[EntregaMaterial]:
         stmt = select(EntregaMaterialModel).order_by(EntregaMaterialModel.criado_em.desc())
         if polo_id:
             stmt = stmt.where(EntregaMaterialModel.polo_id == polo_id)
+        if criado_por_id:
+            stmt = stmt.where(EntregaMaterialModel.criado_por_id == criado_por_id)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
     def listar_pagina(
-        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None,
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, criado_por_id: UUID | None = None,
     ) -> tuple[list[EntregaMaterial], int]:
         stmt = select(EntregaMaterialModel).order_by(EntregaMaterialModel.criado_em.desc())
         if polo_id:
             stmt = stmt.where(EntregaMaterialModel.polo_id == polo_id)
+        if criado_por_id:
+            stmt = stmt.where(EntregaMaterialModel.criado_por_id == criado_por_id)
         modelos, total = paginar(self.db, stmt, pagina, tamanho_pagina)
         return [_to_entity(m) for m in modelos], total
 

@@ -32,9 +32,11 @@ export function PolosPage() {
     return () => clearTimeout(t);
   }, [filtroNome]);
 
-  useEffect(() => {
+  const [filtroNomeAnterior, setFiltroNomeAnterior] = useState(filtroNomeDebounced);
+  if (filtroNomeDebounced !== filtroNomeAnterior) {
+    setFiltroNomeAnterior(filtroNomeDebounced);
     setPagina(1);
-  }, [filtroNomeDebounced]);
+  }
 
   const polosQueryKey = ["polos", "pagina", pagina, filtroNomeDebounced];
   const { data: paginaPolos, isLoading: carregando } = useQuery({
@@ -58,7 +60,7 @@ export function PolosPage() {
       toast.success("Polo desativado.");
       queryClient.invalidateQueries({ queryKey: ["polos"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao desativar polo."));
     },
   });
@@ -78,7 +80,7 @@ export function PolosPage() {
         `/polos/${p.id}/grade-horaria/exportar?planejamento_horas=${planejamento}`,
         `Grade Horaria - ${p.nome}.docx`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao exportar a Grade Horária."));
     } finally {
       setExportandoGrade(null);
@@ -89,7 +91,7 @@ export function PolosPage() {
     setExportandoNucleos(p.id);
     try {
       await baixarExportacao(`/polos/${p.id}/planilha-nucleos/exportar`, `Planilha de Nucleos - ${p.nome}.xlsx`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao exportar a Planilha de Núcleos."));
     } finally {
       setExportandoNucleos(null);
@@ -100,7 +102,7 @@ export function PolosPage() {
     setExportandoTermo(p.id);
     try {
       await baixarExportacao(`/polos/${p.id}/termo-responsabilidade/exportar`, `Termo de Responsabilidade - ${p.nome}.docx`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao exportar o Termo de Responsabilidade."));
     } finally {
       setExportandoTermo(null);

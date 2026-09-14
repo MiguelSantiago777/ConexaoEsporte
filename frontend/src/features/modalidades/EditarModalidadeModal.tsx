@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -17,18 +17,20 @@ interface Props {
 export function EditarModalidadeModal({ modalidade, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState({ nome: "", descricao: "" });
+  const [modalidadeAnterior, setModalidadeAnterior] = useState(modalidade);
 
-  useEffect(() => {
+  if (modalidade !== modalidadeAnterior) {
+    setModalidadeAnterior(modalidade);
     if (modalidade) {
       setForm({ nome: modalidade.nome, descricao: modalidade.descricao ?? "" });
     }
-  }, [modalidade]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (payload: { id: string; nome: string; descricao: string }) =>
       api.patch(`/modalidades/${payload.id}`, { nome: payload.nome, descricao: payload.descricao || null }),
     onSuccess: () => onSalvo(),
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao salvar alterações.")),
   });
 
   if (!modalidade) return null;

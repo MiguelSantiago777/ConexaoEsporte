@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -41,10 +41,12 @@ function formInicialDe(b: Beneficiario) {
 export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState(beneficiario ? formInicialDe(beneficiario) : null);
+  const [beneficiarioAnterior, setBeneficiarioAnterior] = useState(beneficiario);
 
-  useEffect(() => {
+  if (beneficiario !== beneficiarioAnterior) {
+    setBeneficiarioAnterior(beneficiario);
     setForm(beneficiario ? formInicialDe(beneficiario) : null);
-  }, [beneficiario]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (payload: { id: string; form: NonNullable<typeof form> }) => {
@@ -68,7 +70,7 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
       });
     },
     onSuccess: () => onSalvo(),
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao salvar alterações."));
     },
   });

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -30,8 +30,10 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
   const toast = useToast();
   const [aba, setAba] = useState("dados");
   const [form, setForm] = useState({ nome: "", telefone: "", carga_horaria_semanal: "", polo_id: "", ativo: true });
+  const [professorAnterior, setProfessorAnterior] = useState(professor);
 
-  useEffect(() => {
+  if (professor !== professorAnterior) {
+    setProfessorAnterior(professor);
     if (professor) {
       setForm({
         nome: professor.nome,
@@ -42,7 +44,7 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
       });
       setAba("dados");
     }
-  }, [professor]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (payload: {
@@ -63,7 +65,7 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
         ...(ehMaster ? { polo_id: payload.polo_id || null, ativo: payload.ativo } : {}),
       }),
     onSuccess: () => onSalvo(),
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao salvar alterações."));
     },
   });

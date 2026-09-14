@@ -485,3 +485,56 @@ class MovimentoEstoqueModel(Base):
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class RedefinicaoSenhaModel(Base):
+    """Token de uso único para o fluxo 'esqueci minha senha' (ver
+    AuthService.solicitar_redefinicao_senha / redefinir_senha). Guarda só o
+    hash SHA-256 do token — nunca o token em texto puro, que só existe no
+    link enviado por email — pra um vazamento do banco não virar um token
+    de redefinição utilizável por qualquer conta."""
+
+    __tablename__ = "redefinicoes_senha"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    usado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class InscricaoListaEsperaModel(Base):
+    """Pré-cadastro público de interesse (formulário embutido na landing
+    page do projeto) — vira Beneficiário + Matrícula quando um
+    GESTOR_POLO/MASTER aceita (ver app/application/lista_espera/service.py).
+    `beneficiario_id` nulo = ainda pendente de análise."""
+
+    __tablename__ = "inscricoes_lista_espera"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome_completo: Mapped[str] = mapped_column(String(150), nullable=False)
+    data_nascimento: Mapped[date] = mapped_column(Date, nullable=False)
+    documento: Mapped[str] = mapped_column(String(20), nullable=False)
+    nome_responsavel: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    documento_responsavel: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    telefone_whatsapp: Mapped[str] = mapped_column(String(20), nullable=False)
+    email: Mapped[str] = mapped_column(String(150), nullable=False)
+    bairro: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    modalidade_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("modalidades.id"), nullable=False)
+    polo_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=False)
+    como_conheceu: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    beneficiario_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="SET NULL"), nullable=True
+    )
+    turma_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("turmas.id", ondelete="SET NULL"), nullable=True
+    )
+    aceito_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    aceito_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

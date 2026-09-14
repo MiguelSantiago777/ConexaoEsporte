@@ -19,6 +19,7 @@ def _limpar_uploads_teste():
     shutil.rmtree(Path("uploads/anexos_gerais"), ignore_errors=True)
     shutil.rmtree(Path("uploads/estoque"), ignore_errors=True)
     shutil.rmtree(Path("uploads/comprovantes_entrega"), ignore_errors=True)
+    shutil.rmtree(Path("uploads/documentos"), ignore_errors=True)
 
 
 def _criar_professor(client, token_gestor, polo_id, email="prof.anexo@test.com"):
@@ -291,6 +292,59 @@ def test_visao_consolidada_inclui_entrada_de_estoque_e_comprovante_de_entrega(cl
         "/api/v1/anexos-gerais/consolidado", headers={"Authorization": f"Bearer {token_gestor_a}"}
     )
     assert resp_gestor.status_code == 403
+
+
+def test_visao_consolidada_inclui_documento_de_beneficiario(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    token_gestor_a = login(client, "gestor.a@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+    polo_b_id = str(seed_basico["polo_b"].id)
+
+    resp_beneficiario = client.post(
+        "/api/v1/beneficiarios",
+        json={
+            "nome_completo": "Beneficiário Consolidado", "data_nascimento": "2000-01-01",
+            "documento": "999.888.777-66", "polo_id": polo_a_id,
+        },
+        headers={"Authorization": f"Bearer {token_gestor_a}"},
+    )
+    assert resp_beneficiario.status_code == 201, resp_beneficiario.text
+    beneficiario = resp_beneficiario.json()
+
+    resp_doc = client.post(
+        f"/api/v1/beneficiarios/{beneficiario['id']}/documentos",
+        files={"certidao_nascimento_ou_identidade": ("certidao.pdf", b"conteudo-fake", "application/pdf")},
+        headers={"Authorization": f"Bearer {token_gestor_a}"},
+    )
+    assert resp_doc.status_code == 201, resp_doc.text
+
+    resp_consolidado = client.get(
+        "/api/v1/anexos-gerais/consolidado", headers={"Authorization": f"Bearer {token_master}"}
+    )
+    assert resp_consolidado.status_code == 200, resp_consolidado.text
+    itens = [i for i in resp_consolidado.json() if i["tipo"] == "BENEFICIARIO_DOCUMENTO"]
+    assert len(itens) == 1
+    item = itens[0]
+    assert item["titulo"] == "Certidão de nascimento ou identidade"
+    assert item["descricao"] == "Beneficiário Consolidado"
+    assert item["polo_id"] == polo_a_id
+    assert item["polo_nome"] == "Polo A"
+    assert item["nome_arquivo"] == "certidao.pdf"
+    assert item["possui_arquivo"] is True
+
+    # Filtrando pelo polo B (sem beneficiários com documento) some da lista.
+    resp_polo_b = client.get(
+        "/api/v1/anexos-gerais/consolidado", params={"polo_id": polo_b_id},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert all(i["tipo"] != "BENEFICIARIO_DOCUMENTO" for i in resp_polo_b.json())
+
+    # O arquivo abre pela mesma rota já usada em Beneficiários.
+    resp_arquivo = client.get(
+        f"/api/v1/beneficiarios/documentos/{item['id']}/arquivo", headers={"Authorization": f"Bearer {token_master}"}
+    )
+    assert resp_arquivo.status_code == 200
+    assert resp_arquivo.content == b"conteudo-fake"
 
 
 def test_configuracao_geral_e_exclusiva_do_master(client, seed_basico):

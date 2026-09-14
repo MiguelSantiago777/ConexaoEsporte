@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -20,7 +20,9 @@ export function InformacoesGeraisTab() {
     queryFn: () => api.get<ConfiguracaoGeral | null>("/configuracao-geral").then((r) => r.data),
   });
 
-  useEffect(() => {
+  const [configAnterior, setConfigAnterior] = useState(config);
+  if (config !== configAnterior) {
+    setConfigAnterior(config);
     if (config) {
       setForm({
         nome_projeto: config.nome_projeto ?? "",
@@ -29,7 +31,7 @@ export function InformacoesGeraisTab() {
         data_fim_projeto: config.data_fim_projeto ?? "",
       });
     }
-  }, [config]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (dadosForm: typeof FORM_INICIAL) =>
@@ -43,7 +45,7 @@ export function InformacoesGeraisTab() {
       toast.success("Informações gerais salvas — já valem para os próximos relatórios exportados.");
       queryClient.invalidateQueries({ queryKey: ["configuracao-geral"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao salvar as informações gerais.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao salvar as informações gerais.")),
   });
 
   function handleSubmit(e: FormEvent) {

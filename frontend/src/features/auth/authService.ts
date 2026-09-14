@@ -28,3 +28,11 @@ export async function fetchMe(): Promise<UsuarioLogado> {
 export async function alterarSenha(senhaAtual: string, novaSenha: string): Promise<void> {
   await api.patch("/auth/senha", { senha_atual: senhaAtual, nova_senha: novaSenha });
 }
+
+export async function solicitarRedefinicaoSenha(email: string): Promise<void> {
+  await api.post("/auth/esqueci-senha", { email });
+}
+
+export async function redefinirSenha(token: string, novaSenha: string): Promise<void> {
+  await api.post("/auth/redefinir-senha", { token, nova_senha: novaSenha });
+}

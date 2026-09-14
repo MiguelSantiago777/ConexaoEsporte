@@ -379,12 +379,25 @@ ENVIRONMENT=production
 # https://conexaoesporte.institutonata.org.br assim que o domínio estiver pronto.
 CORS_ORIGINS=http://SEU_IP:8080
 UPLOAD_DIR=/home/conexao_esporte/conexao-esporte/backend/uploads/documentos
+# Mesma URL pública do frontend — usada para montar o link clicável nos
+# emails do sistema (ex.: redefinição de senha). Ver .env.example para o
+# passo a passo de como gerar as credenciais do Google OAuth2 abaixo.
+FRONTEND_URL=https://conexaoesporte.institutonata.org.br
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REFRESH_TOKEN=
+EMAIL_REMETENTE=
 ```
 
 `ENVIRONMENT=production` faz duas coisas automaticamente: a aplicação se
 recusa a subir se `JWT_SECRET_KEY` ainda for o valor padrão de
 desenvolvimento, e o Swagger/ReDoc (`/docs`, `/redoc`, `/openapi.json`)
 ficam desligados.
+
+Enquanto as 4 variáveis de `GOOGLE_OAUTH_*`/`EMAIL_REMETENTE` estiverem em
+branco, o sistema não envia email nenhum (só registra no log) — pode subir
+sem elas e preenchê-las depois, quando o fluxo de "esqueci minha senha" (ou
+outra feature que envie email) for entrar em uso de verdade.
 
 Crie o primeiro usuário MASTER:
 

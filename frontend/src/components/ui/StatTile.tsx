@@ -21,10 +21,15 @@ function useValorContado(value: string | number, duracaoMs = 1800) {
   const partes = texto.match(/^(\D*)(\d+)(\D*)$/);
   const [exibido, setExibido] = useState(partes ? partes[1] + "0" + partes[3] : texto);
   const primeiraRenderizacao = useRef(true);
+  const [textoAnteriorSemNumero, setTextoAnteriorSemNumero] = useState(partes ? null : texto);
+
+  if (!partes && texto !== textoAnteriorSemNumero) {
+    setTextoAnteriorSemNumero(texto);
+    setExibido(texto);
+  }
 
   useEffect(() => {
     if (!partes) {
-      setExibido(texto);
       return;
     }
     const [, prefixo, digitos, sufixo] = partes;
@@ -62,8 +67,7 @@ export function StatTile({ label, value, sublabel, staggerIndex, compact }: Prop
       } ${staggerIndex !== undefined ? "animate-fade-in-up" : ""}`}
       style={staggerIndex !== undefined ? staggerStyle(staggerIndex) : undefined}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />
-      <div className={`font-medium text-gray-500 uppercase tracking-wide ${compact ? "text-[0.7rem]" : "text-xs"}`}>{label}</div>
+      <div className={`font-medium text-slate-500 uppercase tracking-wide ${compact ? "text-[0.7rem]" : "text-xs"}`}>{label}</div>
       <div
         className={`font-mono tabular-nums leading-none font-semibold text-ink ${
           compact ? "text-xl mt-1.5" : "text-[1.75rem] mt-2.5"
@@ -71,7 +75,7 @@ export function StatTile({ label, value, sublabel, staggerIndex, compact }: Prop
       >
         {valorContado}
       </div>
-      {sublabel && <div className={`text-xs text-gray-400 ${compact ? "mt-1.5" : "mt-2"}`}>{sublabel}</div>}
+      {sublabel && <div className={`text-xs text-slate-400 ${compact ? "mt-1.5" : "mt-2"}`}>{sublabel}</div>}
     </div>
   );
 }

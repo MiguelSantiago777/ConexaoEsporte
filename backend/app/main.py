@@ -29,6 +29,7 @@ from app.interfaces.api.v1.routers import (
     estoque_router,
     ficha_execucao_router,
     frequencia_router,
+    lista_espera_router,
     modalidade_router,
     papel_router,
     polo_router,
@@ -87,6 +88,11 @@ tags_metadata = [
         "name": "Central de Acessos",
         "description": "Exclusiva do MASTER: cria Papéis (níveis de acesso personalizados) escolhendo "
         "módulos do sistema, pra depois vincular usuários com perfil PERSONALIZADO a eles.",
+    },
+    {
+        "name": "Lista de Espera",
+        "description": "Inscrição pública de interesse (formulário embutido na landing page do projeto) "
+        "e o aceite por MASTER/GESTOR_POLO, que vira Beneficiário + Matrícula na turma escolhida.",
     },
 ]
 
@@ -169,6 +175,7 @@ app.include_router(estoque_router.router, prefix=API)
 app.include_router(dashboard_router.router, prefix=API)
 app.include_router(anexo_geral_router.router, prefix=API)
 app.include_router(configuracao_geral_router.router, prefix=API)
+app.include_router(lista_espera_router.router, prefix=API)
 
 
 @app.get("/", tags=["Health"], summary="Health check")

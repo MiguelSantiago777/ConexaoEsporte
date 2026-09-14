@@ -126,9 +126,11 @@ def test_coordenador_nao_acessa_outras_areas_do_sistema(client, seed_basico):
     # autenticado (pré-existente, não é escopo deste teste) — a restrição
     # real do Coordenador é não conseguir ver/cadastrar/editar nada fora do
     # próprio almoxarifado nas áreas que de fato são restritas por perfil.
+    # Entregas de Materiais é a exceção deliberada: o Coordenador despacha
+    # material pra qualquer polo a partir do próprio almoxarifado (ver
+    # test_entrega_materiais_e_termo_responsabilidade.py).
     assert client.get("/api/v1/beneficiarios", headers={"Authorization": f"Bearer {token_coord}"}).status_code == 403
     assert client.get("/api/v1/turmas", headers={"Authorization": f"Bearer {token_coord}"}).status_code == 403
-    assert client.get("/api/v1/entregas-materiais", headers={"Authorization": f"Bearer {token_coord}"}).status_code == 403
     assert client.get("/api/v1/fichas-execucao", headers={"Authorization": f"Bearer {token_coord}"}).status_code == 403
 
 

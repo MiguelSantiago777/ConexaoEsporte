@@ -114,10 +114,13 @@ export function BeneficiariosPage() {
   }, [filtroNome]);
 
   // Muda o filtro, mas continua na página 3? Sem isso, ficaria numa página
-  // que pode nem existir mais pro novo resultado.
-  useEffect(() => {
+  // que pode nem existir mais pro novo resultado. Comparado durante a
+  // renderização (não em efeito) contra os filtros da renderização anterior.
+  const [filtrosAnteriores, setFiltrosAnteriores] = useState([filtroNomeDebounced, filtroPolo]);
+  if (filtrosAnteriores[0] !== filtroNomeDebounced || filtrosAnteriores[1] !== filtroPolo) {
+    setFiltrosAnteriores([filtroNomeDebounced, filtroPolo]);
     setPagina(1);
-  }, [filtroNomeDebounced, filtroPolo]);
+  }
 
   const beneficiariosQueryKey = ["beneficiarios", "pagina", pagina, filtroNomeDebounced, filtroPolo];
   const { data: paginaBeneficiarios, isLoading: carregando } = useQuery({
@@ -150,7 +153,7 @@ export function BeneficiariosPage() {
       toast.success("Beneficiário removido.");
       queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao remover beneficiário."));
     },
   });
@@ -183,7 +186,7 @@ export function BeneficiariosPage() {
     }
     setEnviando(true);
     try {
-      const { responsavel_legal_tipo_relacao_outro, modalidade_id, turma_id, ...dadosForm } = form;
+      const { responsavel_legal_tipo_relacao_outro, modalidade_id: _modalidade_id, turma_id, ...dadosForm } = form;
       const tipoRelacaoFinal =
         form.responsavel_legal_tipo_relacao === "Outro"
           ? responsavel_legal_tipo_relacao_outro
@@ -205,7 +208,7 @@ export function BeneficiariosPage() {
       try {
         await api.post(`/beneficiarios/${criado.id}/matriculas`, { turma_id });
         toast.success("Beneficiário cadastrado e matriculado com sucesso.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error(
           `Beneficiário cadastrado, mas houve um problema ao matricular na turma: ${
             mensagemErroApi(err, "erro desconhecido")
@@ -216,7 +219,7 @@ export function BeneficiariosPage() {
       setArquivos(ARQUIVOS_INICIAL);
       queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar beneficiário."));
     } finally {
       setEnviando(false);

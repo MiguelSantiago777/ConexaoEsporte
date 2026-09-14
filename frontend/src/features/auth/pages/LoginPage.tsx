@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -46,10 +47,11 @@ export function LoginPage() {
     try {
       await entrar(email, senha);
       navigate("/");
-    } catch (err: any) {
-      if (err?.response?.status === 429) {
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status === 429) {
         setErro("Muitas tentativas seguidas. Aguarde cerca de 1 minuto e tente de novo.");
-      } else if (err?.response?.status === 401) {
+      } else if (status === 401) {
         setErro("Email ou senha inválidos.");
       } else {
         setErro("Não foi possível conectar ao servidor. Tente novamente em instantes.");
@@ -107,6 +109,9 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)} required />
             <Input label="Senha" type="password" autoComplete="current-password" value={senha}
               onChange={(e) => setSenha(e.target.value)} required />
+            <Link to="/esqueci-senha" className="block text-right text-sm text-brand hover:underline">
+              Esqueci minha senha
+            </Link>
           </div>
 
           <Button type="submit" className="w-full mt-6" disabled={carregando}>

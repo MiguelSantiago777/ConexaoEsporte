@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -45,9 +45,11 @@ export function FichaExecucaoDetalhePage() {
   const [salvando, setSalvando] = useState(false);
   const [exportando, setExportando] = useState(false);
 
-  useEffect(() => {
+  const [fichaCarregadaAnterior, setFichaCarregadaAnterior] = useState(fichaCarregada);
+  if (fichaCarregada !== fichaCarregadaAnterior) {
+    setFichaCarregadaAnterior(fichaCarregada);
     if (fichaCarregada) setFicha(fichaCarregada);
-  }, [fichaCarregada]);
+  }
 
   const polo = ficha ? polos.find((p) => p.id === ficha.polo_id) ?? null : null;
 
@@ -83,7 +85,7 @@ export function FichaExecucaoDetalhePage() {
       });
       toast.success("Ficha salva.");
       queryClient.invalidateQueries({ queryKey: ["fichas-execucao"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao salvar a ficha."));
     } finally {
       setSalvando(false);

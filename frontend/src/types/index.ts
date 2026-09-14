@@ -53,6 +53,11 @@ export type Matricula = components["schemas"]["MatriculaResponse"];
 // aula realmente aconteceu.
 export type ChamadaEvidencia = components["schemas"]["ChamadaEvidenciaResponse"];
 
+// Pré-cadastro público de interesse (formulário embutido na landing page)
+// — vira Beneficiário + Matrícula quando aceito.
+export type InscricaoListaEspera = components["schemas"]["InscricaoListaEsperaResponse"];
+export type OpcoesPublicasListaEspera = components["schemas"]["OpcoesPublicasResponse"];
+
 // Relatórios gerenciais (KPIs e séries para gráficos) — Polo e Geral.
 export type SeriePonto = components["schemas"]["SeriePonto"];
 export type KPIsPolo = components["schemas"]["KPIsPolo"];

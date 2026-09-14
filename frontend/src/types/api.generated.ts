@@ -86,6 +86,46 @@ export interface paths {
         patch: operations["alterar_senha_api_v1_auth_senha_patch"];
         trace?: never;
     };
+    "/api/v1/auth/esqueci-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solicitar redefinição de senha por email
+         * @description Envia por email um link de redefinição de senha, válido por 1 hora, para o email informado — **se ele estiver cadastrado**. A resposta é sempre 204, exista ou não o email, para não revelar quais emails têm conta no sistema. Limitado a 5 tentativas por minuto por IP.
+         */
+        post: operations["esqueci_senha_api_v1_auth_esqueci_senha_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/redefinir-senha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redefinir a senha com o token recebido por email
+         * @description Recebe o `token` do link enviado por `POST /auth/esqueci-senha` e a nova senha. O token só pode ser usado uma vez e expira em 1 hora. Limitado a 10 tentativas por minuto por IP.
+         */
+        post: operations["redefinir_senha_api_v1_auth_redefinir_senha_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios": {
         parameters: {
             query?: never;
@@ -762,7 +802,7 @@ export interface paths {
         };
         /**
          * Listar Entregas de Materiais
-         * @description MASTER vê todas. GESTOR_POLO vê apenas as do seu polo. Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
+         * @description Informe `polo_id` pra filtrar por polo e `pagina` pra paginar — sem isso, devolve a lista inteira.
          */
         get: operations["listar_entregas_api_v1_entregas_materiais_get"];
         put?: never;
@@ -970,7 +1010,7 @@ export interface paths {
         };
         /**
          * Listar produtos do catálogo de Estoque
-         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
+         * @description MASTER e COORDENADOR_ALMOXARIFADO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
          */
         get: operations["listar_produtos_api_v1_produtos_get"];
         put?: never;
@@ -991,7 +1031,7 @@ export interface paths {
         };
         /**
          * Saldo do produto em cada almoxarifado
-         * @description MASTER e GESTOR_POLO podem consultar. Só lista almoxarifados que já tiveram alguma movimentação deste produto.
+         * @description MASTER e COORDENADOR_ALMOXARIFADO podem consultar. Só lista almoxarifados que já tiveram alguma movimentação deste produto.
          */
         get: operations["saldos_por_almoxarifado_api_v1_produtos__produto_id__saldos_por_almoxarifado_get"];
         put?: never;
@@ -1032,7 +1072,7 @@ export interface paths {
         };
         /**
          * Listar movimentos de estoque (Entradas e Saídas)
-         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
+         * @description MASTER e COORDENADOR_ALMOXARIFADO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira.
          */
         get: operations["listar_movimentos_api_v1_movimentos_estoque_get"];
         put?: never;
@@ -1073,7 +1113,7 @@ export interface paths {
         };
         /**
          * Relatório de Estoque — saldos por produto e movimentos do período
-         * @description MASTER e GESTOR_POLO podem consultar tudo. COORDENADOR_ALMOXARIFADO só vê o próprio almoxarifado.
+         * @description MASTER pode consultar tudo. COORDENADOR_ALMOXARIFADO só vê o próprio almoxarifado.
          */
         get: operations["relatorio_estoque_api_v1_movimentos_estoque_relatorio_get"];
         put?: never;
@@ -1184,7 +1224,7 @@ export interface paths {
         };
         /**
          * Listar Anexos Gerais
-         * @description MASTER vê os de qualquer polo (filtrando por `polo_id`). GESTOR_POLO vê apenas os do seu polo.
+         * @description Exclusivo do MASTER. Informe `polo_id` pra filtrar por polo.
          */
         get: operations["listar_anexos_api_v1_anexos_gerais_get"];
         put?: never;
@@ -1208,7 +1248,7 @@ export interface paths {
         };
         /**
          * Listar todos os documentos anexados (visão consolidada)
-         * @description Reúne, numa única listagem somente leitura e ordenada do mais recente ao mais antigo: os Anexos Gerais enviados pelos polos/gestores de polo, as fotos de evidência de chamada e as observações de relatório de aula que os professores registram ao lançar a chamada. MASTER vê todos os polos (filtrando opcionalmente por `polo_id`). GESTOR_POLO vê apenas o seu.
+         * @description Reúne, numa única listagem somente leitura e ordenada do mais recente ao mais antigo: os Anexos Gerais enviados pelos polos, as fotos de evidência de chamada e as observações de relatório de aula que os professores registram ao lançar a chamada, e os documentos de cadastro de cada beneficiário. Exclusivo do MASTER — informe `polo_id` pra filtrar por polo.
          */
         get: operations["listar_consolidado_api_v1_anexos_gerais_consolidado_get"];
         put?: never;
@@ -1277,6 +1317,70 @@ export interface paths {
         patch: operations["atualizar_configuracao_api_v1_configuracao_geral_patch"];
         trace?: never;
     };
+    "/api/v1/lista-espera/opcoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * [Público] Polos e modalidades para o formulário de inscrição
+         * @description Sem autenticação — usado pelo formulário público embutido na landing page. Devolve só id e nome, nenhum outro dado do polo/modalidade.
+         */
+        get: operations["opcoes_publicas_api_v1_lista_espera_opcoes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lista-espera": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar inscrições pendentes
+         * @description MASTER vê todas (filtrando opcionalmente por `polo_id`). GESTOR_POLO vê só as do próprio polo. Só lista as ainda não aceitas.
+         */
+        get: operations["listar_pendentes_api_v1_lista_espera_get"];
+        put?: never;
+        /**
+         * [Público] Inscrever-se na lista de espera
+         * @description Sem autenticação — formulário público embutido na landing page. Envia um email de confirmação para o email informado. Limitado a 5 tentativas por minuto por IP.
+         */
+        post: operations["inscrever_api_v1_lista_espera_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lista-espera/{inscricao_id}/aceitar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aceitar inscrição: cria/reaproveita o Beneficiário e matricula na turma escolhida
+         * @description A turma informada precisa ser do mesmo polo e modalidade da inscrição. Se já existir um Beneficiário com o mesmo documento (CPF), reaproveita o cadastro em vez de duplicar. Envia um email de boas-vindas para o email da inscrição.
+         */
+        post: operations["aceitar_api_v1_lista_espera__inscricao_id__aceitar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -1309,6 +1413,14 @@ export interface components {
             colunas: string[];
             /** Linhas */
             linhas?: (string | number | null)[][];
+        };
+        /** AceitarInscricaoRequest */
+        AceitarInscricaoRequest: {
+            /**
+             * Turma Id
+             * Format: uuid
+             */
+            turma_id: string;
         };
         /** AlmoxarifadoCreateRequest */
         AlmoxarifadoCreateRequest: {
@@ -1741,10 +1853,12 @@ export interface components {
          * @description Item da visão consolidada e somente leitura de tudo que foi anexado
          *     pelos polos (Anexos Gerais), pelos gestores de polo, pelos professores ao
          *     lançar a chamada (fotos de evidência e observações do relatório de aula),
-         *     ou gerado pelo módulo de Estoque (nota fiscal da Entrada, comprovante de
-         *     recebimento no polo de uma Entrega de Materiais). `polo_id`/`polo_nome`
-         *     ficam nulos só para a Entrada de estoque, que é um lançamento central e
-         *     não pertence a nenhum polo específico.
+         *     os documentos de cadastro de um beneficiário (foto, certidão, identidade
+         *     do responsável, comprovante de residência/escolar), ou gerado pelo
+         *     módulo de Estoque (nota fiscal da Entrada, comprovante de recebimento no
+         *     polo de uma Entrega de Materiais). `polo_id`/`polo_nome` ficam nulos só
+         *     para a Entrada de estoque, que é um lançamento central e não pertence a
+         *     nenhum polo específico.
          */
         DocumentoConsolidadoResponse: {
             /**
@@ -1756,7 +1870,7 @@ export interface components {
              * Tipo
              * @enum {string}
              */
-            tipo: "ANEXO_GERAL" | "EVIDENCIA_CHAMADA" | "OBSERVACAO_AULA" | "ESTOQUE_ENTRADA" | "ENTREGA_MATERIAIS";
+            tipo: "ANEXO_GERAL" | "EVIDENCIA_CHAMADA" | "OBSERVACAO_AULA" | "ESTOQUE_ENTRADA" | "ENTREGA_MATERIAIS" | "BENEFICIARIO_DOCUMENTO";
             /** Titulo */
             titulo: string;
             /** Descricao */
@@ -2097,6 +2211,97 @@ export interface components {
             /** Criado Em */
             criado_em: string | null;
         };
+        /** InscricaoListaEsperaCreateRequest */
+        InscricaoListaEsperaCreateRequest: {
+            /** Nome Completo */
+            nome_completo: string;
+            /**
+             * Data Nascimento
+             * Format: date
+             */
+            data_nascimento: string;
+            /**
+             * Documento
+             * @example 12345678900
+             */
+            documento: string;
+            /** Nome Responsavel */
+            nome_responsavel?: string | null;
+            /**
+             * Documento Responsavel
+             * @example 12345678900
+             */
+            documento_responsavel?: string | null;
+            /**
+             * Telefone Whatsapp
+             * @example (11) 91234-5678
+             */
+            telefone_whatsapp: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Bairro */
+            bairro?: string | null;
+            /** Cidade */
+            cidade?: string | null;
+            /**
+             * Modalidade Id
+             * Format: uuid
+             */
+            modalidade_id: string;
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Como Conheceu */
+            como_conheceu?: string | null;
+        };
+        /** InscricaoListaEsperaResponse */
+        InscricaoListaEsperaResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome Completo */
+            nome_completo: string;
+            /**
+             * Data Nascimento
+             * Format: date
+             */
+            data_nascimento: string;
+            /** Documento */
+            documento: string;
+            /** Nome Responsavel */
+            nome_responsavel: string | null;
+            /** Documento Responsavel */
+            documento_responsavel: string | null;
+            /** Telefone Whatsapp */
+            telefone_whatsapp: string;
+            /** Email */
+            email: string;
+            /** Bairro */
+            bairro: string | null;
+            /** Cidade */
+            cidade: string | null;
+            /**
+             * Modalidade Id
+             * Format: uuid
+             */
+            modalidade_id: string;
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Como Conheceu */
+            como_conheceu: string | null;
+            /** Criado Em */
+            criado_em: string | null;
+        };
         /** ItemEntregaRequest */
         ItemEntregaRequest: {
             /** Descricao */
@@ -2298,6 +2503,23 @@ export interface components {
             criado_por_id: string | null;
             /** Criado Em */
             criado_em: string | null;
+        };
+        /** OpcaoResponse */
+        OpcaoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+        };
+        /** OpcoesPublicasResponse */
+        OpcoesPublicasResponse: {
+            /** Polos */
+            polos: components["schemas"]["OpcaoResponse"][];
+            /** Modalidades */
+            modalidades: components["schemas"]["OpcaoResponse"][];
         };
         /** PaginaResponse[AlmoxarifadoResponse] */
         PaginaResponse_AlmoxarifadoResponse_: {
@@ -2734,6 +2956,16 @@ export interface components {
             /** Beneficiarios Ativos */
             beneficiarios_ativos: number;
         };
+        /** RedefinirSenhaRequest */
+        RedefinirSenhaRequest: {
+            /** Token */
+            token: string;
+            /**
+             * Nova Senha
+             * @example nova-senha-forte-456
+             */
+            nova_senha: string;
+        };
         /** RefreshTokenRequest */
         RefreshTokenRequest: {
             /** Refresh Token */
@@ -2948,6 +3180,14 @@ export interface components {
             label: string;
             /** Valor */
             valor: number;
+        };
+        /** SolicitarRedefinicaoSenhaRequest */
+        SolicitarRedefinicaoSenhaRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
         };
         /** TabelaExportRequest */
         TabelaExportRequest: {
@@ -3349,6 +3589,68 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AlterarSenhaRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    esqueci_senha_api_v1_auth_esqueci_senha_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SolicitarRedefinicaoSenhaRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redefinir_senha_api_v1_auth_redefinir_senha_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedefinirSenhaRequest"];
             };
         };
         responses: {
@@ -6102,6 +6404,123 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ConfiguracaoGeralResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    opcoes_publicas_api_v1_lista_espera_opcoes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpcoesPublicasResponse"];
+                };
+            };
+        };
+    };
+    listar_pendentes_api_v1_lista_espera_get: {
+        parameters: {
+            query?: {
+                polo_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InscricaoListaEsperaResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inscrever_api_v1_lista_espera_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InscricaoListaEsperaCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InscricaoListaEsperaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aceitar_api_v1_lista_espera__inscricao_id__aceitar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inscricao_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AceitarInscricaoRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -1,11 +1,15 @@
-"""Use casos de Entrega de Materiais (exclusiva do MASTER).
+"""Use casos de Entrega de Materiais — MASTER e COORDENADOR_ALMOXARIFADO.
 
 Cada item pode opcionalmente referenciar um `produto_id` do catálogo de
 Estoque — quando isso acontece, criar a entrega registra automaticamente
 uma Saída de estoque pra cada item (ver `MovimentoEstoqueService`), depois
 de validar que há saldo suficiente de cada produto envolvido. Itens sem
 `produto_id` continuam sendo só texto livre, sem nenhum efeito no estoque —
-mantém compatibilidade com entregas já cadastradas."""
+mantém compatibilidade com entregas já cadastradas.
+
+O escopo por perfil (Coordenador só no próprio almoxarifado, só vê as
+entregas que ele mesmo criou) é imposto no router, não aqui — este serviço
+recebe os IDs já validados/filtrados."""
 from datetime import date
 from uuid import UUID
 
@@ -38,11 +42,13 @@ class EntregaMaterialService:
         self.produto_repo = ProdutoRepository(db)
         self.almoxarifado_repo = AlmoxarifadoRepository(db)
 
-    def listar(self, polo_id: UUID | None = None) -> list[EntregaMaterial]:
-        return self.repo.listar(polo_id=polo_id)
+    def listar(self, polo_id: UUID | None = None, criado_por_id: UUID | None = None) -> list[EntregaMaterial]:
+        return self.repo.listar(polo_id=polo_id, criado_por_id=criado_por_id)
 
-    def listar_pagina(self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None) -> tuple[list[EntregaMaterial], int]:
-        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id)
+    def listar_pagina(
+        self, pagina: int, tamanho_pagina: int, polo_id: UUID | None = None, criado_por_id: UUID | None = None,
+    ) -> tuple[list[EntregaMaterial], int]:
+        return self.repo.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=polo_id, criado_por_id=criado_por_id)
 
     def buscar(self, entrega_id: UUID) -> EntregaMaterial | None:
         return self.repo.buscar_por_id(entrega_id)

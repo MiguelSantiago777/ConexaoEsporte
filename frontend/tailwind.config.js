@@ -25,6 +25,23 @@ export default {
         // relatório, recibos) — usado com moderação, nunca como fundo padrão.
         paper: "#f7f3ea",
         ink: "#10233a",
+        // Escala neutra derivada do matiz de `ink` (azul-marinho), no lugar
+        // do cinza puro do Tailwind — texto secundário, bordas e estados
+        // desabilitados continuam "dentro" da paleta da marca.
+        slate: {
+          300: "#c7ced7",
+          400: "#94a0ae",
+          500: "#5f6b7a",
+          700: "#374254",
+        },
+        // Vermelho abaixado (menos saturado que o red-600 padrão) pra
+        // conviver com o dourado/verde-de-quadra sem destoar — usado em
+        // ações destrutivas e estados de erro.
+        danger: {
+          DEFAULT: "#c23b3b",
+          dark: "#9b2f2f",
+          light: "#fbe9e9",
+        },
       },
       fontFamily: {
         // Serif de exibição — títulos, marca, telas de entrada. Uso restrito

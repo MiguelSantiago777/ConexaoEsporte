@@ -34,8 +34,8 @@ def listar_anexos(usuario: SomenteMaster, db: DbSession, polo_id: UUID | None = 
     summary="Listar todos os documentos anexados (visão consolidada)",
     description="Reúne, numa única listagem somente leitura e ordenada do mais recente ao mais antigo: "
     "os Anexos Gerais enviados pelos polos, as fotos de evidência de chamada e as observações de "
-    "relatório de aula que os professores registram ao lançar a chamada. Exclusivo do MASTER — "
-    "informe `polo_id` pra filtrar por polo.",
+    "relatório de aula que os professores registram ao lançar a chamada, e os documentos de cadastro "
+    "de cada beneficiário. Exclusivo do MASTER — informe `polo_id` pra filtrar por polo.",
 )
 def listar_consolidado(
     usuario: SomenteMaster, db: DbSession, polo_id: UUID | None = None

@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { MovimentoEstoque, Pagina, Produto, SaldoProdutoNoAlmoxarifado } from "@/types";
+import type { EntregaMaterial, ItemEntrega, MovimentoEstoque, Pagina, Polo, Produto, SaldoProdutoNoAlmoxarifado } from "@/types";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,10 +16,14 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
+import { formatarData } from "@/lib/format";
 import { dataBR } from "@/features/frequencia/statusChamada";
+import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
+import { ConfirmarRecebimentoModal } from "@/features/entregas-materiais/ConfirmarRecebimentoModal";
 
 const TAMANHO_PAGINA = 10;
 const FORM_ENTRADA_INICIAL = { produto_id: "", quantidade: "", data: "", observacao: "", entregue_por: "", recebido_por: "" };
+const ITEM_ENTREGA_VAZIO: ItemEntrega = { descricao: "", quantidade: "", produto_id: undefined, almoxarifado_id: undefined };
 
 function hoje() {
   return new Date().toISOString().slice(0, 10);
@@ -71,12 +75,121 @@ export function MeuAlmoxarifadoPage() {
       toast.success("Entrada registrada com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["almoxarifados", almoxarifadoId, "saldos"] });
       queryClient.invalidateQueries({ queryKey: ["movimentos-estoque"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao registrar entrada."));
     } finally {
       setEnviandoEntrada(false);
     }
   }
+
+  // --- Registrar entrega (Saída pra abastecer um polo) — os itens só podem
+  // vir do próprio almoxarifado (o backend já trava isso); a lista de
+  // produtos aqui é o saldo local, não o catálogo inteiro. ---
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
+  });
+  const [poloEntregaId, setPoloEntregaId] = useState("");
+  const [dataEntrega, setDataEntrega] = useState("");
+  const [entreguePor, setEntreguePor] = useState("");
+  const [itensEntrega, setItensEntrega] = useState<ItemEntrega[]>([{ ...ITEM_ENTREGA_VAZIO }]);
+  const [salvandoEntrega, setSalvandoEntrega] = useState(false);
+
+  function selecionarProdutoItemEntrega(idx: number, produtoId: string) {
+    setItensEntrega((lista) =>
+      lista.map((item, i) => {
+        if (i !== idx) return item;
+        const produto = saldos.find((s) => s.produto_id === produtoId);
+        return {
+          ...item,
+          produto_id: produtoId || undefined,
+          almoxarifado_id: produtoId ? almoxarifadoId : undefined,
+          descricao: produto ? produto.produto_nome : item.descricao,
+        };
+      })
+    );
+  }
+
+  function atualizarQuantidadeItemEntrega(idx: number, quantidade: string) {
+    setItensEntrega((lista) => lista.map((item, i) => (i === idx ? { ...item, quantidade } : item)));
+  }
+
+  function removerItemEntrega(idx: number) {
+    setItensEntrega((lista) => lista.filter((_, i) => i !== idx));
+  }
+
+  async function registrarEntrega(e: FormEvent) {
+    e.preventDefault();
+    setSalvandoEntrega(true);
+    try {
+      await api.post("/entregas-materiais", {
+        polo_id: poloEntregaId,
+        data_entrega: dataEntrega || null,
+        entregue_por: entreguePor || null,
+        itens: itensEntrega.filter((i) => i.descricao.trim()),
+      });
+      setPoloEntregaId("");
+      setDataEntrega("");
+      setEntreguePor("");
+      setItensEntrega([{ ...ITEM_ENTREGA_VAZIO }]);
+      toast.success("Entrega registrada. Exporte o termo pra levar junto com o material.");
+      queryClient.invalidateQueries({ queryKey: ["entregas-materiais"] });
+      queryClient.invalidateQueries({ queryKey: ["almoxarifados", almoxarifadoId, "saldos"] });
+      queryClient.invalidateQueries({ queryKey: ["movimentos-estoque"] });
+    } catch (err: unknown) {
+      toast.error(mensagemErroApi(err, "Erro ao registrar a entrega."));
+    } finally {
+      setSalvandoEntrega(false);
+    }
+  }
+
+  const entregasQueryKey = ["entregas-materiais", "pagina-almoxarifado", 1];
+  const { data: paginaEntregas, isLoading: carregandoEntregas } = useQuery({
+    queryKey: entregasQueryKey,
+    queryFn: () => api.get<Pagina<EntregaMaterial>>("/entregas-materiais", { params: { pagina: 1, tamanho_pagina: 10 } }).then((r) => r.data),
+  });
+  const entregas = paginaEntregas?.itens ?? [];
+
+  function poloNome(id: string) {
+    return polos.find((p) => p.id === id)?.nome ?? "—";
+  }
+
+  const [exportandoEntrega, setExportandoEntrega] = useState<string | null>(null);
+  async function exportarTermoEntrega(entrega: EntregaMaterial) {
+    setExportandoEntrega(entrega.id);
+    try {
+      await baixarExportacao(
+        `/entregas-materiais/${entrega.id}/exportar?formato=pdf`,
+        `Termo de Entrega de Materiais - ${poloNome(entrega.polo_id)}.pdf`
+      );
+    } catch {
+      toast.error("Não foi possível exportar o termo.");
+    } finally {
+      setExportandoEntrega(null);
+    }
+  }
+
+  const [baixandoComprovanteEntrega, setBaixandoComprovanteEntrega] = useState<string | null>(null);
+  async function verComprovanteEntrega(entrega: EntregaMaterial) {
+    setBaixandoComprovanteEntrega(entrega.id);
+    try {
+      const resp = await api.get(`/entregas-materiais/${entrega.id}/comprovante`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(resp.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entrega.comprovante_nome_arquivo ?? "comprovante";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Não foi possível abrir o comprovante.");
+    } finally {
+      setBaixandoComprovanteEntrega(null);
+    }
+  }
+
+  const [entregaConfirmando, setEntregaConfirmando] = useState<EntregaMaterial | null>(null);
 
   // --- Movimentações (paginado, com filtros — o backend já restringe ao
   // próprio almoxarifado, mesmo sem informar o filtro). ---
@@ -84,7 +197,11 @@ export function MeuAlmoxarifadoPage() {
   const [filtroTipoMov, setFiltroTipoMov] = useState("");
   const [paginaMovs, setPaginaMovs] = useState(1);
 
-  useEffect(() => setPaginaMovs(1), [filtroProdutoMov, filtroTipoMov]);
+  const [filtrosMovAnteriores, setFiltrosMovAnteriores] = useState([filtroProdutoMov, filtroTipoMov]);
+  if (filtrosMovAnteriores[0] !== filtroProdutoMov || filtrosMovAnteriores[1] !== filtroTipoMov) {
+    setFiltrosMovAnteriores([filtroProdutoMov, filtroTipoMov]);
+    setPaginaMovs(1);
+  }
 
   const { data: paginaMovsResp, isLoading: carregandoMovs } = useQuery({
     queryKey: ["movimentos-estoque", "pagina", paginaMovs, filtroProdutoMov, filtroTipoMov],
@@ -173,7 +290,115 @@ export function MeuAlmoxarifadoPage() {
         </form>
       </Card>
 
-      <Card title="Saldo dos produtos" actions={<Badge variant="accent">{saldos.length}</Badge>} className="animate-fade-in-up" style={staggerStyle(1)}>
+      <Card
+        title="Registrar entrega"
+        subtitle="Saída de material do seu almoxarifado pra abastecer um polo. Depois de registrar, exporte o Termo pra imprimir e levar junto com o material — o polo assina e você confirma o recebimento aqui na lista abaixo."
+        className="animate-fade-in-up"
+        style={staggerStyle(1)}
+      >
+        <form onSubmit={registrarEntrega} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select label="Polo" value={poloEntregaId} onChange={(e) => setPoloEntregaId(e.target.value)} required>
+              <option value="">— Selecione —</option>
+              {polos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </Select>
+            <Input label="Data da entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+            <Input
+              label="Entregue por"
+              placeholder="Nome de quem foi levar os materiais"
+              value={entreguePor}
+              onChange={(e) => setEntreguePor(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <span className="block text-sm font-medium text-gray-700 mb-2">Itens da entrega</span>
+            <p className="text-xs text-gray-500 mb-2">Só produtos com saldo no seu almoxarifado.</p>
+            <div className="space-y-2">
+              {itensEntrega.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_auto] gap-2 items-end">
+                  <Select
+                    label={idx === 0 ? "Produto" : undefined}
+                    value={item.produto_id ?? ""}
+                    onChange={(e) => selecionarProdutoItemEntrega(idx, e.target.value)}
+                  >
+                    <option value="">— Selecione —</option>
+                    {saldos.filter((s) => s.saldo > 0).map((s) => (
+                      <option key={s.produto_id} value={s.produto_id}>{s.produto_nome} (saldo: {s.saldo})</option>
+                    ))}
+                  </Select>
+                  <Input
+                    label={idx === 0 ? "Qtde" : undefined}
+                    placeholder="ex.: 10"
+                    value={item.quantidade}
+                    onChange={(e) => atualizarQuantidadeItemEntrega(idx, e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="text-xs text-gray-400 hover:text-red-600 pb-2"
+                    onClick={() => removerItemEntrega(idx)}
+                    disabled={itensEntrega.length === 1}
+                  >
+                    remover
+                  </button>
+                </div>
+              ))}
+            </div>
+            {itensEntrega.length < 18 && (
+              <button
+                type="button"
+                className="text-xs text-brand hover:underline mt-2"
+                onClick={() => setItensEntrega((lista) => [...lista, { ...ITEM_ENTREGA_VAZIO }])}
+              >
+                + adicionar item
+              </button>
+            )}
+          </div>
+
+          <Button type="submit" disabled={salvandoEntrega}>{salvandoEntrega ? "Registrando…" : "Registrar entrega"}</Button>
+        </form>
+      </Card>
+
+      <Card title="Minhas entregas" actions={<Badge variant="accent">{entregas.length}</Badge>} className="animate-fade-in-up" style={staggerStyle(2)}>
+        {carregandoEntregas ? (
+          <Spinner label="Carregando entregas…" />
+        ) : entregas.length === 0 ? (
+          <EmptyState message="Nenhuma entrega registrada ainda." />
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {entregas.map((e) => (
+              <li key={e.id} className="py-3.5">
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-800 truncate">{poloNome(e.polo_id)}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {e.data_entrega ? formatarData(e.data_entrega) : "—"} · {e.itens.length} {e.itens.length === 1 ? "item" : "itens"}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5 truncate">
+                    Entregue por {e.entregue_por ?? "—"}
+                    {e.coordenador_nome ? ` · Recebido por: ${e.coordenador_nome}` : ""}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button variant="secondary" onClick={() => exportarTermoEntrega(e)} disabled={exportandoEntrega === e.id}>
+                    {exportandoEntrega === e.id ? "Exportando…" : "Exportar termo (PDF)"}
+                  </Button>
+                  {e.comprovante_nome_arquivo ? (
+                    <Button variant="secondary" onClick={() => verComprovanteEntrega(e)} disabled={baixandoComprovanteEntrega === e.id}>
+                      {baixandoComprovanteEntrega === e.id ? "Abrindo…" : "Ver comprovante de recebimento"}
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" onClick={() => setEntregaConfirmando(e)}>
+                      Confirmar recebimento no polo
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="Saldo dos produtos" actions={<Badge variant="accent">{saldos.length}</Badge>} className="animate-fade-in-up" style={staggerStyle(3)}>
         {carregandoSaldos ? (
           <Spinner label="Carregando saldos…" />
         ) : saldos.length === 0 ? (
@@ -193,7 +418,7 @@ export function MeuAlmoxarifadoPage() {
         )}
       </Card>
 
-      <Card title="Movimentações" actions={<Badge variant="accent">{totalMovs}</Badge>} className="animate-fade-in-up" style={staggerStyle(2)}>
+      <Card title="Movimentações" actions={<Badge variant="accent">{totalMovs}</Badge>} className="animate-fade-in-up" style={staggerStyle(4)}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <Select label="Filtrar por produto" value={filtroProdutoMov} onChange={(e) => setFiltroProdutoMov(e.target.value)}>
             <option value="">Todos os produtos</option>
@@ -281,6 +506,16 @@ export function MeuAlmoxarifadoPage() {
         )}
         <Paginacao pagina={paginaMovs} tamanhoPagina={TAMANHO_PAGINA} total={totalMovs} onChange={setPaginaMovs} />
       </Card>
+
+      <ConfirmarRecebimentoModal
+        entrega={entregaConfirmando}
+        onClose={() => setEntregaConfirmando(null)}
+        onSalvo={() => {
+          setEntregaConfirmando(null);
+          toast.success("Recebimento confirmado com sucesso.");
+          queryClient.invalidateQueries({ queryKey: entregasQueryKey });
+        }}
+      />
     </div>
   );
 }

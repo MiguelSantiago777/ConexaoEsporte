@@ -8,8 +8,14 @@
  * fica em branco). Esta função sempre devolve texto legível, nunca o
  * objeto cru.
  */
+function ehRegistro(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === "object" && valor !== null;
+}
+
 export function mensagemErroApi(err: unknown, fallback: string): string {
-  const detail = (err as any)?.response?.data?.detail;
+  const response = ehRegistro(err) ? err.response : undefined;
+  const data = ehRegistro(response) ? response.data : undefined;
+  const detail = ehRegistro(data) ? data.detail : undefined;
 
   if (typeof detail === "string") return detail;
 
@@ -20,8 +26,8 @@ export function mensagemErroApi(err: unknown, fallback: string): string {
     return mensagens.length > 0 ? mensagens.join("; ") : fallback;
   }
 
-  if (detail && typeof detail === "object" && typeof (detail as any).msg === "string") {
-    return (detail as any).msg;
+  if (ehRegistro(detail) && typeof detail.msg === "string") {
+    return detail.msg;
   }
 
   return fallback;

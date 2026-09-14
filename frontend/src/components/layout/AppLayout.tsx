@@ -15,6 +15,7 @@ import {
   DocumentTextIcon,
   HomeIcon,
   IdentificationIcon,
+  InboxIcon,
   KeyIcon,
   LogoutIcon,
   MenuIcon,
@@ -52,6 +53,7 @@ const MENU: ItemMenu[] = [
     label: "Cadastros", to: "/polos", perfis: ["MASTER", "GESTOR_POLO"], icon: IdentificationIcon,
     subitens: [
       { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: ClipboardIcon },
+      { label: "Lista de Espera", to: "/lista-espera", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: InboxIcon },
       { label: "Polos", to: "/polos", perfis: ["MASTER"], modulo: "polos", icon: BuildingIcon },
       { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], modulo: "professores", icon: AcademicCapIcon },
       { label: "Turmas", to: "/turmas", perfis: ["MASTER", "GESTOR_POLO"], modulo: "turmas", icon: UsersIcon },
@@ -116,6 +118,7 @@ export function AppLayout() {
   const location = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  const [rotaAnterior, setRotaAnterior] = useState(location.pathname);
 
   const itensVisiveis = MENU.filter((i) => acessivel(i, usuario));
 
@@ -135,10 +138,13 @@ export function AppLayout() {
   }
 
   // Fecha o menu mobile (off-canvas) automaticamente ao trocar de rota —
-  // senão ele ficaria aberto por cima da tela seguinte.
-  useEffect(() => {
+  // senão ele ficaria aberto por cima da tela seguinte. Ajustado durante a
+  // renderização (não em efeito) para evitar o flash de um frame com o
+  // menu ainda aberto na rota nova.
+  if (location.pathname !== rotaAnterior) {
+    setRotaAnterior(location.pathname);
     setMenuAberto(false);
-  }, [location.pathname]);
+  }
 
   // Trava o scroll do body enquanto o menu mobile está aberto — sem isso, a
   // página por trás do menu ainda rola durante o arrasto (o corpo não tem

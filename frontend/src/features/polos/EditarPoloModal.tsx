@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -58,10 +58,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
     setForm((f) => ({ ...f, [campo]: valor }));
   }
 
-  useEffect(() => {
-    setGestorId(polo?.gestor_responsavel_id ?? null);
-    setGestorForm(GESTOR_FORM_VAZIO);
-  }, [polo]);
+  const [poloAnterior, setPoloAnterior] = useState(polo);
 
   const gestor = usuarios.find((u) => u.id === gestorId) ?? null;
 
@@ -84,7 +81,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       setGestorForm(GESTOR_FORM_VAZIO);
       onAtualizado?.();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao criar acesso do gestor."));
     },
   });
@@ -102,7 +99,10 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
     criarGestorMutation.mutate();
   }
 
-  useEffect(() => {
+  if (polo !== poloAnterior) {
+    setPoloAnterior(polo);
+    setGestorId(polo?.gestor_responsavel_id ?? null);
+    setGestorForm(GESTOR_FORM_VAZIO);
     if (polo) {
       const p1 = polo.termos_aditivos.find((a) => a.numero === "PRIMEIRO");
       const p2 = polo.termos_aditivos.find((a) => a.numero === "SEGUNDO");
@@ -131,7 +131,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       setLatitude(polo.latitude);
       setLongitude(polo.longitude);
     }
-  }, [polo]);
+  }
 
   const salvarMutation = useMutation({
     mutationFn: (dadosForm: typeof FORM_VAZIO) => {
@@ -167,7 +167,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       });
     },
     onSuccess: () => onSalvo(),
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao salvar alterações."));
     },
   });

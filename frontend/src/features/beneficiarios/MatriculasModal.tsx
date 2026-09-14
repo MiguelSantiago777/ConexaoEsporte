@@ -57,7 +57,7 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
       queryClient.invalidateQueries({ queryKey: matriculasQueryKey });
       onAlterado();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao matricular o beneficiário."));
     },
   });
@@ -70,7 +70,7 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
       queryClient.invalidateQueries({ queryKey: matriculasQueryKey });
       onAlterado();
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(mensagemErroApi(err, "Erro ao encerrar a matrícula."));
     },
   });

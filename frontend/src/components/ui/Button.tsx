@@ -10,9 +10,9 @@ export function Button({ variant = "primary", className = "", ...props }: Props)
   const variants = {
     primary: "bg-brand text-white shadow-sm hover:bg-brand-dark hover:shadow-md focus-visible:ring-brand/50",
     secondary:
-      "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus-visible:ring-gray-300",
+      "bg-white border border-slate-300 text-slate-700 hover:bg-slate-300/10 hover:border-slate-400 focus-visible:ring-slate-300",
     ghost: "text-brand hover:bg-brand-light focus-visible:ring-brand/30",
-    danger: "bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-md focus-visible:ring-red-400",
+    danger: "bg-danger text-white shadow-sm hover:bg-danger-dark hover:shadow-md focus-visible:ring-danger/40",
   };
   return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }

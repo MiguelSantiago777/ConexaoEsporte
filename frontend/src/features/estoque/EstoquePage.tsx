@@ -1,4 +1,4 @@
-import { Fragment, FormEvent, useEffect, useState } from "react";
+import { Fragment, FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
@@ -10,13 +10,15 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { FileInput } from "@/components/ui/FileInput";
+import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
-import { PencilIcon, TrashIcon } from "@/components/ui/icons";
+import { DocumentTextIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
+import { exportarPdf } from "@/lib/exportarPdf";
 import { dataBR } from "@/features/frequencia/statusChamada";
 import { EditarProdutoModal } from "./EditarProdutoModal";
 
@@ -49,7 +51,7 @@ export function EstoquePage() {
       setFormProduto(FORM_PRODUTO_INICIAL);
       toast.success("Produto cadastrado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar produto."));
     } finally {
       setSalvandoProduto(false);
@@ -62,7 +64,7 @@ export function EstoquePage() {
       toast.success("Produto removido.");
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover produto.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover produto.")),
   });
 
   function removerProduto(p: Produto) {
@@ -124,7 +126,7 @@ export function EstoquePage() {
       queryClient.invalidateQueries({ queryKey: ["produtos"] });
       queryClient.invalidateQueries({ queryKey: ["movimentos-estoque"] });
       queryClient.invalidateQueries({ queryKey: ["produtos", formEntrada.produto_id, "saldos-por-almoxarifado"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao registrar entrada."));
     } finally {
       setEnviandoEntrada(false);
@@ -140,7 +142,11 @@ export function EstoquePage() {
     const t = setTimeout(() => setFiltroNomeProdutoDebounced(filtroNomeProduto), 300);
     return () => clearTimeout(t);
   }, [filtroNomeProduto]);
-  useEffect(() => setPaginaProdutos(1), [filtroNomeProdutoDebounced]);
+  const [filtroNomeProdutoAnterior, setFiltroNomeProdutoAnterior] = useState(filtroNomeProdutoDebounced);
+  if (filtroNomeProdutoDebounced !== filtroNomeProdutoAnterior) {
+    setFiltroNomeProdutoAnterior(filtroNomeProdutoDebounced);
+    setPaginaProdutos(1);
+  }
 
   const { data: paginaProdutosResp, isLoading: carregandoProdutos } = useQuery({
     queryKey: ["produtos", "pagina", paginaProdutos, filtroNomeProdutoDebounced],
@@ -162,7 +168,15 @@ export function EstoquePage() {
   const [filtroTipoMov, setFiltroTipoMov] = useState("");
   const [paginaMovs, setPaginaMovs] = useState(1);
 
-  useEffect(() => setPaginaMovs(1), [filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov]);
+  const [filtrosMovAnteriores, setFiltrosMovAnteriores] = useState([filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov]);
+  if (
+    filtrosMovAnteriores[0] !== filtroProdutoMov ||
+    filtrosMovAnteriores[1] !== filtroAlmoxarifadoMov ||
+    filtrosMovAnteriores[2] !== filtroTipoMov
+  ) {
+    setFiltrosMovAnteriores([filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov]);
+    setPaginaMovs(1);
+  }
 
   const { data: paginaMovsResp, isLoading: carregandoMovs } = useQuery({
     queryKey: ["movimentos-estoque", "pagina", paginaMovs, filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov],
@@ -179,6 +193,27 @@ export function EstoquePage() {
   });
   const movimentos = paginaMovsResp?.itens ?? [];
   const totalMovs = paginaMovsResp?.total ?? 0;
+
+  // --- Termo de Retirada e Recebimento — documento pra assinatura de quem
+  // entregou/retirou e de quem recebeu no almoxarifado, gerado a partir dos
+  // dados já registrados no movimento (mesmo padrão client-side da
+  // Autorização de Imagem: renderiza o termo escondido e baixa como PDF,
+  // sem passar pelo backend). ---
+  const [movimentoTermo, setMovimentoTermo] = useState<MovimentoEstoque | null>(null);
+  const [exportandoTermo, setExportandoTermo] = useState(false);
+  const termoRef = useRef<HTMLDivElement>(null);
+
+  async function baixarTermo() {
+    if (!termoRef.current || !movimentoTermo) return;
+    setExportandoTermo(true);
+    try {
+      await exportarPdf(termoRef.current, `Termo de Retirada e Recebimento - ${nomeProduto(movimentoTermo.produto_id)}.pdf`);
+    } catch {
+      toast.error("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+      setExportandoTermo(false);
+    }
+  }
 
   const [baixando, setBaixando] = useState<string | null>(null);
   async function baixarArquivoMovimento(m: MovimentoEstoque) {
@@ -462,11 +497,16 @@ export function EstoquePage() {
                     </div>
                   )}
                   {m.observacao && <div className="text-sm text-gray-600 mt-0.5">{m.observacao}</div>}
-                  {m.nome_arquivo && (
-                    <Button variant="secondary" className="mt-2" onClick={() => baixarArquivoMovimento(m)} disabled={baixando === m.id}>
-                      {baixando === m.id ? "Abrindo…" : "Ver comprovante"}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {m.nome_arquivo && (
+                      <Button variant="secondary" onClick={() => baixarArquivoMovimento(m)} disabled={baixando === m.id}>
+                        {baixando === m.id ? "Abrindo…" : "Ver comprovante"}
+                      </Button>
+                    )}
+                    <Button variant="secondary" onClick={() => setMovimentoTermo(m)}>
+                      Gerar termo
                     </Button>
-                  )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -484,6 +524,7 @@ export function EstoquePage() {
                     <th className="px-3">Entregue por</th>
                     <th className="px-3">Recebido por</th>
                     <th className="px-3 text-right pr-8">Comprovante</th>
+                    <th className="px-3 text-right pr-8">Termo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -506,6 +547,16 @@ export function EstoquePage() {
                           <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
+                      <td className="px-3 text-right pr-8">
+                        <button
+                          type="button"
+                          title="Gerar Termo de Retirada e Recebimento"
+                          onClick={() => setMovimentoTermo(m)}
+                          className="text-gray-400 hover:text-brand transition-colors"
+                        >
+                          <DocumentTextIcon />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -525,6 +576,61 @@ export function EstoquePage() {
           queryClient.invalidateQueries({ queryKey: ["produtos"] });
         }}
       />
+
+      <Modal
+        open={!!movimentoTermo}
+        onClose={() => setMovimentoTermo(null)}
+        title="Termo de Retirada e Recebimento"
+        maxWidth="max-w-2xl"
+      >
+        {movimentoTermo && (
+          <div className="space-y-4">
+            <div ref={termoRef} className="bg-white p-8 text-sm text-gray-800 leading-relaxed">
+              <div className="flex items-center gap-3 mb-8">
+                <img src="/logo.png" alt="Conexão Esporte" className="w-12 h-12 object-contain" />
+                <div>
+                  <div className="font-bold text-brand-dark">Conexão Esporte</div>
+                  <div className="text-xs text-gray-500">Gestão de projetos esportivos</div>
+                </div>
+              </div>
+
+              <h1 className="text-center font-bold text-base uppercase tracking-wide mb-8">
+                Termo de Retirada e Recebimento de Material
+              </h1>
+
+              <p className="mb-6">
+                Registro de <strong>{movimentoTermo.tipo === "ENTRADA" ? "entrada" : "saída"}</strong> de material no
+                almoxarifado <strong>{nomeAlmoxarifado(movimentoTermo.almoxarifado_id)}</strong>, referente ao produto{" "}
+                <strong>{nomeProduto(movimentoTermo.produto_id)}</strong>, quantidade{" "}
+                <strong>{movimentoTermo.quantidade}</strong>, na data <strong>{dataBR(movimentoTermo.data)}</strong>.
+                {movimentoTermo.observacao ? ` Observação: ${movimentoTermo.observacao}` : ""}
+              </p>
+
+              <div className="grid grid-cols-2 gap-10 mt-16">
+                <div className="text-center">
+                  <div className="border-t border-gray-400 mb-1" />
+                  <div>{movimentoTermo.tipo === "ENTRADA" ? "Entregue por" : "Retirado por"}</div>
+                  <div className="text-gray-500">{movimentoTermo.entregue_por || "________________________"}</div>
+                </div>
+                <div className="text-center">
+                  <div className="border-t border-gray-400 mb-1" />
+                  <div>Recebido por (almoxarifado)</div>
+                  <div className="text-gray-500">{movimentoTermo.recebido_por || "________________________"}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={baixarTermo} disabled={exportandoTermo}>
+                {exportandoTermo ? "Gerando…" : "Baixar PDF"}
+              </Button>
+              <Button variant="secondary" type="button" onClick={() => setMovimentoTermo(null)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

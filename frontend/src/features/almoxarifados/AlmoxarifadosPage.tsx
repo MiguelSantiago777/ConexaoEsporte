@@ -41,7 +41,7 @@ export function AlmoxarifadosPage() {
       setForm({ nome: "", descricao: "" });
       toast.success("Almoxarifado cadastrado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["almoxarifados"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar almoxarifado."));
     } finally {
       setSalvando(false);
@@ -54,7 +54,7 @@ export function AlmoxarifadosPage() {
       toast.success("Almoxarifado removido.");
       queryClient.invalidateQueries({ queryKey: ["almoxarifados"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao remover almoxarifado.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover almoxarifado.")),
   });
 
   function removerAlmoxarifado(a: Almoxarifado) {
@@ -88,7 +88,7 @@ export function AlmoxarifadosPage() {
       setFormCoordenador(FORM_COORDENADOR_INICIAL);
       toast.success("Coordenador cadastrado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["usuarios", "coordenadores-almoxarifado"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar coordenador."));
     } finally {
       setSalvandoCoordenador(false);
@@ -101,7 +101,7 @@ export function AlmoxarifadosPage() {
       toast.success("Acesso do coordenador desativado.");
       queryClient.invalidateQueries({ queryKey: ["usuarios", "coordenadores-almoxarifado"] });
     },
-    onError: (err: any) => toast.error(mensagemErroApi(err, "Erro ao desativar o coordenador.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao desativar o coordenador.")),
   });
 
   function desativarCoordenador(c: Usuario) {

@@ -26,6 +26,17 @@ class BeneficiarioDocumentoRepository:
         )
         return [_to_entity(m) for m in self.db.scalars(stmt)]
 
+    def listar_por_beneficiarios(self, beneficiario_ids: list[UUID]) -> list[BeneficiarioDocumento]:
+        """Busca em lote pra visão consolidada (Anexos Gerais) — evita 1
+        query por beneficiário. Lista vazia devolve lista vazia sem tocar
+        no banco (a cláusula IN () é inválida em SQL)."""
+        if not beneficiario_ids:
+            return []
+        stmt = select(BeneficiarioDocumentoModel).where(
+            BeneficiarioDocumentoModel.beneficiario_id.in_(beneficiario_ids)
+        )
+        return [_to_entity(m) for m in self.db.scalars(stmt)]
+
     def buscar_por_id(self, documento_id: UUID) -> BeneficiarioDocumento | None:
         m = self.db.get(BeneficiarioDocumentoModel, documento_id)
         return _to_entity(m) if m else None

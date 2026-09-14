@@ -68,7 +68,7 @@ export function FichasExecucaoPage() {
       setForm({ polo_id: "", periodo_referencia: "", data_documento: "" });
       toast.success("Ficha de Execução criada.");
       queryClient.invalidateQueries({ queryKey: ["fichas-execucao"] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao criar Ficha de Execução."));
     } finally {
       setSalvando(false);
