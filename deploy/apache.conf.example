@@ -40,9 +40,13 @@ Listen 8080
     </Directory>
 
     # API — proxy para o backend Gunicorn/Uvicorn, que escuta só em 127.0.0.1:8010.
+    # Mantém o prefixo /api/ no caminho encaminhado (sem "stripar"), porque
+    # as rotas do FastAPI já são registradas com API_V1_PREFIX=/api/v1 —
+    # se o Apache tirasse o /api/, o backend receberia /v1/... e devolveria
+    # 404 em tudo (foi exatamente o que aconteceu no primeiro deploy real).
     ProxyPreserveHost On
-    ProxyPass /api/ http://127.0.0.1:8010/
-    ProxyPassReverse /api/ http://127.0.0.1:8010/
+    ProxyPass /api/ http://127.0.0.1:8010/api/
+    ProxyPassReverse /api/ http://127.0.0.1:8010/api/
 
     # Rejeita uploads grandes aqui mesmo, antes de gastar memória do backend
     # lendo o corpo da requisição. UPLOAD_MAX_SIZE_MB no backend é 10MB por
