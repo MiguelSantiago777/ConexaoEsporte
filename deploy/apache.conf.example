@@ -10,7 +10,7 @@
 #
 # Quando o domínio estiver pronto: troque "Listen 8080" / "<VirtualHost
 # *:8080>" por "<VirtualHost *:80>" e "ServerName _default_" pelo domínio
-# real (ex.: "ServerName esporte.seudominio.com.br"). Como o outro app já usa
+# real ("ServerName ce.institutonata.org.br"). Como o outro app já usa
 # ServerName explícito, os dois VirtualHosts passam a dividir a porta 80
 # nativamente — o Apache roteia pelo header Host, sem precisar de proxy
 # reverso na frente. Depois rode o certbot (--apache) para HTTPS, igual já
