@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
 import { FileInput } from "@/components/ui/FileInput";
-import { ImportarPlanilhaModal } from "@/components/import/ImportarPlanilhaModal";
 import { PencilIcon, TrashIcon, TrophyIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -106,7 +105,6 @@ export function BeneficiariosPage() {
   const [beneficiarioDocumentos, setBeneficiarioDocumentos] = useState<Beneficiario | null>(null);
   const [beneficiarioEditando, setBeneficiarioEditando] = useState<Beneficiario | null>(null);
   const [beneficiarioMatriculas, setBeneficiarioMatriculas] = useState<Beneficiario | null>(null);
-  const [importarAberto, setImportarAberto] = useState(false);
 
   // Só refaz a busca 300ms depois de parar de digitar — sem isso, cada tecla
   // dispara uma chamada nova ao servidor.
@@ -232,16 +230,7 @@ export function BeneficiariosPage() {
     <div className="space-y-6">
       <PageHeader title="Beneficiários" subtitle="Cadastro de beneficiários e seus responsáveis legais." />
 
-      <Card
-        title="Cadastrar beneficiário"
-        actions={
-          <Button type="button" variant="secondary" onClick={() => setImportarAberto(true)}>
-            Importar planilha
-          </Button>
-        }
-        className="animate-fade-in-up"
-        style={staggerStyle(0)}
-      >
+      <Card title="Cadastrar beneficiário" className="animate-fade-in-up" style={staggerStyle(0)}>
         <form onSubmit={handleSubmit} className="space-y-6">
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-brand/70 mb-3">Dados do beneficiário</h3>
@@ -629,14 +618,6 @@ export function BeneficiariosPage() {
         <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalBeneficiarios} onChange={setPagina} />
       </Card>
 
-      <ImportarPlanilhaModal
-        aberto={importarAberto}
-        onFechar={() => setImportarAberto(false)}
-        recurso="beneficiarios"
-        titulo="Importar beneficiários"
-        nomeArquivoModelo="modelo-importacao-beneficiarios.xlsx"
-        onImportado={() => queryClient.invalidateQueries({ queryKey: ["beneficiarios"] })}
-      />
       <DocumentosModal beneficiario={beneficiarioDocumentos} onClose={() => setBeneficiarioDocumentos(null)} />
       <EditarBeneficiarioModal
         beneficiario={beneficiarioEditando}

@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
 import { PencilIcon, TrashIcon } from "@/components/ui/icons";
-import { ImportarPlanilhaModal } from "@/components/import/ImportarPlanilhaModal";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
@@ -40,7 +39,6 @@ export function ProfessoresPage() {
   const ehMaster = usuario?.perfil === "MASTER";
 
   const [pagina, setPagina] = useState(1);
-  const [importarAberto, setImportarAberto] = useState(false);
   const professoresQueryKey = ["usuarios", "professores", "pagina", pagina];
   const { data: paginaProfessores, isLoading: carregando } = useQuery({
     queryKey: professoresQueryKey,
@@ -166,16 +164,7 @@ export function ProfessoresPage() {
         title="Professores"
         subtitle="Cadastre o acesso dos professores responsáveis pelas turmas do seu polo."
       />
-      <Card
-        title="Cadastrar professor"
-        actions={
-          <Button type="button" variant="secondary" onClick={() => setImportarAberto(true)}>
-            Importar planilha
-          </Button>
-        }
-        className="animate-fade-in-up"
-        style={staggerStyle(0)}
-      >
+      <Card title="Cadastrar professor" className="animate-fade-in-up" style={staggerStyle(0)}>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Nome"
@@ -429,15 +418,6 @@ export function ProfessoresPage() {
           toast.success("Alterações salvas.");
           queryClient.invalidateQueries({ queryKey: ["usuarios"] });
         }}
-      />
-
-      <ImportarPlanilhaModal
-        aberto={importarAberto}
-        onFechar={() => setImportarAberto(false)}
-        recurso="usuarios"
-        titulo="Importar professores/usuários"
-        nomeArquivoModelo="modelo-importacao-usuarios.xlsx"
-        onImportado={() => queryClient.invalidateQueries({ queryKey: ["usuarios"] })}
       />
     </div>
   );

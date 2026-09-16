@@ -4,9 +4,7 @@ import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { Pagina, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ImportarPlanilhaModal } from "@/components/import/ImportarPlanilhaModal";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
@@ -28,7 +26,6 @@ export function PolosPage() {
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState("");
   const [pagina, setPagina] = useState(1);
-  const [importarAberto, setImportarAberto] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setFiltroNomeDebounced(filtroNome), 300);
@@ -124,14 +121,7 @@ export function PolosPage() {
       />
       <Card
         title="Polos"
-        actions={
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="secondary" onClick={() => setImportarAberto(true)}>
-              Importar planilha
-            </Button>
-            <Badge variant="accent">{totalPolos}</Badge>
-          </div>
-        }
+        actions={<Badge variant="accent">{totalPolos}</Badge>}
         className="animate-fade-in-up"
         style={staggerStyle(1)}
       >
@@ -302,15 +292,6 @@ export function PolosPage() {
           queryClient.invalidateQueries({ queryKey: ["polos"] });
         }}
         onAtualizado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
-      />
-
-      <ImportarPlanilhaModal
-        aberto={importarAberto}
-        onFechar={() => setImportarAberto(false)}
-        recurso="polos"
-        titulo="Importar polos"
-        nomeArquivoModelo="modelo-importacao-polos.xlsx"
-        onImportado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
       />
     </div>
   );

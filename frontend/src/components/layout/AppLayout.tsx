@@ -24,6 +24,7 @@ import {
   ShieldIcon,
   StackIcon,
   TrophyIcon,
+  UploadIcon,
   UsersIcon,
 } from "@/components/ui/icons";
 
@@ -61,6 +62,7 @@ const MENU: ItemMenu[] = [
       { label: "Almoxarifados", to: "/almoxarifados", perfis: ["MASTER", "GESTOR_POLO"], modulo: "almoxarifados", icon: StackIcon },
     ],
   },
+  { label: "Importar", to: "/importar", perfis: ["MASTER"], icon: UploadIcon },
   {
     label: "Estoque", to: "/estoque", perfis: ["MASTER"], icon: StackIcon,
     subitens: [

@@ -316,6 +316,15 @@ export function StackIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function UploadIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 15V4M12 4L8 8M12 4l4 4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 15v3.5a1 1 0 001 1h13a1 1 0 001-1V15" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ className = "w-4 h-4" }: Props) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">

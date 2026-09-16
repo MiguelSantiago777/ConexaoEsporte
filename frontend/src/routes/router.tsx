@@ -26,6 +26,7 @@ import { RelatoriosGerenciaisPage } from "@/features/relatorios-gerenciais/Relat
 import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
 import { AnexosGeraisPage } from "@/features/anexos-gerais/AnexosGeraisPage";
 import { PapeisPage } from "@/features/papeis/PapeisPage";
+import { ImportarPage } from "@/features/importacao/ImportarPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
               { path: "/entregas-materiais", element: <EntregasMateriaisPage /> },
               { path: "/estoque", element: <EstoquePage /> },
               { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
+              { path: "/importar", element: <ImportarPage /> },
             ],
           },
           // MASTER + GESTOR_POLO

@@ -21,7 +21,6 @@ import { staggerStyle } from "@/lib/animation";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { dataBR } from "@/features/frequencia/statusChamada";
 import { EditarProdutoModal } from "./EditarProdutoModal";
-import { ImportarPlanilhaModal } from "@/components/import/ImportarPlanilhaModal";
 
 const TAMANHO_PAGINA = 10;
 const FORM_PRODUTO_INICIAL = { nome: "", unidade_medida: "", descricao: "" };
@@ -138,7 +137,6 @@ export function EstoquePage() {
   const [filtroNomeProduto, setFiltroNomeProduto] = useState("");
   const [filtroNomeProdutoDebounced, setFiltroNomeProdutoDebounced] = useState("");
   const [paginaProdutos, setPaginaProdutos] = useState(1);
-  const [importarAberto, setImportarAberto] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setFiltroNomeProdutoDebounced(filtroNomeProduto), 300);
@@ -246,16 +244,7 @@ export function EstoquePage() {
       />
 
       {ehMaster && (
-        <Card
-          title="Cadastrar produto"
-          actions={
-            <Button type="button" variant="secondary" onClick={() => setImportarAberto(true)}>
-              Importar planilha
-            </Button>
-          }
-          className="animate-fade-in-up"
-          style={staggerStyle(0)}
-        >
+        <Card title="Cadastrar produto" className="animate-fade-in-up" style={staggerStyle(0)}>
           <form onSubmit={cadastrarProduto} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <Input label="Nome" placeholder="ex.: Bola de futebol" value={formProduto.nome}
@@ -642,17 +631,6 @@ export function EstoquePage() {
           </div>
         )}
       </Modal>
-
-      {ehMaster && (
-        <ImportarPlanilhaModal
-          aberto={importarAberto}
-          onFechar={() => setImportarAberto(false)}
-          recurso="produtos"
-          titulo="Importar produtos"
-          nomeArquivoModelo="modelo-importacao-produtos.xlsx"
-          onImportado={() => queryClient.invalidateQueries({ queryKey: ["produtos"] })}
-        />
-      )}
     </div>
   );
 }
