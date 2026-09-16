@@ -194,6 +194,53 @@ def test_gestor_polo_so_pode_importar_professor(client, seed_basico):
 
 
 # ---------------------------------------------------------------------
+# Polos — geocodificação automática do endereço
+# ---------------------------------------------------------------------
+
+
+def test_importar_polos_geocodifica_endereco_quando_falta_coordenada(client, seed_basico, monkeypatch):
+    from app.application.polo import importacao_service as polo_importacao_service
+
+    chamadas = []
+
+    def _geocodificar_falso(endereco):
+        chamadas.append(endereco)
+        return (-23.5, -46.6)
+
+    monkeypatch.setattr(polo_importacao_service, "geocodificar", _geocodificar_falso)
+
+    token = login(client, "master@test.com")
+    arquivo = _planilha(["Nome*", "Endereço"], [["Polo Geocodificado", "Rua Teste, 123"]])
+    resp = _upload(client, token, "/api/v1/polos/importar", arquivo, confirmar=True)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["sucesso"] == 1
+    assert chamadas == ["Rua Teste, 123"]
+
+    resp_lista = client.get("/api/v1/polos", headers={"Authorization": f"Bearer {token}"})
+    polo = next(p for p in resp_lista.json() if p["nome"] == "Polo Geocodificado")
+    assert polo["latitude"] == -23.5
+    assert polo["longitude"] == -46.6
+
+
+def test_importar_polos_nao_geocodifica_quando_coordenada_ja_vem_preenchida(client, seed_basico, monkeypatch):
+    from app.application.polo import importacao_service as polo_importacao_service
+
+    def _geocodificar_falso(endereco):
+        raise AssertionError("não deveria geocodificar quando lat/long já vêm preenchidos")
+
+    monkeypatch.setattr(polo_importacao_service, "geocodificar", _geocodificar_falso)
+
+    token = login(client, "master@test.com")
+    arquivo = _planilha(
+        ["Nome*", "Endereço", "Latitude", "Longitude"],
+        [["Polo Com Coordenada", "Rua Teste, 123", "-10.1", "-20.2"]],
+    )
+    resp = _upload(client, token, "/api/v1/polos/importar", arquivo, confirmar=True)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["sucesso"] == 1
+
+
+# ---------------------------------------------------------------------
 # Produtos — caso mais simples (sem FK, sem RBAC de polo)
 # ---------------------------------------------------------------------
 

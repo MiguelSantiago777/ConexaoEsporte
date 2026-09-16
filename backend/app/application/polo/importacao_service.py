@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.application.importacao.campos import data, decimal, texto, texto_obrigatorio
 from app.application.importacao.executor import executar_importacao
+from app.application.importacao.geocodificacao import geocodificar
 from app.application.importacao.planilha import ColunaModelo, gerar_modelo
 from app.application.importacao.resultado import ResultadoImportacao
 from app.application.polo.service import PoloService
@@ -58,8 +59,14 @@ _COLUNAS = [
     ColunaModelo(COL_RESP_NOME, False, ""),
     ColunaModelo(COL_RESP_EMAIL, False, ""),
     ColunaModelo(COL_RESP_TELEFONE, False, ""),
-    ColunaModelo(COL_LATITUDE, False, "-23.5505"),
-    ColunaModelo(COL_LONGITUDE, False, "-46.6333"),
+    ColunaModelo(
+        COL_LATITUDE, False, "",
+        "Opcional — se ficar em branco e o Endereço estiver preenchido, o sistema busca a coordenada automaticamente.",
+    ),
+    ColunaModelo(
+        COL_LONGITUDE, False, "",
+        "Opcional — preenchida junto com a Latitude quando buscada automaticamente pelo Endereço.",
+    ),
 ]
 
 
@@ -83,12 +90,23 @@ class PoloImportacaoService:
                 )
             return gestor.id
 
+        def resolver_coordenadas(linha: dict, endereco: str | None) -> tuple[float | None, float | None]:
+            latitude = decimal(linha, COL_LATITUDE)
+            longitude = decimal(linha, COL_LONGITUDE)
+            if endereco and (latitude is None or longitude is None):
+                geocodificado = geocodificar(endereco)
+                if geocodificado:
+                    latitude, longitude = geocodificado
+            return latitude, longitude
+
         def processar(linha: dict) -> str:
             nome = texto_obrigatorio(linha, COL_NOME)
+            endereco = texto(linha, COL_ENDERECO)
+            latitude, longitude = resolver_coordenadas(linha, endereco)
             dados = dict(
                 nome=nome,
                 codigo=texto(linha, COL_CODIGO),
-                endereco=texto(linha, COL_ENDERECO),
+                endereco=endereco,
                 horario_funcionamento=texto(linha, COL_HORARIO),
                 gestor_responsavel_id=resolver_gestor(texto(linha, COL_GESTOR_EMAIL)),
                 processo_sei=texto(linha, COL_PROCESSO_SEI),
@@ -104,8 +122,8 @@ class PoloImportacaoService:
                 responsavel_nome=texto(linha, COL_RESP_NOME),
                 responsavel_email=texto(linha, COL_RESP_EMAIL),
                 responsavel_telefone=texto(linha, COL_RESP_TELEFONE),
-                latitude=decimal(linha, COL_LATITUDE),
-                longitude=decimal(linha, COL_LONGITUDE),
+                latitude=latitude,
+                longitude=longitude,
             )
             if confirmar:
                 self.service.criar(**dados)
