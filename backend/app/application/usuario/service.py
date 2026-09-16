@@ -14,12 +14,14 @@ class UsuarioService:
     def __init__(self, db: Session):
         self.repo = UsuarioRepository(db)
 
-    def criar_usuario(
+    def validar(
         self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
         telefone: str | None = None, carga_horaria_semanal: str | None = None,
         almoxarifado_id: UUID | None = None, papel_id: UUID | None = None,
     ) -> Usuario:
+        """Monta e valida o usuário sem gravar — reaproveitado por `criar_usuario`
+        e pela prévia de importação em massa (que precisa validar sem persistir)."""
         if self.repo.buscar_por_email(email):
             raise RecursoJaExiste("Já existe um usuário com este email.")
 
@@ -33,9 +35,22 @@ class UsuarioService:
             if criado_por_perfil == PerfilUsuario.GESTOR_POLO:
                 polo_id = criado_por_polo_id  # força o polo do próprio gestor
 
-        usuario = Usuario(
+        return Usuario(
             id=None, nome=nome, email=email, senha_hash=hash_password(senha),
             perfil=perfil, polo_id=polo_id, ativo=True,
+            telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
+            almoxarifado_id=almoxarifado_id, papel_id=papel_id,
+        )
+
+    def criar_usuario(
+        self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
+        criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
+        telefone: str | None = None, carga_horaria_semanal: str | None = None,
+        almoxarifado_id: UUID | None = None, papel_id: UUID | None = None,
+    ) -> Usuario:
+        usuario = self.validar(
+            nome=nome, email=email, senha=senha, perfil=perfil, polo_id=polo_id,
+            criado_por_perfil=criado_por_perfil, criado_por_polo_id=criado_por_polo_id,
             telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
             almoxarifado_id=almoxarifado_id, papel_id=papel_id,
         )

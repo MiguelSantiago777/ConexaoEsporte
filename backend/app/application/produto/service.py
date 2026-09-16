@@ -35,8 +35,13 @@ class ProdutoService:
     def saldos_por_produto_de(self, almoxarifado_id: UUID) -> list[dict]:
         return self.repo.saldos_por_produto_de(almoxarifado_id)
 
+    def validar(self, nome: str, unidade_medida: str, descricao: str | None) -> Produto:
+        """Monta e valida o produto sem gravar — reaproveitado por `criar` e pela
+        prévia de importação em massa (que precisa validar sem persistir)."""
+        return Produto(id=None, nome=nome, unidade_medida=unidade_medida, descricao=descricao)
+
     def criar(self, nome: str, unidade_medida: str, descricao: str | None) -> Produto:
-        produto = Produto(id=None, nome=nome, unidade_medida=unidade_medida, descricao=descricao)
+        produto = self.validar(nome=nome, unidade_medida=unidade_medida, descricao=descricao)
         return self.repo.criar(produto)
 
     def atualizar(

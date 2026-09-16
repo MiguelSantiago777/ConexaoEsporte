@@ -28,14 +28,25 @@ class PoloService:
         if existente and existente.id != ignorar_polo_id:
             raise RecursoJaExiste(f"Já existe um polo com o código '{codigo}'.")
 
+    def validar(
+        self, nome: str, codigo: str | None, endereco: str | None, gestor_responsavel_id: UUID | None,
+        horario_funcionamento: str | None = None, **dados_parceria,
+    ) -> Polo:
+        """Monta e valida o polo sem gravar — reaproveitado por `criar` e pela
+        prévia de importação em massa (que precisa validar sem persistir)."""
+        self._validar_codigo_disponivel(codigo)
+        return Polo(id=None, nome=nome, codigo=codigo, endereco=endereco,
+                    horario_funcionamento=horario_funcionamento, status="ATIVO",
+                    gestor_responsavel_id=gestor_responsavel_id, **dados_parceria)
+
     def criar(
         self, nome: str, codigo: str | None, endereco: str | None, gestor_responsavel_id: UUID | None,
         horario_funcionamento: str | None = None, **dados_parceria,
     ) -> Polo:
-        self._validar_codigo_disponivel(codigo)
-        polo = Polo(id=None, nome=nome, codigo=codigo, endereco=endereco,
-                    horario_funcionamento=horario_funcionamento, status="ATIVO",
-                    gestor_responsavel_id=gestor_responsavel_id, **dados_parceria)
+        polo = self.validar(
+            nome=nome, codigo=codigo, endereco=endereco, gestor_responsavel_id=gestor_responsavel_id,
+            horario_funcionamento=horario_funcionamento, **dados_parceria,
+        )
         return self.repo.criar(polo)
 
     def atualizar(self, polo_id: UUID, **campos) -> Polo | None:

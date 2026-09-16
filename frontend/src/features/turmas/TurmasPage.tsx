@@ -13,6 +13,7 @@ import { Paginacao } from "@/components/ui/Paginacao";
 import { TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ImportarPlanilhaModal } from "@/components/import/ImportarPlanilhaModal";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -36,6 +37,7 @@ export function TurmasPage() {
   });
 
   const [pagina, setPagina] = useState(1);
+  const [importarAberto, setImportarAberto] = useState(false);
   const turmasQueryKey = ["turmas", "pagina", pagina];
   const { data: paginaTurmas, isLoading: carregando } = useQuery({
     queryKey: turmasQueryKey,
@@ -172,7 +174,16 @@ export function TurmasPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Turmas" subtitle="Turmas de cada modalidade oferecidas por polo." />
-      <Card title="Cadastrar turma" className="animate-fade-in-up" style={staggerStyle(0)}>
+      <Card
+        title="Cadastrar turma"
+        actions={
+          <Button type="button" variant="secondary" onClick={() => setImportarAberto(true)}>
+            Importar planilha
+          </Button>
+        }
+        className="animate-fade-in-up"
+        style={staggerStyle(0)}
+      >
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label="Polo"
@@ -360,6 +371,15 @@ export function TurmasPage() {
         )}
         <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalTurmas} onChange={setPagina} />
       </Card>
+
+      <ImportarPlanilhaModal
+        aberto={importarAberto}
+        onFechar={() => setImportarAberto(false)}
+        recurso="turmas"
+        titulo="Importar turmas"
+        nomeArquivoModelo="modelo-importacao-turmas.xlsx"
+        onImportado={() => queryClient.invalidateQueries({ queryKey: ["turmas"] })}
+      />
     </div>
   );
 }

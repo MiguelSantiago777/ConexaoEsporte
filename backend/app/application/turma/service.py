@@ -43,14 +43,28 @@ class TurmaService:
         if professor.polo_id != polo_id:
             raise RegraDeNegocioViolada("O professor vinculado deve pertencer ao mesmo polo da turma.")
 
+    def validar(
+        self, polo_id: UUID, modalidade_id: UUID, professor_id: UUID | None,
+        horario_inicio: str, horario_fim: str, dias_semana: list[str], limite_vagas: int,
+        coordenador_nome: str | None = None, monitor_nome: str | None = None, periodicidade: str | None = None,
+    ) -> Turma:
+        """Monta e valida a turma sem gravar — reaproveitado por `criar` e pela
+        prévia de importação em massa (que precisa validar sem persistir)."""
+        self._validar_professor(professor_id, polo_id)
+        return Turma(
+            id=None, polo_id=polo_id, modalidade_id=modalidade_id, professor_id=professor_id,
+            horario_inicio=horario_inicio, horario_fim=horario_fim,
+            dias_semana=dias_semana, limite_vagas=limite_vagas,
+            coordenador_nome=coordenador_nome, monitor_nome=monitor_nome, periodicidade=periodicidade,
+        )
+
     def criar(
         self, polo_id: UUID, modalidade_id: UUID, professor_id: UUID | None,
         horario_inicio: str, horario_fim: str, dias_semana: list[str], limite_vagas: int,
         coordenador_nome: str | None = None, monitor_nome: str | None = None, periodicidade: str | None = None,
     ) -> dict:
-        self._validar_professor(professor_id, polo_id)
-        turma = Turma(
-            id=None, polo_id=polo_id, modalidade_id=modalidade_id, professor_id=professor_id,
+        turma = self.validar(
+            polo_id=polo_id, modalidade_id=modalidade_id, professor_id=professor_id,
             horario_inicio=horario_inicio, horario_fim=horario_fim,
             dias_semana=dias_semana, limite_vagas=limite_vagas,
             coordenador_nome=coordenador_nome, monitor_nome=monitor_nome, periodicidade=periodicidade,

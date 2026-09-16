@@ -2,8 +2,10 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
+from app.application.importacao.planilha import ler_planilha
+from app.application.polo.importacao_service import PoloImportacaoService
 from app.application.polo.service import PoloService
 from app.application.relatorios.service import RelatorioService
 from app.core.dependencies import (
@@ -14,7 +16,8 @@ from app.core.dependencies import (
     require_modulo_ou_perfis,
 )
 from app.domain.enums import PerfilUsuario
-from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_download, resposta_relatorio
+from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.polo_schemas import PoloCreateRequest, PoloResponse, PoloUpdateRequest
 
@@ -87,6 +90,39 @@ def criar_polo(body: PoloCreateRequest, usuario: SomenteMaster, db: DbSession) -
         latitude=body.latitude, longitude=body.longitude,
     )
     return PoloResponse.model_validate(criado)
+
+
+@router.get(
+    "/importar/modelo",
+    summary="Baixar modelo de planilha (.xlsx) para importação em massa de polos (somente MASTER)",
+)
+def baixar_modelo_importacao_polos(usuario: SomenteMaster, db: DbSession) -> Response:
+    buffer = PoloImportacaoService(db).gerar_modelo()
+    return resposta_download(
+        buffer.getvalue(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "modelo-importacao-polos.xlsx",
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar polos em massa a partir de planilha (.xlsx) — somente MASTER",
+    description="Envie o arquivo preenchido a partir do modelo (`GET /polos/importar/modelo`). Com "
+    "`confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com "
+    "`confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro. Cobre "
+    "os campos essenciais — dados mais específicos de documentação (objeto do convênio, termos "
+    "aditivos etc.) continuam preenchidos depois, um a um, em Polos > Editar.",
+)
+async def importar_polos(
+    usuario: SomenteMaster, db: DbSession,
+    arquivo: UploadFile = File(...),
+    confirmar: bool = Query(False),
+) -> ResultadoImportacaoResponse:
+    linhas = ler_planilha(await arquivo.read())
+    resultado = PoloImportacaoService(db).importar(linhas, confirmar)
+    return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
 @router.patch(

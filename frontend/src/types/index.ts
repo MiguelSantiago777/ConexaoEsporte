@@ -140,3 +140,8 @@ export type ConfiguracaoGeral = components["schemas"]["ConfiguracaoGeralResponse
 // PERSONALIZADO tem seu acesso definido pelo Papel vinculado a ele.
 export type ModuloDisponivel = components["schemas"]["ModuloDisponivelItem"];
 export type Papel = components["schemas"]["PapelResponse"];
+
+// Importação em massa (planilha .xlsx) — resposta comum aos 5 endpoints
+// `POST /{recurso}/importar` (beneficiários, turmas, usuários, produtos, polos).
+export type LinhaImportacao = components["schemas"]["LinhaImportacaoResponse"];
+export type ResultadoImportacao = components["schemas"]["ResultadoImportacaoResponse"];

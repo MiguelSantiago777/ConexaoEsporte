@@ -30,7 +30,7 @@ class BeneficiarioService:
     def buscar(self, beneficiario_id: UUID) -> Beneficiario | None:
         return self.repo.buscar_por_id(beneficiario_id)
 
-    def criar(
+    def validar(
         self, nome_completo: str, data_nascimento: date, documento: str,
         polo_id: UUID | None,
         responsavel_legal_nome: str | None, responsavel_legal_data_nascimento: date | None,
@@ -39,6 +39,8 @@ class BeneficiarioService:
         responsavel_legal_rede_social: str | None, endereco: str | None,
         autoriza_whatsapp: bool, observacoes_medicas: str | None,
     ) -> Beneficiario:
+        """Monta e valida o beneficiário sem gravar — reaproveitado por `criar`
+        e pela prévia de importação em massa (que precisa validar sem persistir)."""
         # O documento é sempre exclusivo do próprio beneficiário — mesmo quando
         # dois irmãos compartilham o mesmo responsável legal, cada um tem seu
         # próprio documento aqui (o do responsável não é validado por unicidade).
@@ -59,7 +61,29 @@ class BeneficiarioService:
             observacoes_medicas=observacoes_medicas,
         )
         beneficiario.validar_responsavel_legal_se_menor()
+        return beneficiario
 
+    def criar(
+        self, nome_completo: str, data_nascimento: date, documento: str,
+        polo_id: UUID | None,
+        responsavel_legal_nome: str | None, responsavel_legal_data_nascimento: date | None,
+        responsavel_legal_tipo_relacao: str | None, responsavel_legal_telefone_1: str | None,
+        responsavel_legal_telefone_2: str | None, responsavel_legal_email: str | None,
+        responsavel_legal_rede_social: str | None, endereco: str | None,
+        autoriza_whatsapp: bool, observacoes_medicas: str | None,
+    ) -> Beneficiario:
+        beneficiario = self.validar(
+            nome_completo=nome_completo, data_nascimento=data_nascimento, documento=documento,
+            polo_id=polo_id, responsavel_legal_nome=responsavel_legal_nome,
+            responsavel_legal_data_nascimento=responsavel_legal_data_nascimento,
+            responsavel_legal_tipo_relacao=responsavel_legal_tipo_relacao,
+            responsavel_legal_telefone_1=responsavel_legal_telefone_1,
+            responsavel_legal_telefone_2=responsavel_legal_telefone_2,
+            responsavel_legal_email=responsavel_legal_email,
+            responsavel_legal_rede_social=responsavel_legal_rede_social,
+            endereco=endereco, autoriza_whatsapp=autoriza_whatsapp,
+            observacoes_medicas=observacoes_medicas,
+        )
         return self.repo.criar(beneficiario)
 
     def atualizar(self, beneficiario_id: UUID, **campos) -> Beneficiario | None:

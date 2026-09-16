@@ -5,11 +5,15 @@ Entrada de estoque)."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
+from app.application.importacao.planilha import ler_planilha
+from app.application.produto.importacao_service import ProdutoImportacaoService
 from app.application.produto.service import ProdutoService
 from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
+from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.produto_schemas import (
     ProdutoCreateRequest,
@@ -93,6 +97,37 @@ def criar_produto(body: ProdutoCreateRequest, usuario: SomenteMaster, db: DbSess
         id=criado.id, nome=criado.nome, unidade_medida=criado.unidade_medida, descricao=criado.descricao,
         ativo=criado.ativo, saldo_atual=0,
     )
+
+
+@router.get(
+    "/importar/modelo",
+    summary="Baixar modelo de planilha (.xlsx) para importação em massa de produtos",
+)
+def baixar_modelo_importacao_produtos(usuario: SomenteMaster, db: DbSession) -> Response:
+    buffer = ProdutoImportacaoService(db).gerar_modelo()
+    return resposta_download(
+        buffer.getvalue(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "modelo-importacao-produtos.xlsx",
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar produtos em massa a partir de planilha (.xlsx)",
+    description="Envie o arquivo preenchido a partir do modelo (`GET /produtos/importar/modelo`). Com "
+    "`confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com "
+    "`confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.",
+)
+async def importar_produtos(
+    usuario: SomenteMaster, db: DbSession,
+    arquivo: UploadFile = File(...),
+    confirmar: bool = Query(False),
+) -> ResultadoImportacaoResponse:
+    linhas = ler_planilha(await arquivo.read())
+    resultado = ProdutoImportacaoService(db).importar(linhas, confirmar)
+    return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
 @router.patch("/{produto_id}", response_model=ProdutoResponse, summary="Editar produto do catálogo de Estoque")

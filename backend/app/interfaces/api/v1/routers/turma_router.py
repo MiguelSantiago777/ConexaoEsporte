@@ -2,9 +2,11 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
+from app.application.importacao.planilha import ler_planilha
 from app.application.relatorios.service import RelatorioService
+from app.application.turma.importacao_service import TurmaImportacaoService
 from app.application.turma.service import TurmaService
 from app.core.dependencies import (
     CurrentUser,
@@ -15,7 +17,8 @@ from app.core.dependencies import (
     require_modulo_ou_perfis,
 )
 from app.domain.enums import PerfilUsuario
-from app.interfaces.api.v1.routers._arquivo_helper import resposta_relatorio
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_download, resposta_relatorio
+from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.turma_schemas import TurmaCreateRequest, TurmaResponse, TurmaUpdateRequest
 
@@ -89,6 +92,39 @@ def criar_turma(body: TurmaCreateRequest, usuario: MasterOuGestor, db: DbSession
         periodicidade=body.periodicidade,
     )
     return TurmaResponse(**criada)
+
+
+@router.get(
+    "/importar/modelo",
+    summary="Baixar modelo de planilha (.xlsx) para importação em massa de turmas",
+)
+def baixar_modelo_importacao_turmas(usuario: MasterOuGestor, db: DbSession) -> Response:
+    polo_fixo_id = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    buffer = TurmaImportacaoService(db).gerar_modelo(polo_fixo_id)
+    return resposta_download(
+        buffer.getvalue(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "modelo-importacao-turmas.xlsx",
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar turmas em massa a partir de planilha (.xlsx)",
+    description="Envie o arquivo preenchido a partir do modelo (`GET /turmas/importar/modelo`). Com "
+    "`confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com "
+    "`confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.",
+)
+async def importar_turmas(
+    usuario: MasterOuGestor, db: DbSession,
+    arquivo: UploadFile = File(...),
+    confirmar: bool = Query(False),
+) -> ResultadoImportacaoResponse:
+    linhas = ler_planilha(await arquivo.read())
+    polo_fixo_id = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    resultado = TurmaImportacaoService(db).importar(linhas, confirmar, polo_fixo_id)
+    return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
 @router.patch(

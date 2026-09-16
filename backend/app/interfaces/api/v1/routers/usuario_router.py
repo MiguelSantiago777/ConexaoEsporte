@@ -5,11 +5,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
+from app.application.importacao.planilha import ler_planilha
 from app.application.usuario.documento_service import UsuarioDocumentoService
+from app.application.usuario.importacao_service import UsuarioImportacaoService
 from app.application.usuario.service import UsuarioService
 from app.core.dependencies import DbSession, UsuarioAutenticado, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
+from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 from app.interfaces.api.v1.schemas.usuario_schemas import (
     UsuarioCreateRequest,
@@ -70,6 +73,39 @@ def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSes
         almoxarifado_id=body.almoxarifado_id, papel_id=body.papel_id,
     )
     return UsuarioResponse.model_validate(criado)
+
+
+@router.get(
+    "/importar/modelo",
+    summary="Baixar modelo de planilha (.xlsx) para importação em massa de usuários/professores",
+)
+def baixar_modelo_importacao_usuarios(usuario: MasterOuGestor, db: DbSession) -> Response:
+    polo_fixo_id = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    buffer = UsuarioImportacaoService(db).gerar_modelo(usuario.perfil, polo_fixo_id)
+    return resposta_download(
+        buffer.getvalue(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "modelo-importacao-usuarios.xlsx",
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar usuários/professores em massa a partir de planilha (.xlsx)",
+    description="Envie o arquivo preenchido a partir do modelo (`GET /usuarios/importar/modelo`). Com "
+    "`confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado, nenhum e-mail é enviado. "
+    "Com `confirmar=true` grava as linhas válidas (pulando as com erro) e envia a cada uma um e-mail "
+    "com uma senha temporária gerada aleatoriamente — a senha nunca vem da planilha.",
+)
+async def importar_usuarios(
+    usuario: MasterOuGestor, db: DbSession,
+    arquivo: UploadFile = File(...),
+    confirmar: bool = Query(False),
+) -> ResultadoImportacaoResponse:
+    linhas = ler_planilha(await arquivo.read())
+    resultado = UsuarioImportacaoService(db).importar(linhas, confirmar, usuario)
+    return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
 @router.get(

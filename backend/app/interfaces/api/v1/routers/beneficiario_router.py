@@ -10,7 +10,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import Response
 
 from app.application.beneficiario.documento_service import BeneficiarioDocumentoService
+from app.application.beneficiario.importacao_service import BeneficiarioImportacaoService
 from app.application.beneficiario.service import BeneficiarioService
+from app.application.importacao.planilha import ler_planilha
 from app.application.matricula.service import MatriculaService
 from app.core.dependencies import (
     CurrentUser,
@@ -22,12 +24,14 @@ from app.core.dependencies import (
 )
 from app.domain.enums import PerfilUsuario
 from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
+from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
 from app.interfaces.api.v1.schemas.beneficiario_schemas import (
     BeneficiarioCreateRequest,
     BeneficiarioDocumentoResponse,
     BeneficiarioResponse,
     BeneficiarioUpdateRequest,
 )
+from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.matricula_schemas import MatriculaCreateRequest, MatriculaResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 
@@ -120,6 +124,39 @@ def criar_beneficiario(
         observacoes_medicas=body.observacoes_medicas,
     )
     return BeneficiarioResponse.model_validate(criado)
+
+
+@router.get(
+    "/importar/modelo",
+    summary="Baixar modelo de planilha (.xlsx) para importação em massa de beneficiários",
+)
+def baixar_modelo_importacao_beneficiarios(usuario: MasterOuGestor, db: DbSession) -> Response:
+    polo_fixo_id = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    buffer = BeneficiarioImportacaoService(db).gerar_modelo(polo_fixo_id)
+    return resposta_download(
+        buffer.getvalue(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "modelo-importacao-beneficiarios.xlsx",
+    )
+
+
+@router.post(
+    "/importar",
+    response_model=ResultadoImportacaoResponse,
+    summary="Importar beneficiários em massa a partir de planilha (.xlsx)",
+    description="Envie o arquivo preenchido a partir do modelo (`GET /beneficiarios/importar/modelo`). "
+    "Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com "
+    "`confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.",
+)
+async def importar_beneficiarios(
+    usuario: MasterOuGestor, db: DbSession,
+    arquivo: UploadFile = File(...),
+    confirmar: bool = Query(False),
+) -> ResultadoImportacaoResponse:
+    linhas = ler_planilha(await arquivo.read())
+    polo_fixo_id = usuario.polo_id if usuario.perfil == PerfilUsuario.GESTOR_POLO else None
+    resultado = BeneficiarioImportacaoService(db).importar(linhas, confirmar, polo_fixo_id)
+    return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
 @router.patch(

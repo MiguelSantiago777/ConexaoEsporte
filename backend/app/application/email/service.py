@@ -5,11 +5,34 @@ de inscrição na lista de espera de um beneficiário) ganha um método aqui e
 um template em app/infrastructure/email/templates/ — nunca chama o
 enviador diretamente.
 """
+from app.core.config import settings
 from app.infrastructure.email import enviador
 from app.infrastructure.email.templates import renderizar
 
 
 class EmailService:
+    def enviar_credenciais_acesso(self, destinatario: str, nome: str, senha_temporaria: str) -> None:
+        """Disparado pela importação em massa de professores/usuários (ver
+        `app/application/usuario/importacao_service.py`) — a senha nunca fica
+        na planilha, só chega ao interessado por aqui."""
+        link_login = f"{settings.FRONTEND_URL.rstrip('/')}/login"
+        html = renderizar(
+            "credenciais_acesso.html", nome=nome, email=destinatario,
+            senha_temporaria=senha_temporaria, link_login=link_login,
+        )
+        texto_alternativo = (
+            f"Olá, {nome}.\n\n"
+            "Foi criado um acesso pra você no sistema Conexão Esporte. Recomendamos trocar a senha assim "
+            f"que fizer o primeiro login.\n\nE-mail: {destinatario}\nSenha temporária: {senha_temporaria}\n\n"
+            f"Acesse: {link_login}"
+        )
+        enviador.enviador_email.enviar(
+            destinatario=destinatario,
+            assunto="Seu acesso ao Conexão Esporte",
+            html=html,
+            texto_alternativo=texto_alternativo,
+        )
+
     def enviar_redefinicao_senha(self, destinatario: str, nome: str, link: str, horas_validade: int) -> None:
         """`horas_validade` deve ser o mesmo prazo usado para expirar o token no
         banco (ver AuthService.solicitar_redefinicao_senha) — passado pelo

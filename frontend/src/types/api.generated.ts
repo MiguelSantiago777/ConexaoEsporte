@@ -150,6 +150,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/usuarios/importar/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar modelo de planilha (.xlsx) para importação em massa de usuários/professores */
+        get: operations["baixar_modelo_importacao_usuarios_api_v1_usuarios_importar_modelo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usuarios/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar usuários/professores em massa a partir de planilha (.xlsx)
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /usuarios/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado, nenhum e-mail é enviado. Com `confirmar=true` grava as linhas válidas (pulando as com erro) e envia a cada uma um e-mail com uma senha temporária gerada aleatoriamente — a senha nunca vem da planilha.
+         */
+        post: operations["importar_usuarios_api_v1_usuarios_importar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/usuarios/{usuario_id}": {
         parameters: {
             query?: never;
@@ -243,6 +280,43 @@ export interface paths {
         put?: never;
         /** Cadastrar polo (somente MASTER) */
         post: operations["criar_polo_api_v1_polos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polos/importar/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar modelo de planilha (.xlsx) para importação em massa de polos (somente MASTER) */
+        get: operations["baixar_modelo_importacao_polos_api_v1_polos_importar_modelo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/polos/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar polos em massa a partir de planilha (.xlsx) — somente MASTER
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /polos/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com `confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro. Cobre os campos essenciais — dados mais específicos de documentação (objeto do convênio, termos aditivos etc.) continuam preenchidos depois, um a um, em Polos > Editar.
+         */
+        post: operations["importar_polos_api_v1_polos_importar_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -395,6 +469,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/turmas/importar/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar modelo de planilha (.xlsx) para importação em massa de turmas */
+        get: operations["baixar_modelo_importacao_turmas_api_v1_turmas_importar_modelo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/turmas/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar turmas em massa a partir de planilha (.xlsx)
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /turmas/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com `confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.
+         */
+        post: operations["importar_turmas_api_v1_turmas_importar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/turmas/{turma_id}": {
         parameters: {
             query?: never;
@@ -453,6 +564,43 @@ export interface paths {
          * @description MASTER e GESTOR_POLO (no próprio polo) podem cadastrar. Valida documento único e responsável legal para menores de idade. A matrícula em turmas/modalidades é feita à parte (`POST /beneficiarios/{id}/matriculas`), pois um beneficiário pode estar em várias ao mesmo tempo.
          */
         post: operations["criar_beneficiario_api_v1_beneficiarios_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beneficiarios/importar/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar modelo de planilha (.xlsx) para importação em massa de beneficiários */
+        get: operations["baixar_modelo_importacao_beneficiarios_api_v1_beneficiarios_importar_modelo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beneficiarios/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar beneficiários em massa a partir de planilha (.xlsx)
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /beneficiarios/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com `confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.
+         */
+        post: operations["importar_beneficiarios_api_v1_beneficiarios_importar_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1036,6 +1184,43 @@ export interface paths {
         get: operations["saldos_por_almoxarifado_api_v1_produtos__produto_id__saldos_por_almoxarifado_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/produtos/importar/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baixar modelo de planilha (.xlsx) para importação em massa de produtos */
+        get: operations["baixar_modelo_importacao_produtos_api_v1_produtos_importar_modelo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/produtos/importar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Importar produtos em massa a partir de planilha (.xlsx)
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /produtos/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado. Com `confirmar=true` grava as linhas válidas e pula as com erro, sem abortar o lote inteiro.
+         */
+        post: operations["importar_produtos_api_v1_produtos_importar_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1704,6 +1889,31 @@ export interface components {
             data: string;
             /** Arquivos */
             arquivos: string[];
+        };
+        /** Body_importar_beneficiarios_api_v1_beneficiarios_importar_post */
+        Body_importar_beneficiarios_api_v1_beneficiarios_importar_post: {
+            /** Arquivo */
+            arquivo: string;
+        };
+        /** Body_importar_polos_api_v1_polos_importar_post */
+        Body_importar_polos_api_v1_polos_importar_post: {
+            /** Arquivo */
+            arquivo: string;
+        };
+        /** Body_importar_produtos_api_v1_produtos_importar_post */
+        Body_importar_produtos_api_v1_produtos_importar_post: {
+            /** Arquivo */
+            arquivo: string;
+        };
+        /** Body_importar_turmas_api_v1_turmas_importar_post */
+        Body_importar_turmas_api_v1_turmas_importar_post: {
+            /** Arquivo */
+            arquivo: string;
+        };
+        /** Body_importar_usuarios_api_v1_usuarios_importar_post */
+        Body_importar_usuarios_api_v1_usuarios_importar_post: {
+            /** Arquivo */
+            arquivo: string;
         };
         /** Body_login_api_v1_auth_login_post */
         Body_login_api_v1_auth_login_post: {
@@ -2385,6 +2595,17 @@ export interface components {
             };
             /** Frequencia Pct */
             frequencia_pct: number;
+        };
+        /** LinhaImportacaoResponse */
+        LinhaImportacaoResponse: {
+            /** Linha */
+            linha: number;
+            /** Status */
+            status: string;
+            /** Resumo */
+            resumo: string;
+            /** Erro */
+            erro?: string | null;
         };
         /** MatriculaCreateRequest */
         MatriculaCreateRequest: {
@@ -3102,6 +3323,19 @@ export interface components {
             /** Frequencia Por Turma */
             frequencia_por_turma: components["schemas"]["SeriePonto"][];
         };
+        /** ResultadoImportacaoResponse */
+        ResultadoImportacaoResponse: {
+            /** Confirmado */
+            confirmado: boolean;
+            /** Total */
+            total: number;
+            /** Sucesso */
+            sucesso: number;
+            /** Falha */
+            falha: number;
+            /** Linhas */
+            linhas: components["schemas"]["LinhaImportacaoResponse"][];
+        };
         /** ResumoFichaChamada */
         ResumoFichaChamada: {
             /** Presenca */
@@ -3738,6 +3972,61 @@ export interface operations {
             };
         };
     };
+    baixar_modelo_importacao_usuarios_api_v1_usuarios_importar_modelo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    importar_usuarios_api_v1_usuarios_importar_post: {
+        parameters: {
+            query?: {
+                confirmar?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_usuarios_api_v1_usuarios_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacaoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     atualizar_usuario_api_v1_usuarios__usuario_id__patch: {
         parameters: {
             query?: never;
@@ -3952,6 +4241,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PoloResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_modelo_importacao_polos_api_v1_polos_importar_modelo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    importar_polos_api_v1_polos_importar_post: {
+        parameters: {
+            query?: {
+                confirmar?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_polos_api_v1_polos_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacaoResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4282,6 +4626,61 @@ export interface operations {
             };
         };
     };
+    baixar_modelo_importacao_turmas_api_v1_turmas_importar_modelo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    importar_turmas_api_v1_turmas_importar_post: {
+        parameters: {
+            query?: {
+                confirmar?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_turmas_api_v1_turmas_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacaoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     atualizar_turma_api_v1_turmas__turma_id__patch: {
         parameters: {
             query?: never;
@@ -4407,6 +4806,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BeneficiarioResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_modelo_importacao_beneficiarios_api_v1_beneficiarios_importar_modelo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    importar_beneficiarios_api_v1_beneficiarios_importar_post: {
+        parameters: {
+            query?: {
+                confirmar?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_beneficiarios_api_v1_beneficiarios_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacaoResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5829,6 +6283,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SaldoAlmoxarifadoItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_modelo_importacao_produtos_api_v1_produtos_importar_modelo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    importar_produtos_api_v1_produtos_importar_post: {
+        parameters: {
+            query?: {
+                confirmar?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_importar_produtos_api_v1_produtos_importar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacaoResponse"];
                 };
             };
             /** @description Validation Error */

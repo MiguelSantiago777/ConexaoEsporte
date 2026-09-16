@@ -28,8 +28,10 @@ from app.domain.shared.exceptions import (
 
 # SQLSTATE (código de erro do Postgres) -> (status HTTP, mensagem genérica).
 # Nunca repassamos a mensagem original do banco ao cliente — ela pode
-# conter nomes de tabela/coluna internos.
-_PGCODE_PARA_RESPOSTA: dict[str, tuple[int, str]] = {
+# conter nomes de tabela/coluna internos. Exportado (sem "_") porque a
+# importação em massa (app/application/importacao/executor.py) reaproveita
+# o mesmo mapeamento pra dar uma mensagem amigável por linha.
+PGCODE_PARA_RESPOSTA: dict[str, tuple[int, str]] = {
     "23505": (status.HTTP_409_CONFLICT, "Já existe um registro com esses dados."),
     "23503": (status.HTTP_400_BAD_REQUEST, "Referência a um recurso que não existe."),
     "23502": (status.HTTP_400_BAD_REQUEST, "Um campo obrigatório não foi informado."),
@@ -79,7 +81,7 @@ def registrar_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(IntegrityError)
     async def _integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
         pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
-        status_code, mensagem = _PGCODE_PARA_RESPOSTA.get(
+        status_code, mensagem = PGCODE_PARA_RESPOSTA.get(
             pgcode, (status.HTTP_400_BAD_REQUEST, "Dados inválidos ou conflitantes.")
         )
         return JSONResponse(status_code=status_code, content={"detail": mensagem})
