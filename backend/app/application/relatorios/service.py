@@ -48,7 +48,9 @@ class RelatorioService:
         self.frequencia_repo = FrequenciaRepository(db)
         self.beneficiario_repo = BeneficiarioRepository(db)
         self.entrega_material_repo = EntregaMaterialRepository(db)
-        self._cabecalho_convenio = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
+        self.configuracao_geral_repo = ConfiguracaoGeralRepository(db)
+        self._config = self.configuracao_geral_repo.buscar()
+        self._cabecalho_convenio = texto_cabecalho(self._config)
 
     def gerar_lista_presenca(self, turma_id: UUID, mes: int, ano: int):
         turma = self.turma_repo.buscar_por_id(turma_id)
@@ -67,10 +69,10 @@ class RelatorioService:
         presencas = {(str(r.beneficiario_id), r.data.day): r.presente for r in registros}
 
         entidade_titulo = None
-        if polo and polo.nome_entidade:
-            entidade_titulo = f"LISTA DE PRESENÇA - {polo.nome_entidade}"
-            if polo.termo_fomento_numero:
-                entidade_titulo += f" - Termo de Fomento nº {polo.termo_fomento_numero}"
+        if self._config and self._config.nome_entidade:
+            entidade_titulo = f"LISTA DE PRESENÇA - {self._config.nome_entidade}"
+            if self._config.termo_fomento_numero:
+                entidade_titulo += f" - Termo de Fomento nº {self._config.termo_fomento_numero}"
 
         return exportar_lista_presenca(
             nucleo_nome=polo.nome if polo else "",
@@ -145,8 +147,8 @@ class RelatorioService:
             )
 
         return exportar_planilha_nucleos(
-            nome_entidade=polo.nome_entidade or "",
-            termo_fomento_numero=polo.termo_fomento_numero or "",
+            nome_entidade=(self._config.nome_entidade if self._config else None) or "",
+            termo_fomento_numero=(self._config.termo_fomento_numero if self._config else None) or "",
             polo_nome=polo.nome,
             polo_horario_funcionamento=polo.horario_funcionamento or "",
             polo_endereco=polo.endereco or "",
@@ -174,12 +176,13 @@ class RelatorioService:
         if not polo:
             raise RecursoNaoEncontrado("Polo não encontrado.")
 
+        # Representante legal é por polo (mais de um polo pode ter o mesmo
+        # representante — não há problema nisso). O endereço usado no termo
+        # é o da própria instituição/polo, não um endereço pessoal separado.
         return exportar_termo_responsabilidade(
             representante_nome=polo.representante_legal_nome or "",
             representante_rg=polo.representante_legal_rg or "",
             representante_cpf=polo.representante_legal_cpf or "",
-            endereco=polo.representante_legal_endereco or "",
-            bairro=polo.representante_legal_bairro or "",
-            cidade=polo.representante_legal_cidade or "",
+            endereco=polo.endereco or "",
             cabecalho_convenio=self._cabecalho_convenio,
         )

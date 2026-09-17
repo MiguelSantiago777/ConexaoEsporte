@@ -141,7 +141,7 @@ export interface paths {
         put?: never;
         /**
          * Cadastrar usuário (funcionário)
-         * @description **MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo.
+         * @description **MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo. Se `senha` for omitida, o usuário recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha') em vez de ganhar uma senha escolhida por quem cadastrou.
          */
         post: operations["criar_usuario_api_v1_usuarios_post"];
         delete?: never;
@@ -197,7 +197,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Excluir usuário definitivamente (somente MASTER)
+         * @description Exclusão de verdade — não é o mesmo que desativar (`PATCH` com `ativo=false`). **PROFESSOR nunca pode ser excluído aqui** (só desativado, pra preservar turmas/frequências já registradas). Pra qualquer outro perfil, recusa a exclusão se o usuário já tiver algo vinculado no sistema (anexos, entregas, movimentações etc.) — desative o acesso em vez de excluir nesse caso.
+         */
+        delete: operations["remover_usuario_api_v1_usuarios__usuario_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -333,7 +337,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Excluir polo definitivamente (somente MASTER)
+         * @description Exclusão de verdade — não é o mesmo que desativar (`PATCH` com `status=INATIVO`). Recusa a exclusão se o polo ainda tiver turmas, usuários vinculados, beneficiários ou fichas de execução — remova esses vínculos primeiro, ou desative o polo em vez de excluir.
+         */
+        delete: operations["remover_polo_api_v1_polos__polo_id__delete"];
         options?: never;
         head?: never;
         /** Editar polo (somente MASTER) */
@@ -930,7 +938,7 @@ export interface paths {
         };
         /**
          * Exportar Ficha de Execução em .xlsx (somente MASTER)
-         * @description Gera o arquivo preenchido no layout oficial do modelo, combinando os dados da parceria cadastrados no polo com os desta ficha.
+         * @description Gera o arquivo preenchido no layout oficial do modelo, combinando os dados da parceria (Termo de Fomento) cadastrados na Configuração Geral com os desta ficha.
          */
         get: operations["exportar_ficha_api_v1_fichas_execucao__ficha_id__exportar_get"];
         put?: never;
@@ -1033,11 +1041,14 @@ export interface paths {
         };
         /**
          * Listar almoxarifados
-         * @description MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
+         * @description MASTER, GESTOR_POLO e COORDENADOR_ALMOXARIFADO podem consultar a lista inteira (não só o próprio). Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).
          */
         get: operations["listar_almoxarifados_api_v1_almoxarifados_get"];
         put?: never;
-        /** Cadastrar almoxarifado */
+        /**
+         * Cadastrar almoxarifado
+         * @description MASTER e COORDENADOR_ALMOXARIFADO podem cadastrar.
+         */
         post: operations["criar_almoxarifado_api_v1_almoxarifados_post"];
         delete?: never;
         options?: never;
@@ -1066,7 +1077,10 @@ export interface paths {
         delete: operations["remover_almoxarifado_api_v1_almoxarifados__almoxarifado_id__delete"];
         options?: never;
         head?: never;
-        /** Editar almoxarifado */
+        /**
+         * Editar almoxarifado
+         * @description MASTER e COORDENADOR_ALMOXARIFADO podem editar qualquer almoxarifado, não só o próprio.
+         */
         patch: operations["editar_almoxarifado_api_v1_almoxarifados__almoxarifado_id__patch"];
         trace?: never;
     };
@@ -1517,7 +1531,7 @@ export interface paths {
         head?: never;
         /**
          * Editar a Configuração Geral (somente MASTER)
-         * @description Número de convênio e datas de início/fim do projeto — passam a aparecer no rodapé de todos os relatórios exportados pelo sistema. Pode ser alterado a qualquer momento.
+         * @description Número de convênio, datas de início/fim do projeto e Termo de Fomento (entidade parceira, vigência, valores, parlamentar/emenda e termos aditivos) — passam a aparecer nos relatórios exportados pelo sistema. Pode ser alterado a qualquer momento.
          */
         patch: operations["atualizar_configuracao_api_v1_configuracao_geral_patch"];
         trace?: never;
@@ -2150,6 +2164,30 @@ export interface components {
             data_inicio_projeto: string | null;
             /** Data Fim Projeto */
             data_fim_projeto: string | null;
+            /** Processo Sei */
+            processo_sei: string | null;
+            /** Termo Fomento Numero */
+            termo_fomento_numero: string | null;
+            /** Nome Entidade */
+            nome_entidade: string | null;
+            /** Cnpj */
+            cnpj: string | null;
+            /** Objeto */
+            objeto: string | null;
+            /** Vigencia Inicio */
+            vigencia_inicio: string | null;
+            /** Vigencia Fim */
+            vigencia_fim: string | null;
+            /** Valor Pactuado */
+            valor_pactuado: string | null;
+            /** Valor Executado */
+            valor_executado: string | null;
+            /** Parlamentar */
+            parlamentar: string | null;
+            /** Emenda */
+            emenda: string | null;
+            /** Termos Aditivos */
+            termos_aditivos: components["schemas"]["TermoAditivoItem"][];
             /** Atualizado Por Id */
             atualizado_por_id: string | null;
             /** Atualizado Em */
@@ -2165,6 +2203,30 @@ export interface components {
             data_inicio_projeto?: string | null;
             /** Data Fim Projeto */
             data_fim_projeto?: string | null;
+            /** Processo Sei */
+            processo_sei?: string | null;
+            /** Termo Fomento Numero */
+            termo_fomento_numero?: string | null;
+            /** Nome Entidade */
+            nome_entidade?: string | null;
+            /** Cnpj */
+            cnpj?: string | null;
+            /** Objeto */
+            objeto?: string | null;
+            /** Vigencia Inicio */
+            vigencia_inicio?: string | null;
+            /** Vigencia Fim */
+            vigencia_fim?: string | null;
+            /** Valor Pactuado */
+            valor_pactuado?: string | null;
+            /** Valor Executado */
+            valor_executado?: string | null;
+            /** Parlamentar */
+            parlamentar?: string | null;
+            /** Emenda */
+            emenda?: string | null;
+            /** Termos Aditivos */
+            termos_aditivos?: components["schemas"]["TermoAditivoItem"][];
         };
         /**
          * DocumentoConsolidadoResponse
@@ -3121,57 +3183,18 @@ export interface components {
              * @description ID do usuário GESTOR_POLO responsável (pode ser vinculado depois).
              */
             gestor_responsavel_id?: string | null;
-            /** Processo Sei */
-            processo_sei?: string | null;
-            /** Termo Fomento Numero */
-            termo_fomento_numero?: string | null;
-            /** Nome Entidade */
-            nome_entidade?: string | null;
-            /** Cnpj */
-            cnpj?: string | null;
             /** Representante Legal Nome */
             representante_legal_nome?: string | null;
             /** Representante Legal Cpf */
             representante_legal_cpf?: string | null;
-            /** Objeto */
-            objeto?: string | null;
-            /** Vigencia Inicio */
-            vigencia_inicio?: string | null;
-            /** Vigencia Fim */
-            vigencia_fim?: string | null;
-            /**
-             * Valor Pactuado
-             * @example R$ 200.000,00
-             */
-            valor_pactuado?: string | null;
-            /**
-             * Valor Executado
-             * @example R$ 120.000,00
-             */
-            valor_executado?: string | null;
-            /** Parlamentar */
-            parlamentar?: string | null;
-            /** Emenda */
-            emenda?: string | null;
-            /**
-             * Termos Aditivos
-             * @description Até 2 aditivos — PRIMEIRO e SEGUNDO, como no modelo oficial.
-             */
-            termos_aditivos?: components["schemas"]["TermoAditivoItem"][];
+            /** Representante Legal Rg */
+            representante_legal_rg?: string | null;
             /** Responsavel Nome */
             responsavel_nome?: string | null;
             /** Responsavel Email */
             responsavel_email?: string | null;
             /** Responsavel Telefone */
             responsavel_telefone?: string | null;
-            /** Representante Legal Rg */
-            representante_legal_rg?: string | null;
-            /** Representante Legal Endereco */
-            representante_legal_endereco?: string | null;
-            /** Representante Legal Bairro */
-            representante_legal_bairro?: string | null;
-            /** Representante Legal Cidade */
-            representante_legal_cidade?: string | null;
             /** Latitude */
             latitude?: number | null;
             /** Longitude */
@@ -3196,48 +3219,18 @@ export interface components {
             status: string;
             /** Gestor Responsavel Id */
             gestor_responsavel_id: string | null;
-            /** Processo Sei */
-            processo_sei: string | null;
-            /** Termo Fomento Numero */
-            termo_fomento_numero: string | null;
-            /** Nome Entidade */
-            nome_entidade: string | null;
-            /** Cnpj */
-            cnpj: string | null;
             /** Representante Legal Nome */
             representante_legal_nome: string | null;
             /** Representante Legal Cpf */
             representante_legal_cpf: string | null;
-            /** Objeto */
-            objeto: string | null;
-            /** Vigencia Inicio */
-            vigencia_inicio: string | null;
-            /** Vigencia Fim */
-            vigencia_fim: string | null;
-            /** Valor Pactuado */
-            valor_pactuado: string | null;
-            /** Valor Executado */
-            valor_executado: string | null;
-            /** Parlamentar */
-            parlamentar: string | null;
-            /** Emenda */
-            emenda: string | null;
-            /** Termos Aditivos */
-            termos_aditivos: components["schemas"]["TermoAditivoItem"][];
+            /** Representante Legal Rg */
+            representante_legal_rg: string | null;
             /** Responsavel Nome */
             responsavel_nome: string | null;
             /** Responsavel Email */
             responsavel_email: string | null;
             /** Responsavel Telefone */
             responsavel_telefone: string | null;
-            /** Representante Legal Rg */
-            representante_legal_rg: string | null;
-            /** Representante Legal Endereco */
-            representante_legal_endereco: string | null;
-            /** Representante Legal Bairro */
-            representante_legal_bairro: string | null;
-            /** Representante Legal Cidade */
-            representante_legal_cidade: string | null;
             /** Latitude */
             latitude: number | null;
             /** Longitude */
@@ -3257,57 +3250,18 @@ export interface components {
             status?: ("ATIVO" | "INATIVO") | null;
             /** Gestor Responsavel Id */
             gestor_responsavel_id?: string | null;
-            /** Processo Sei */
-            processo_sei?: string | null;
-            /** Termo Fomento Numero */
-            termo_fomento_numero?: string | null;
-            /** Nome Entidade */
-            nome_entidade?: string | null;
-            /** Cnpj */
-            cnpj?: string | null;
             /** Representante Legal Nome */
             representante_legal_nome?: string | null;
             /** Representante Legal Cpf */
             representante_legal_cpf?: string | null;
-            /** Objeto */
-            objeto?: string | null;
-            /** Vigencia Inicio */
-            vigencia_inicio?: string | null;
-            /** Vigencia Fim */
-            vigencia_fim?: string | null;
-            /**
-             * Valor Pactuado
-             * @example R$ 200.000,00
-             */
-            valor_pactuado?: string | null;
-            /**
-             * Valor Executado
-             * @example R$ 120.000,00
-             */
-            valor_executado?: string | null;
-            /** Parlamentar */
-            parlamentar?: string | null;
-            /** Emenda */
-            emenda?: string | null;
-            /**
-             * Termos Aditivos
-             * @description Até 2 aditivos — PRIMEIRO e SEGUNDO, como no modelo oficial.
-             */
-            termos_aditivos?: components["schemas"]["TermoAditivoItem"][] | null;
+            /** Representante Legal Rg */
+            representante_legal_rg?: string | null;
             /** Responsavel Nome */
             responsavel_nome?: string | null;
             /** Responsavel Email */
             responsavel_email?: string | null;
             /** Responsavel Telefone */
             responsavel_telefone?: string | null;
-            /** Representante Legal Rg */
-            representante_legal_rg?: string | null;
-            /** Representante Legal Endereco */
-            representante_legal_endereco?: string | null;
-            /** Representante Legal Bairro */
-            representante_legal_bairro?: string | null;
-            /** Representante Legal Cidade */
-            representante_legal_cidade?: string | null;
             /** Latitude */
             latitude?: number | null;
             /** Longitude */
@@ -3664,10 +3618,7 @@ export interface components {
         };
         /** TermoAditivoItem */
         TermoAditivoItem: {
-            /**
-             * Numero
-             * @example PRIMEIRO
-             */
+            /** Numero */
             numero: string;
             /**
              * Objeto
@@ -3811,8 +3762,11 @@ export interface components {
              * Format: email
              */
             email: string;
-            /** Senha */
-            senha: string;
+            /**
+             * Senha
+             * @description Opcional: se omitida, o usuário é criado sem senha utilizável e recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha').
+             */
+            senha?: string | null;
             perfil: components["schemas"]["PerfilUsuario"];
             /**
              * Polo Id
@@ -3831,6 +3785,8 @@ export interface components {
             papel_id?: string | null;
             /** Telefone */
             telefone?: string | null;
+            /** Cpf */
+            cpf?: string | null;
             /**
              * Carga Horaria Semanal
              * @example 20h
@@ -3914,6 +3870,8 @@ export interface components {
             ativo: boolean;
             /** Telefone */
             telefone: string | null;
+            /** Cpf */
+            cpf: string | null;
             /** Carga Horaria Semanal */
             carga_horaria_semanal: string | null;
         };
@@ -3931,6 +3889,8 @@ export interface components {
             papel_id?: string | null;
             /** Telefone */
             telefone?: string | null;
+            /** Cpf */
+            cpf?: string | null;
             /**
              * Carga Horaria Semanal
              * @example 20h
@@ -4259,6 +4219,35 @@ export interface operations {
             };
         };
     };
+    remover_usuario_api_v1_usuarios__usuario_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                usuario_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     atualizar_usuario_api_v1_usuarios__usuario_id__patch: {
         parameters: {
             query?: never;
@@ -4529,6 +4518,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResultadoImportacaoResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_polo_api_v1_polos__polo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                polo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

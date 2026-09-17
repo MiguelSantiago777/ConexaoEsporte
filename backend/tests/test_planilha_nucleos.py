@@ -62,8 +62,10 @@ def test_exportar_planilha_nucleos_reflete_rh_e_beneficiarios(client, seed_basic
     modalidade_id = str(seed_basico["modalidade"].id)
 
     token_master = login(client, "master@test.com")
+    # Entidade parceira (Termo de Fomento) é única pro projeto — vem da
+    # Configuração Geral, não mais do cadastro do polo.
     client.patch(
-        f"/api/v1/polos/{polo_a_id}",
+        "/api/v1/configuracao-geral",
         json={"nome_entidade": "Instituto Teste", "termo_fomento_numero": "TF-001"},
         headers={"Authorization": f"Bearer {token_master}"},
     )

@@ -390,6 +390,33 @@ def test_configuracao_geral_e_exclusiva_do_master(client, seed_basico):
     assert resp_patch2.json()["data_inicio_projeto"] is None
 
 
+def test_configuracao_geral_guarda_termo_de_fomento_e_termos_aditivos(client, seed_basico):
+    """Entidade parceira, representante legal, vigência, valores e termos
+    aditivos são um dado só do projeto (Configuração Geral) — não mais um
+    cadastro por polo, já que a entidade parceira é a mesma em todos eles."""
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+
+    r1 = client.patch(
+        "/api/v1/configuracao-geral",
+        json={"nome_entidade": "Instituto Teste", "cnpj": "00.000.000/0001-00", "processo_sei": "SEI-123"},
+        headers=headers,
+    )
+    assert r1.status_code == 200, r1.text
+    assert r1.json()["nome_entidade"] == "Instituto Teste"
+    assert r1.json()["processo_sei"] == "SEI-123"
+
+    r2 = client.patch(
+        "/api/v1/configuracao-geral",
+        json={"termos_aditivos": [{"numero": "PRIMEIRO", "objeto": "Prorrogação"}]},
+        headers=headers,
+    )
+    assert r2.status_code == 200, r2.text
+    body = r2.json()
+    assert body["nome_entidade"] is None  # PATCH é substituição completa, não parcial (mesmo padrão de sempre)
+    assert body["termos_aditivos"][0]["numero"] == "PRIMEIRO"
+
+
 def test_texto_cabecalho_omite_partes_ausentes():
     from app.application.relatorios.cabecalho_convenio import texto_cabecalho
     from app.domain.configuracao_geral.entities import ConfiguracaoGeral

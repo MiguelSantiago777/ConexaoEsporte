@@ -9,12 +9,12 @@ Estratégia: carrega o arquivo-modelo salvo em
 escreve os valores da Ficha nas células mapeadas abaixo. As coordenadas
 foram levantadas inspecionando esse arquivo célula a célula com openpyxl.
 
-Cada polo é sua própria entidade parceira (Termo de Fomento, CNPJ,
-representante legal etc. ficam no cadastro do polo) — a seção 1 (dados da
-parceria) e a seção 7 (identificação do núcleo) são preenchidas a partir do
-polo ao qual a ficha pertence; só a narrativa do período (quantitativo de
-beneficiados, modalidades, período de funcionamento, atividades realizadas
-e dificuldades) vem da própria ficha.
+A entidade parceira (Termo de Fomento, CNPJ, representante legal etc.) é a
+mesma pra todos os polos do projeto, então a seção 1 (dados da parceria)
+vem da Configuração Geral, não do polo. A seção 7 (identificação do
+núcleo) continua vindo do polo ao qual a ficha pertence; a narrativa do
+período (quantitativo de beneficiados, modalidades, período de
+funcionamento, atividades realizadas e dificuldades) vem da própria ficha.
 
 Limitações conhecidas (documento oficial já é assim, não é bug daqui):
 - Reabrir o .xlsx gerado no Excel perde a validação de dropdown
@@ -28,6 +28,7 @@ from pathlib import Path
 import openpyxl
 
 from app.application.relatorios.cabecalho_convenio import aplicar_cabecalho_xlsx
+from app.domain.configuracao_geral.entities import ConfiguracaoGeral
 from app.domain.ficha_execucao.entities import FichaExecucao
 from app.domain.polo.entities import Polo
 
@@ -48,29 +49,29 @@ def _fmt_data(d) -> str:
 
 
 def exportar_ficha_execucao(
-    ficha: FichaExecucao, polo: Polo | None, cabecalho_convenio: str | None = None
+    ficha: FichaExecucao, polo: Polo | None, config: ConfiguracaoGeral | None = None,
+    cabecalho_convenio: str | None = None,
 ) -> io.BytesIO:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb["Planilha1"]
 
-    # 1 - Dados e informações da parceria (dados do polo/entidade parceira)
-    if polo:
-        ws["D4"] = polo.processo_sei or ""
-        ws["J4"] = polo.termo_fomento_numero or ""
-        ws["D5"] = polo.nome_entidade or ""
-        ws["D6"] = polo.cnpj or ""
-        ws["D7"] = polo.endereco or ""
-        ws["D8"] = polo.representante_legal_nome or ""
-        ws["K8"] = polo.representante_legal_cpf or ""
-        ws["D9"] = polo.objeto or ""
-        ws["E10"] = _fmt_data(polo.vigencia_inicio)
-        ws["I10"] = _fmt_data(polo.vigencia_fim)
-        ws["D11"] = polo.valor_pactuado or ""
-        ws["D12"] = polo.valor_executado or ""
-        ws["D13"] = polo.parlamentar or ""
-        ws["K13"] = polo.emenda or ""
+    # 1 - Dados e informações da parceria: entidade parceira (única pro
+    # projeto inteiro) vem da Configuração Geral; representante legal é por
+    # polo (mais de um polo pode ter o mesmo representante, sem problema).
+    if config:
+        ws["D4"] = config.processo_sei or ""
+        ws["J4"] = config.termo_fomento_numero or ""
+        ws["D5"] = config.nome_entidade or ""
+        ws["D6"] = config.cnpj or ""
+        ws["D9"] = config.objeto or ""
+        ws["E10"] = _fmt_data(config.vigencia_inicio)
+        ws["I10"] = _fmt_data(config.vigencia_fim)
+        ws["D11"] = config.valor_pactuado or ""
+        ws["D12"] = config.valor_executado or ""
+        ws["D13"] = config.parlamentar or ""
+        ws["K13"] = config.emenda or ""
 
-        for aditivo in (polo.termos_aditivos or [])[:2]:
+        for aditivo in (config.termos_aditivos or [])[:2]:
             linha = 16 if aditivo.get("numero", "").upper() == "PRIMEIRO" else 17
             ws[f"C{linha}"] = aditivo.get("objeto", "")
             # data_assinatura vem como string ISO "AAAA-MM-DD" (armazenada em
@@ -79,6 +80,10 @@ def exportar_ficha_execucao(
             data_iso = aditivo.get("data_assinatura") or ""
             partes = data_iso.split("-")
             ws[f"K{linha}"] = f"{partes[2]}/{partes[1]}/{partes[0]}" if len(partes) == 3 else data_iso
+    if polo:
+        ws["D7"] = polo.endereco or ""
+        ws["D8"] = polo.representante_legal_nome or ""
+        ws["K8"] = polo.representante_legal_cpf or ""
 
     # 1.2 - Ajustes do plano de trabalho
     ws["F19"] = _marcar(ficha.ajuste_status == "NAO_SOLICITADO")

@@ -52,35 +52,16 @@ CREATE TABLE IF NOT EXISTS polos (
     status                      status_polo NOT NULL DEFAULT 'ATIVO',
     gestor_responsavel_id       UUID,  -- FK adicionada após criar 'usuarios' (referência circular)
 
-    -- Dados da parceria (Termo de Fomento) — próprios deste polo
-    processo_sei                VARCHAR(50),
-    termo_fomento_numero        VARCHAR(50),
-    nome_entidade                VARCHAR(150),  -- razão social da OSC parceira responsável por este polo
-    cnpj                         VARCHAR(20),
+    -- Representante legal do polo, pro Termo de Responsabilidade — é por
+    -- polo (mais de um polo pode ter o mesmo representante, sem problema).
     representante_legal_nome    VARCHAR(150),
     representante_legal_cpf     VARCHAR(20),
-    objeto                       TEXT,
-    vigencia_inicio              DATE,
-    vigencia_fim                 DATE,
-    -- Valores em texto livre (ex.: "R$ 200.000,00") — campos de
-    -- preenchimento/impressão do documento oficial, não um livro-caixa.
-    valor_pactuado                VARCHAR(50),
-    valor_executado               VARCHAR(50),
-    parlamentar                  VARCHAR(150),
-    emenda                        VARCHAR(100),
-    -- Lista de até 2 aditivos: [{"numero": "PRIMEIRO", "objeto": "...", "data_assinatura": "2026-03-01"}, ...]
-    termos_aditivos               JSONB NOT NULL DEFAULT '[]'::jsonb,
+    representante_legal_rg      VARCHAR(20),
 
     -- Contato do núcleo para a seção "Identificação dos Núcleos" da Ficha
     responsavel_nome             VARCHAR(150),
     responsavel_email            VARCHAR(150),
     responsavel_telefone         VARCHAR(20),
-
-    -- Dados pessoais do representante legal para o Termo de Responsabilidade
-    representante_legal_rg        VARCHAR(20),
-    representante_legal_endereco VARCHAR(255),
-    representante_legal_bairro   VARCHAR(100),
-    representante_legal_cidade   VARCHAR(100),
 
     -- Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
     latitude                     DOUBLE PRECISION,
@@ -142,6 +123,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     -- RH do núcleo (Planilha de Núcleos — RH e Beneficiário): telefone e
     -- carga horária semanal do professor/gestor naquele polo.
     telefone                VARCHAR(20),
+    cpf                     VARCHAR(20),
     carga_horaria_semanal   VARCHAR(20),
     criado_em               TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Regra: GESTOR_POLO deve estar vinculado a um polo
@@ -633,6 +615,23 @@ CREATE TABLE IF NOT EXISTS configuracao_geral (
     numero_convenio       VARCHAR(100),
     data_inicio_projeto   DATE,
     data_fim_projeto      DATE,
+
+    -- Termo de Fomento — dados da entidade parceira, únicos pro projeto
+    -- inteiro (mesma entidade em todos os polos, não fica mais duplicado
+    -- no cadastro de cada polo).
+    processo_sei                  VARCHAR(50),
+    termo_fomento_numero          VARCHAR(50),
+    nome_entidade                 VARCHAR(150),
+    cnpj                          VARCHAR(20),
+    objeto                        TEXT,
+    vigencia_inicio                DATE,
+    vigencia_fim                   DATE,
+    valor_pactuado                 VARCHAR(50),
+    valor_executado                VARCHAR(50),
+    parlamentar                    VARCHAR(150),
+    emenda                         VARCHAR(100),
+    termos_aditivos                JSONB NOT NULL DEFAULT '[]'::jsonb,
+
     atualizado_por_id     UUID REFERENCES usuarios(id) ON DELETE SET NULL,
     atualizado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -710,3 +709,32 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_financeiros_tipo ON lancamentos_finan
 -- Portal Transparência: um Anexo Geral só aparece na página pública quando
 -- o MASTER marca explicitamente esta flag (ver PATCH /anexos-gerais/{id}/visibilidade).
 ALTER TABLE anexos_gerais ADD COLUMN IF NOT EXISTS publico BOOLEAN NOT NULL DEFAULT false;
+
+-- Termo de Fomento: deixou de ser um cadastro por polo (cada polo tinha
+-- sua própria cópia da entidade parceira, da vigência etc.) e virou dado
+-- único da Configuração Geral, já que a entidade parceira é a mesma em
+-- todos os polos do projeto. O representante legal continua por polo (mais
+-- de um polo pode ter o mesmo representante, sem problema) — só o RG,
+-- endereço/bairro/cidade *do representante* saíram de vez (o Termo de
+-- Responsabilidade usa o endereço do próprio polo). As colunas antigas
+-- correspondentes NÃO são removidas de `polos` aqui — só deixam de ser
+-- lidas/gravadas pelo backend — para não apagar dados de produção já
+-- preenchidos; migre-os manualmente pra `configuracao_geral` se precisar
+-- reaproveitá-los (a app volta a lê-los só daqui pra frente).
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS processo_sei VARCHAR(50);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS termo_fomento_numero VARCHAR(50);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_entidade VARCHAR(150);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS objeto TEXT;
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS vigencia_inicio DATE;
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS vigencia_fim DATE;
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS valor_pactuado VARCHAR(50);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS valor_executado VARCHAR(50);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS parlamentar VARCHAR(150);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS emenda VARCHAR(100);
+ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS termos_aditivos JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- CPF do usuário (opcional) — hoje só coletado pra quem cria o acesso do
+-- Gestor de Polo (etapa 3 do cadastro de polo), mas fica disponível pra
+-- qualquer perfil.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cpf VARCHAR(20);

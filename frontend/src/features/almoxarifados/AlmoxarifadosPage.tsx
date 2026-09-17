@@ -23,6 +23,10 @@ const FORM_COORDENADOR_INICIAL = { nome: "", email: "", senha: "", almoxarifado_
 export function AlmoxarifadosPage() {
   const { temPerfil } = useAuth();
   const ehMaster = temPerfil("MASTER");
+  // Cadastrar/editar almoxarifados também é liberado ao COORDENADOR_ALMOXARIFADO
+  // (não só o próprio — qualquer um, mesmo nível do MASTER aqui). Remover
+  // continua exclusivo do MASTER (ver almoxarifado_router.py).
+  const podeGerenciarAlmoxarifados = ehMaster || temPerfil("COORDENADOR_ALMOXARIFADO");
   const toast = useToast();
   const queryClient = useQueryClient();
   const { data: almoxarifados = [], isLoading: carregando } = useQuery({
@@ -95,18 +99,24 @@ export function AlmoxarifadosPage() {
     }
   }
 
-  const desativarCoordenadorMutation = useMutation({
-    mutationFn: (c: Usuario) => api.patch(`/usuarios/${c.id}`, { ativo: false }),
+  const excluirCoordenadorMutation = useMutation({
+    mutationFn: (c: Usuario) => api.delete(`/usuarios/${c.id}`),
     onSuccess: () => {
-      toast.success("Acesso do coordenador desativado.");
+      toast.success("Coordenador excluído.");
       queryClient.invalidateQueries({ queryKey: ["usuarios", "coordenadores-almoxarifado"] });
     },
-    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao desativar o coordenador.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao excluir o coordenador.")),
   });
 
-  function desativarCoordenador(c: Usuario) {
-    if (!window.confirm(`Desativar o acesso de ${c.nome}? Ele deixa de conseguir fazer login no sistema.`)) return;
-    desativarCoordenadorMutation.mutate(c);
+  function excluirCoordenador(c: Usuario) {
+    if (
+      !window.confirm(
+        `Excluir o acesso de ${c.nome} definitivamente? Essa ação não pode ser desfeita. Se preferir só suspender o acesso, edite o coordenador.`
+      )
+    ) {
+      return;
+    }
+    excluirCoordenadorMutation.mutate(c);
   }
 
   return (
@@ -116,7 +126,7 @@ export function AlmoxarifadosPage() {
         subtitle="Locais físicos onde o estoque central fica guardado — o saldo de cada produto é controlado separadamente em cada um."
       />
 
-      {ehMaster && (
+      {podeGerenciarAlmoxarifados && (
         <Card title="Cadastrar almoxarifado" className="animate-fade-in-up" style={staggerStyle(0)}>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Nome" placeholder="ex.: Almoxarifado Central" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
@@ -147,14 +157,16 @@ export function AlmoxarifadosPage() {
                   {a.descricao && <span className="text-gray-500 text-sm truncate">— {a.descricao}</span>}
                   {!a.ativo && <Badge variant="gray">Inativo</Badge>}
                 </div>
-                {ehMaster && (
+                {(podeGerenciarAlmoxarifados) && (
                   <div className="flex items-center gap-3 shrink-0">
                     <button type="button" title="Editar" onClick={() => setAlmoxarifadoEditando(a)} className="text-gray-400 hover:text-brand transition-colors">
                       <PencilIcon />
                     </button>
-                    <button type="button" title="Remover" onClick={() => removerAlmoxarifado(a)} className="text-gray-400 hover:text-red-600 transition-colors">
-                      <TrashIcon />
-                    </button>
+                    {ehMaster && (
+                      <button type="button" title="Remover" onClick={() => removerAlmoxarifado(a)} className="text-gray-400 hover:text-red-600 transition-colors">
+                        <TrashIcon />
+                      </button>
+                    )}
                   </div>
                 )}
               </li>
@@ -213,7 +225,7 @@ export function AlmoxarifadosPage() {
                     <button type="button" title="Editar" onClick={() => setCoordenadorEditando(c)} className="text-gray-400 hover:text-brand transition-colors">
                       <PencilIcon />
                     </button>
-                    <button type="button" title="Desativar" onClick={() => desativarCoordenador(c)} className="text-gray-400 hover:text-red-600 transition-colors">
+                    <button type="button" title="Excluir" onClick={() => excluirCoordenador(c)} className="text-gray-400 hover:text-red-600 transition-colors">
                       <TrashIcon />
                     </button>
                   </div>

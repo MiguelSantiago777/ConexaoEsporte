@@ -1,7 +1,8 @@
 """Rotas de Almoxarifado (locais físicos do estoque central). Tag Swagger:
-'Estoque'. Cadastro/edição/remoção exclusivos do MASTER; GESTOR_POLO só
-consulta (usa a lista pra escolher de onde uma Saída sai, ao registrar uma
-Entrega de Materiais)."""
+'Estoque'. Cadastro/edição também liberados ao COORDENADOR_ALMOXARIFADO (não
+só ao seu próprio, a qualquer almoxarifado — mesmo nível do MASTER aqui);
+remoção continua exclusiva do MASTER. GESTOR_POLO só consulta (usa a lista
+pra escolher de onde uma Saída sai, ao registrar uma Entrega de Materiais)."""
 from typing import Annotated
 from uuid import UUID
 
@@ -34,17 +35,28 @@ MasterOuGestor = Annotated[
     UsuarioAutenticado,
     Depends(require_modulo_ou_perfis("almoxarifados", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO)),
 ]
+MasterGestorOuCoordenador = Annotated[
+    UsuarioAutenticado,
+    Depends(require_modulo_ou_perfis(
+        "almoxarifados", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO, PerfilUsuario.COORDENADOR_ALMOXARIFADO
+    )),
+]
+MasterOuCoordenador = Annotated[
+    UsuarioAutenticado,
+    Depends(require_modulo_ou_perfis("almoxarifados", PerfilUsuario.MASTER, PerfilUsuario.COORDENADOR_ALMOXARIFADO)),
+]
 
 
 @router.get(
     "",
     response_model=list[AlmoxarifadoResponse] | PaginaResponse[AlmoxarifadoResponse],
     summary="Listar almoxarifados",
-    description="MASTER e GESTOR_POLO podem consultar. Informe `pagina` pra paginar — sem isso, "
-    "devolve a lista inteira (uso por telas que só precisam das opções, como um <select>).",
+    description="MASTER, GESTOR_POLO e COORDENADOR_ALMOXARIFADO podem consultar a lista inteira (não só o "
+    "próprio). Informe `pagina` pra paginar — sem isso, devolve a lista inteira (uso por telas que só "
+    "precisam das opções, como um <select>).",
 )
 def listar_almoxarifados(
-    usuario: MasterOuGestor, db: DbSession,
+    usuario: MasterGestorOuCoordenador, db: DbSession,
     apenas_ativos: bool = False,
     nome: str | None = None,
     pagina: Annotated[int | None, Query(ge=1)] = None,
@@ -90,15 +102,21 @@ def saldos_do_almoxarifado(almoxarifado_id: UUID, usuario: CurrentUser, db: DbSe
 @router.post(
     "", response_model=AlmoxarifadoResponse, status_code=status.HTTP_201_CREATED,
     summary="Cadastrar almoxarifado",
+    description="MASTER e COORDENADOR_ALMOXARIFADO podem cadastrar.",
 )
-def criar_almoxarifado(body: AlmoxarifadoCreateRequest, usuario: SomenteMaster, db: DbSession) -> AlmoxarifadoResponse:
+def criar_almoxarifado(
+    body: AlmoxarifadoCreateRequest, usuario: MasterOuCoordenador, db: DbSession
+) -> AlmoxarifadoResponse:
     criado = AlmoxarifadoService(db).criar(nome=body.nome, descricao=body.descricao)
     return AlmoxarifadoResponse.model_validate(criado)
 
 
-@router.patch("/{almoxarifado_id}", response_model=AlmoxarifadoResponse, summary="Editar almoxarifado")
+@router.patch(
+    "/{almoxarifado_id}", response_model=AlmoxarifadoResponse, summary="Editar almoxarifado",
+    description="MASTER e COORDENADOR_ALMOXARIFADO podem editar qualquer almoxarifado, não só o próprio.",
+)
 def editar_almoxarifado(
-    almoxarifado_id: UUID, body: AlmoxarifadoUpdateRequest, usuario: SomenteMaster, db: DbSession
+    almoxarifado_id: UUID, body: AlmoxarifadoUpdateRequest, usuario: MasterOuCoordenador, db: DbSession
 ) -> AlmoxarifadoResponse:
     atualizado = AlmoxarifadoService(db).atualizar(
         almoxarifado_id, nome=body.nome, descricao=body.descricao, ativo=body.ativo,

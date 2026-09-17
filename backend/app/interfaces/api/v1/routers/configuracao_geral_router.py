@@ -32,8 +32,9 @@ def obter_configuracao(usuario: SomenteMaster, db: DbSession) -> ConfiguracaoGer
 @router.patch(
     "", response_model=ConfiguracaoGeralResponse,
     summary="Editar a Configuração Geral (somente MASTER)",
-    description="Número de convênio e datas de início/fim do projeto — passam a aparecer no rodapé de "
-    "todos os relatórios exportados pelo sistema. Pode ser alterado a qualquer momento.",
+    description="Número de convênio, datas de início/fim do projeto e Termo de Fomento (entidade "
+    "parceira, vigência, valores, parlamentar/emenda e termos aditivos) — passam a aparecer nos "
+    "relatórios exportados pelo sistema. Pode ser alterado a qualquer momento.",
 )
 def atualizar_configuracao(
     body: ConfiguracaoGeralUpdateRequest, usuario: SomenteMaster, db: DbSession
@@ -42,5 +43,11 @@ def atualizar_configuracao(
         nome_projeto=body.nome_projeto, numero_convenio=body.numero_convenio,
         data_inicio_projeto=body.data_inicio_projeto,
         data_fim_projeto=body.data_fim_projeto, atualizado_por_id=usuario.id,
+        processo_sei=body.processo_sei, termo_fomento_numero=body.termo_fomento_numero,
+        nome_entidade=body.nome_entidade, cnpj=body.cnpj,
+        objeto=body.objeto, vigencia_inicio=body.vigencia_inicio, vigencia_fim=body.vigencia_fim,
+        valor_pactuado=body.valor_pactuado, valor_executado=body.valor_executado,
+        parlamentar=body.parlamentar, emenda=body.emenda,
+        termos_aditivos=[t.model_dump(mode="json") for t in body.termos_aditivos],
     )
     return ConfiguracaoGeralResponse.model_validate(atualizado)

@@ -52,7 +52,7 @@ const MENU: ItemMenu[] = [
   { label: "Dashboard", to: "/", perfis: ["MASTER", "GESTOR_POLO", "PROFESSOR", "PERSONALIZADO"], icon: HomeIcon },
   { label: "Fichas de Execução", to: "/fichas-execucao", perfis: ["MASTER"], modulo: "fichas_execucao", icon: ArchiveIcon },
   {
-    label: "Cadastros", to: "/polos", perfis: ["MASTER", "GESTOR_POLO"], icon: IdentificationIcon,
+    label: "Cadastros", to: "/polos", perfis: ["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"], icon: IdentificationIcon,
     subitens: [
       { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: ClipboardIcon },
       { label: "Lista de Espera", to: "/lista-espera", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: InboxIcon },
@@ -60,7 +60,10 @@ const MENU: ItemMenu[] = [
       { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], modulo: "professores", icon: AcademicCapIcon },
       { label: "Turmas", to: "/turmas", perfis: ["MASTER", "GESTOR_POLO"], modulo: "turmas", icon: UsersIcon },
       { label: "Modalidades", to: "/modalidades", perfis: ["MASTER", "GESTOR_POLO"], modulo: "modalidades", icon: TrophyIcon },
-      { label: "Almoxarifados", to: "/almoxarifados", perfis: ["MASTER", "GESTOR_POLO"], modulo: "almoxarifados", icon: StackIcon },
+      {
+        label: "Almoxarifados", to: "/almoxarifados",
+        perfis: ["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"], modulo: "almoxarifados", icon: StackIcon,
+      },
     ],
   },
   { label: "Importar", to: "/importar", perfis: ["MASTER"], icon: UploadIcon },

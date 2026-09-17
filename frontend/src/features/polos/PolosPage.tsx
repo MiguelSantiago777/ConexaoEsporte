@@ -54,20 +54,26 @@ export function PolosPage() {
   const [exportandoNucleos, setExportandoNucleos] = useState<string | null>(null);
   const [exportandoTermo, setExportandoTermo] = useState<string | null>(null);
 
-  const desativarMutation = useMutation({
-    mutationFn: (p: Polo) => api.patch(`/polos/${p.id}`, { status: "INATIVO" }),
+  const excluirMutation = useMutation({
+    mutationFn: (p: Polo) => api.delete(`/polos/${p.id}`),
     onSuccess: () => {
-      toast.success("Polo desativado.");
+      toast.success("Polo excluído.");
       queryClient.invalidateQueries({ queryKey: ["polos"] });
     },
     onError: (err: unknown) => {
-      toast.error(mensagemErroApi(err, "Erro ao desativar polo."));
+      toast.error(mensagemErroApi(err, "Erro ao excluir polo."));
     },
   });
 
   function excluirPolo(p: Polo) {
-    if (!window.confirm(`Desativar o polo "${p.nome}"? Ele deixa de aparecer como opção em novos cadastros.`)) return;
-    desativarMutation.mutate(p);
+    if (
+      !window.confirm(
+        `Excluir o polo "${p.nome}" definitivamente? Essa ação não pode ser desfeita. Se preferir só tirar de uso, edite o polo e mude o Status para INATIVO.`
+      )
+    ) {
+      return;
+    }
+    excluirMutation.mutate(p);
   }
 
   async function exportarGradeHoraria(p: Polo) {
@@ -113,7 +119,7 @@ export function PolosPage() {
     <div className="space-y-6">
       <PageHeader
         title="Polos"
-        subtitle="Unidades onde os projetos esportivos são executados. Cada polo é sua própria entidade parceira do Termo de Fomento — edite para preencher CNPJ, representante legal etc."
+        subtitle="Unidades onde os projetos esportivos são executados. Os dados do Termo de Fomento (entidade parceira, CNPJ, representante legal etc.) ficam em Configurações — são únicos para o projeto inteiro."
       />
       <CadastrarPoloWizard
         onCadastrado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
@@ -144,10 +150,7 @@ export function PolosPage() {
                         {p.codigo ? `${p.codigo} — ` : ""}
                         {p.nome}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5 truncate">{p.nome_entidade ?? "—"}</div>
-                      <div className="text-xs text-gray-500 mt-0.5 truncate">
-                        Termo: {p.termo_fomento_numero ?? "—"}
-                      </div>
+                      {p.endereco && <div className="text-xs text-gray-500 mt-0.5 truncate">{p.endereco}</div>}
                     </div>
                     <Badge variant={p.status === "ATIVO" ? "accent" : "gray"}>{p.status}</Badge>
                   </div>
@@ -187,16 +190,14 @@ export function PolosPage() {
                     >
                       <PencilIcon className="w-[18px] h-[18px]" />
                     </button>
-                    {p.status === "ATIVO" && (
-                      <button
-                        type="button"
-                        title="Desativar"
-                        onClick={() => excluirPolo(p)}
-                        className="text-gray-400 hover:text-red-600 transition-colors -m-1.5 p-1.5"
-                      >
-                        <TrashIcon className="w-[18px] h-[18px]" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      title="Excluir"
+                      onClick={() => excluirPolo(p)}
+                      className="text-gray-400 hover:text-red-600 transition-colors -m-1.5 p-1.5"
+                    >
+                      <TrashIcon className="w-[18px] h-[18px]" />
+                    </button>
                   </div>
                 </li>
               ))}
@@ -208,8 +209,7 @@ export function PolosPage() {
                   <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
                     <th className="py-2.5 px-8">Código</th>
                     <th className="px-3">Nome</th>
-                    <th className="px-3">Entidade parceira</th>
-                    <th className="px-3">Termo de Fomento</th>
+                    <th className="px-3">Endereço</th>
                     <th className="px-3">Status</th>
                     <th className="px-3 text-right pr-8">Ações</th>
                   </tr>
@@ -219,8 +219,7 @@ export function PolosPage() {
                     <tr key={p.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
                       <td className="py-2.5 px-8 font-medium text-gray-800">{p.codigo ?? "—"}</td>
                       <td className="px-3 text-gray-600">{p.nome}</td>
-                      <td className="px-3 text-gray-600">{p.nome_entidade ?? "—"}</td>
-                      <td className="px-3 text-gray-600">{p.termo_fomento_numero ?? "—"}</td>
+                      <td className="px-3 text-gray-600">{p.endereco ?? "—"}</td>
                       <td className="px-3">
                         <Badge variant={p.status === "ATIVO" ? "accent" : "gray"}>{p.status}</Badge>
                       </td>
@@ -261,16 +260,14 @@ export function PolosPage() {
                           >
                             <PencilIcon />
                           </button>
-                          {p.status === "ATIVO" && (
-                            <button
-                              type="button"
-                              title="Desativar"
-                              onClick={() => excluirPolo(p)}
-                              className="text-gray-400 hover:text-red-600 transition-colors"
-                            >
-                              <TrashIcon />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            title="Excluir"
+                            onClick={() => excluirPolo(p)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                          >
+                            <TrashIcon />
+                          </button>
                         </div>
                       </td>
                     </tr>

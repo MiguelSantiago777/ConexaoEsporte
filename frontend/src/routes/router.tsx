@@ -71,9 +71,15 @@ export const router = createBrowserRouter([
               { path: "/lista-espera", element: <ListaEsperaPage /> },
               { path: "/beneficiarios/:id/autorizacao-imagem", element: <AutorizacaoImagemPage /> },
               { path: "/professores", element: <ProfessoresPage /> },
-              { path: "/almoxarifados", element: <AlmoxarifadosPage /> },
               { path: "/relatorios-gerenciais", element: <RelatoriosGerenciaisPage /> },
               { path: "/relatorios-gerenciais/:aba", element: <RelatoriosGerenciaisPage /> },
+            ],
+          },
+          // MASTER + GESTOR_POLO + COORDENADOR_ALMOXARIFADO
+          {
+            element: <ProtectedRoute perfisPermitidos={["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"]} />,
+            children: [
+              { path: "/almoxarifados", element: <AlmoxarifadosPage /> },
             ],
           },
           // PROFESSOR

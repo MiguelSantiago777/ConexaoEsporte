@@ -71,22 +71,11 @@ def criar_polo(body: PoloCreateRequest, usuario: SomenteMaster, db: DbSession) -
     criado = service.criar(
         nome=body.nome, codigo=body.codigo, endereco=body.endereco,
         horario_funcionamento=body.horario_funcionamento, gestor_responsavel_id=body.gestor_responsavel_id,
-        processo_sei=body.processo_sei, termo_fomento_numero=body.termo_fomento_numero,
-        nome_entidade=body.nome_entidade, cnpj=body.cnpj,
         representante_legal_nome=body.representante_legal_nome,
-        representante_legal_cpf=body.representante_legal_cpf, objeto=body.objeto,
-        vigencia_inicio=body.vigencia_inicio, vigencia_fim=body.vigencia_fim,
-        valor_pactuado=body.valor_pactuado, valor_executado=body.valor_executado,
-        parlamentar=body.parlamentar, emenda=body.emenda,
-        # termos_aditivos é coluna JSON — precisa de valores serializáveis
-        # (mode="json" converte `date` em string ISO).
-        termos_aditivos=[item.model_dump(mode="json") for item in body.termos_aditivos],
+        representante_legal_cpf=body.representante_legal_cpf,
+        representante_legal_rg=body.representante_legal_rg,
         responsavel_nome=body.responsavel_nome, responsavel_email=body.responsavel_email,
         responsavel_telefone=body.responsavel_telefone,
-        representante_legal_rg=body.representante_legal_rg,
-        representante_legal_endereco=body.representante_legal_endereco,
-        representante_legal_bairro=body.representante_legal_bairro,
-        representante_legal_cidade=body.representante_legal_cidade,
         latitude=body.latitude, longitude=body.longitude,
     )
     return PoloResponse.model_validate(criado)
@@ -132,17 +121,22 @@ async def importar_polos(
 )
 def atualizar_polo(polo_id: UUID, body: PoloUpdateRequest, usuario: SomenteMaster, db: DbSession) -> PoloResponse:
     campos = body.model_dump(exclude_unset=True)
-    if campos.get("termos_aditivos") is not None:
-        # termos_aditivos é uma coluna JSON — precisa de valores serializáveis
-        # (mode="json" converte `date` em string ISO), diferente dos demais
-        # campos de data do formulário, que são colunas DATE nativas e devem
-        # continuar como objetos `date` para o SQLAlchemy.
-        campos["termos_aditivos"] = [item.model_dump(mode="json") for item in body.termos_aditivos]
     service = PoloService(db)
     atualizado = service.atualizar(polo_id, **campos)
     if not atualizado:
         raise HTTPException(status_code=404, detail="Polo não encontrado.")
     return PoloResponse.model_validate(atualizado)
+
+
+@router.delete(
+    "/{polo_id}", status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir polo definitivamente (somente MASTER)",
+    description="Exclusão de verdade — não é o mesmo que desativar (`PATCH` com `status=INATIVO`). "
+    "Recusa a exclusão se o polo ainda tiver turmas, usuários vinculados, beneficiários ou fichas de "
+    "execução — remova esses vínculos primeiro, ou desative o polo em vez de excluir.",
+)
+def remover_polo(polo_id: UUID, usuario: SomenteMaster, db: DbSession) -> None:
+    PoloService(db).remover(polo_id)
 
 
 @router.get(

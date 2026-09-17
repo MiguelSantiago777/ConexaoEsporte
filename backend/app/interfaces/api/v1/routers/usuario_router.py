@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
+from app.application.auth.service import AuthService
 from app.application.importacao.planilha import ler_planilha
 from app.application.usuario.documento_service import UsuarioDocumentoService
 from app.application.usuario.importacao_service import UsuarioImportacaoService
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/usuarios", tags=["Usuários"])
 MasterOuGestor = Annotated[
     UsuarioAutenticado, Depends(require_modulo_ou_perfis("professores", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
 ]
+SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_modulo_ou_perfis("professores", PerfilUsuario.MASTER))]
 
 
 def _assert_acesso_ao_usuario_alvo(usuario: UsuarioAutenticado, db: DbSession, usuario_alvo_id: UUID):
@@ -62,16 +64,20 @@ def _assert_acesso_ao_usuario_alvo(usuario: UsuarioAutenticado, db: DbSession, u
     status_code=status.HTTP_201_CREATED,
     summary="Cadastrar usuário (funcionário)",
     description="**MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode "
-    "cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo.",
+    "cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo. Se `senha` for omitida, o "
+    "usuário recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha') em vez "
+    "de ganhar uma senha escolhida por quem cadastrou.",
 )
 def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSession) -> UsuarioResponse:
     service = UsuarioService(db)
     criado = service.criar_usuario(
         nome=body.nome, email=body.email, senha=body.senha, perfil=body.perfil,
         polo_id=body.polo_id, criado_por_perfil=usuario.perfil, criado_por_polo_id=usuario.polo_id,
-        telefone=body.telefone, carga_horaria_semanal=body.carga_horaria_semanal,
+        telefone=body.telefone, cpf=body.cpf, carga_horaria_semanal=body.carga_horaria_semanal,
         almoxarifado_id=body.almoxarifado_id, papel_id=body.papel_id,
     )
+    if not body.senha:
+        AuthService(db).solicitar_redefinicao_senha(criado.email)
     return UsuarioResponse.model_validate(criado)
 
 
@@ -178,6 +184,18 @@ def atualizar_usuario(
 
     atualizado = service.atualizar_usuario(usuario_id, **body.model_dump(exclude_unset=True))
     return UsuarioResponse.model_validate(atualizado)
+
+
+@router.delete(
+    "/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir usuário definitivamente (somente MASTER)",
+    description="Exclusão de verdade — não é o mesmo que desativar (`PATCH` com `ativo=false`). "
+    "**PROFESSOR nunca pode ser excluído aqui** (só desativado, pra preservar turmas/frequências já "
+    "registradas). Pra qualquer outro perfil, recusa a exclusão se o usuário já tiver algo vinculado no "
+    "sistema (anexos, entregas, movimentações etc.) — desative o acesso em vez de excluir nesse caso.",
+)
+def remover_usuario(usuario_id: UUID, usuario: SomenteMaster, db: DbSession) -> None:
+    UsuarioService(db).remover_usuario(usuario_id)
 
 
 @router.post(

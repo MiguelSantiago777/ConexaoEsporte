@@ -54,6 +54,7 @@ class UsuarioModel(Base):
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # RH do núcleo (Planilha de Núcleos — RH e Beneficiário)
     telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    cpf: Mapped[str | None] = mapped_column(String(20), nullable=True)
     carga_horaria_semanal: Mapped[str | None] = mapped_column(String(20), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -73,33 +74,16 @@ class PoloModel(Base):
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )
 
-    # Dados da parceria (Termo de Fomento) — próprios deste polo; cada polo
-    # é sua própria entidade parceira para fins da Ficha Técnica de Execução.
-    processo_sei: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    termo_fomento_numero: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    nome_entidade: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    cnpj: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Representante legal do polo, pro Termo de Responsabilidade — é por
+    # polo (mais de um polo pode ter o mesmo representante, sem problema).
     representante_legal_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
     representante_legal_cpf: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    objeto: Mapped[str | None] = mapped_column(Text, nullable=True)
-    vigencia_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
-    vigencia_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
-    valor_pactuado: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    valor_executado: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    parlamentar: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    emenda: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    termos_aditivos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    representante_legal_rg: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Contato do núcleo para a seção "Identificação dos Núcleos" da Ficha
     responsavel_nome: Mapped[str | None] = mapped_column(String(150), nullable=True)
     responsavel_email: Mapped[str | None] = mapped_column(String(150), nullable=True)
     responsavel_telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
-
-    # Dados pessoais do representante legal para o Termo de Responsabilidade
-    representante_legal_rg: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    representante_legal_endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    representante_legal_bairro: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    representante_legal_cidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Coordenadas do endereço, para exibir o polo no mapa do Dashboard.
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -322,7 +306,12 @@ class LancamentoFinanceiroModel(Base):
 
 class ConfiguracaoGeralModel(Base):
     """Registro único (singleton) com dados globais do projeto/convênio,
-    exibidos no rodapé de todos os relatórios exportados."""
+    exibidos no rodapé de todos os relatórios exportados — inclui o Termo de
+    Fomento (processo, entidade parceira, CNPJ, vigência, valores,
+    parlamentar/emenda e termos aditivos), que é um só pra todos os polos
+    do projeto (a entidade parceira não muda de polo pra polo). O
+    representante legal fica no cadastro de Polo, não aqui — mais de um
+    polo pode ter o mesmo representante, sem problema."""
 
     __tablename__ = "configuracao_geral"
 
@@ -331,6 +320,22 @@ class ConfiguracaoGeralModel(Base):
     numero_convenio: Mapped[str | None] = mapped_column(String(100), nullable=True)
     data_inicio_projeto: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_fim_projeto: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Termo de Fomento — dados da entidade parceira, únicos pro projeto
+    # inteiro (movidos do cadastro de Polo, que era duplicado por polo).
+    processo_sei: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    termo_fomento_numero: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    nome_entidade: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    cnpj: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    objeto: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vigencia_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
+    vigencia_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valor_pactuado: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    valor_executado: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    parlamentar: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    emenda: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    termos_aditivos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
     atualizado_por_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )

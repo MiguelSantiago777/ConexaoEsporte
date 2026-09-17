@@ -10,7 +10,11 @@ from app.domain.enums import PerfilUsuario
 class UsuarioCreateRequest(BaseModel):
     nome: str = Field(..., min_length=2, max_length=150)
     email: EmailStr
-    senha: str = Field(..., min_length=8)
+    senha: str | None = Field(
+        default=None, min_length=8,
+        description="Opcional: se omitida, o usuário é criado sem senha utilizável e recebe por email um "
+        "link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha').",
+    )
     perfil: PerfilUsuario
     polo_id: UUID | None = Field(
         default=None, description="Obrigatório quando perfil = GESTOR_POLO ou PROFESSOR."
@@ -22,6 +26,7 @@ class UsuarioCreateRequest(BaseModel):
         default=None, description="Obrigatório quando perfil = PERSONALIZADO (ver Central de Acessos)."
     )
     telefone: str | None = Field(default=None, max_length=20)
+    cpf: str | None = Field(default=None, max_length=20)
     carga_horaria_semanal: str | None = Field(default=None, max_length=20, examples=["20h"])
 
 
@@ -32,6 +37,7 @@ class UsuarioUpdateRequest(BaseModel):
     almoxarifado_id: UUID | None = None
     papel_id: UUID | None = None
     telefone: str | None = Field(default=None, max_length=20)
+    cpf: str | None = Field(default=None, max_length=20)
     carga_horaria_semanal: str | None = Field(default=None, max_length=20, examples=["20h"])
 
 
@@ -45,6 +51,7 @@ class UsuarioResponse(BaseModel):
     papel_id: UUID | None
     ativo: bool
     telefone: str | None
+    cpf: str | None
     carga_horaria_semanal: str | None
 
     model_config = {"from_attributes": True}

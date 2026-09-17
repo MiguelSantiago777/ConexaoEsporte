@@ -1,12 +1,11 @@
 """
-Testes de Polo (dados de parceria/Termo de Fomento) e Ficha de Execução
-(Ficha Técnica de Execução da Entidade — Portaria nº 102/2024). Cobre:
-- Cada polo é sua própria entidade parceira: RBAC e persistência dos
-  campos de Termo de Fomento/CNPJ/representante legal no cadastro do polo.
+Testes de Ficha de Execução (Ficha Técnica de Execução da Entidade —
+Portaria nº 102/2024). Cobre:
 - RBAC da Ficha de Execução: exclusivo do MASTER, vinculada a um polo.
 - Ficha nasce semeada com as listas fixas do modelo.
-- Exportação em .xlsx traz os valores cadastrados (do polo e da ficha) nas
-  células certas.
+- Exportação em .xlsx traz os valores cadastrados (da Configuração Geral —
+  entidade parceira, única pro projeto — e do polo/da ficha) nas células
+  certas.
 """
 import io
 
@@ -15,40 +14,15 @@ import openpyxl
 from tests.conftest import login
 
 
-def test_gestor_nao_edita_dados_de_parceria_do_polo(client, seed_basico):
+def test_gestor_nao_edita_polo(client, seed_basico):
     token = login(client, "gestor.a@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)
     resp = client.patch(
         f"/api/v1/polos/{polo_a_id}",
-        json={"cnpj": "00.000.000/0001-00"},
+        json={"responsavel_nome": "Fulano de Tal"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 403  # edição de polo é exclusiva do MASTER
-
-
-def test_master_cadastra_dados_de_parceria_no_polo(client, seed_basico):
-    token = login(client, "master@test.com")
-    headers = {"Authorization": f"Bearer {token}"}
-    polo_a_id = str(seed_basico["polo_a"].id)
-
-    r1 = client.patch(
-        f"/api/v1/polos/{polo_a_id}",
-        json={"nome_entidade": "Instituto Teste", "cnpj": "00.000.000/0001-00", "processo_sei": "SEI-123"},
-        headers=headers,
-    )
-    assert r1.status_code == 200, r1.text
-    assert r1.json()["nome_entidade"] == "Instituto Teste"
-    assert r1.json()["processo_sei"] == "SEI-123"
-
-    r2 = client.patch(
-        f"/api/v1/polos/{polo_a_id}",
-        json={"termos_aditivos": [{"numero": "PRIMEIRO", "objeto": "Prorrogação"}]},
-        headers=headers,
-    )
-    assert r2.status_code == 200, r2.text
-    body = r2.json()
-    assert body["nome_entidade"] == "Instituto Teste"  # campo não reenviado permanece
-    assert body["termos_aditivos"][0]["numero"] == "PRIMEIRO"
 
 
 def test_gestor_nao_acessa_fichas_execucao(client, seed_basico):
@@ -86,17 +60,21 @@ def test_ficha_execucao_nasce_semeada_com_listas_fixas(client, seed_basico):
     assert len(ficha["atividades_comparativo"]) == 15
 
 
-def test_exportar_ficha_execucao_gera_xlsx_com_dados_do_polo_e_da_ficha(client, seed_basico):
+def test_exportar_ficha_execucao_gera_xlsx_com_dados_da_configuracao_geral_e_da_ficha(client, seed_basico):
     token = login(client, "master@test.com")
     headers = {"Authorization": f"Bearer {token}"}
     polo_a_id = str(seed_basico["polo_a"].id)
 
+    # Entidade parceira (Termo de Fomento) é única pro projeto — vem da
+    # Configuração Geral, não mais do cadastro do polo.
+    client.patch(
+        "/api/v1/configuracao-geral",
+        json={"nome_entidade": "Instituto Teste", "cnpj": "00.000.000/0001-00", "processo_sei": "SEI-999"},
+        headers=headers,
+    )
     client.patch(
         f"/api/v1/polos/{polo_a_id}",
-        json={
-            "nome_entidade": "Instituto Teste", "cnpj": "00.000.000/0001-00", "processo_sei": "SEI-999",
-            "responsavel_nome": "Fulana de Tal",
-        },
+        json={"responsavel_nome": "Fulana de Tal"},
         headers=headers,
     )
     ficha = client.post(

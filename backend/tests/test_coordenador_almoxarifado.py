@@ -116,6 +116,31 @@ def test_coordenador_lista_movimentos_restrita_ao_proprio_almoxarifado_mesmo_sem
     assert movimentos[0]["almoxarifado_id"] == almox_proprio["id"]
 
 
+def test_coordenador_cria_e_edita_almoxarifado_mas_nao_remove(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    almoxarifado = _criar_almoxarifado(client, token_master)
+    _criar_coordenador(client, token_master, almoxarifado["id"])
+    token_coord = login(client, "coordenador@test.com")
+    headers_coord = {"Authorization": f"Bearer {token_coord}"}
+
+    resp_criar = client.post("/api/v1/almoxarifados", json={"nome": "Almoxarifado Novo"}, headers=headers_coord)
+    assert resp_criar.status_code == 201, resp_criar.text
+    novo_id = resp_criar.json()["id"]
+
+    resp_editar = client.patch(
+        f"/api/v1/almoxarifados/{novo_id}", json={"nome": "Almoxarifado Renomeado"}, headers=headers_coord
+    )
+    assert resp_editar.status_code == 200, resp_editar.text
+    assert resp_editar.json()["nome"] == "Almoxarifado Renomeado"
+
+    resp_listar = client.get("/api/v1/almoxarifados", headers=headers_coord)
+    assert resp_listar.status_code == 200
+    assert len(resp_listar.json()) == 2
+
+    resp_remover = client.delete(f"/api/v1/almoxarifados/{novo_id}", headers=headers_coord)
+    assert resp_remover.status_code == 403
+
+
 def test_coordenador_nao_acessa_outras_areas_do_sistema(client, seed_basico):
     token_master = login(client, "master@test.com")
     almoxarifado = _criar_almoxarifado(client, token_master)

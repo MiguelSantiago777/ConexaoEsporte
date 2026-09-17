@@ -1,11 +1,12 @@
 """Use cases de Usuário: cadastro de funcionários (MASTER cria GESTOR_POLO/PROFESSOR)."""
+import secrets
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.domain.enums import PerfilUsuario
-from app.domain.shared.exceptions import RecursoJaExiste, RegraDeNegocioViolada
+from app.domain.shared.exceptions import RecursoJaExiste, RecursoNaoEncontrado, RegraDeNegocioViolada
 from app.domain.usuario.entities import Usuario
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
@@ -15,13 +16,16 @@ class UsuarioService:
         self.repo = UsuarioRepository(db)
 
     def validar(
-        self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
+        self, nome: str, email: str, senha: str | None, perfil: PerfilUsuario, polo_id: UUID | None,
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
-        telefone: str | None = None, carga_horaria_semanal: str | None = None,
+        telefone: str | None = None, cpf: str | None = None, carga_horaria_semanal: str | None = None,
         almoxarifado_id: UUID | None = None, papel_id: UUID | None = None,
     ) -> Usuario:
         """Monta e valida o usuário sem gravar — reaproveitado por `criar_usuario`
-        e pela prévia de importação em massa (que precisa validar sem persistir)."""
+        e pela prévia de importação em massa (que precisa validar sem persistir).
+        `senha=None` gera uma senha aleatória inutilizável (ninguém a conhece);
+        o chamador (router) é quem dispara o email de 'defina sua senha' nesse
+        caso — ver `criar_usuario` em usuario_router.py."""
         if self.repo.buscar_por_email(email):
             raise RecursoJaExiste("Já existe um usuário com este email.")
 
@@ -36,22 +40,22 @@ class UsuarioService:
                 polo_id = criado_por_polo_id  # força o polo do próprio gestor
 
         return Usuario(
-            id=None, nome=nome, email=email, senha_hash=hash_password(senha),
+            id=None, nome=nome, email=email, senha_hash=hash_password(senha or secrets.token_urlsafe(32)),
             perfil=perfil, polo_id=polo_id, ativo=True,
-            telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
+            telefone=telefone, cpf=cpf, carga_horaria_semanal=carga_horaria_semanal,
             almoxarifado_id=almoxarifado_id, papel_id=papel_id,
         )
 
     def criar_usuario(
-        self, nome: str, email: str, senha: str, perfil: PerfilUsuario, polo_id: UUID | None,
+        self, nome: str, email: str, senha: str | None, perfil: PerfilUsuario, polo_id: UUID | None,
         criado_por_perfil: PerfilUsuario, criado_por_polo_id: UUID | None,
-        telefone: str | None = None, carga_horaria_semanal: str | None = None,
+        telefone: str | None = None, cpf: str | None = None, carga_horaria_semanal: str | None = None,
         almoxarifado_id: UUID | None = None, papel_id: UUID | None = None,
     ) -> Usuario:
         usuario = self.validar(
             nome=nome, email=email, senha=senha, perfil=perfil, polo_id=polo_id,
             criado_por_perfil=criado_por_perfil, criado_por_polo_id=criado_por_polo_id,
-            telefone=telefone, carga_horaria_semanal=carga_horaria_semanal,
+            telefone=telefone, cpf=cpf, carga_horaria_semanal=carga_horaria_semanal,
             almoxarifado_id=almoxarifado_id, papel_id=papel_id,
         )
         return self.repo.criar(usuario)
@@ -69,3 +73,21 @@ class UsuarioService:
 
     def atualizar_usuario(self, usuario_id: UUID, **campos) -> Usuario | None:
         return self.repo.atualizar(usuario_id, **campos)
+
+    def remover_usuario(self, usuario_id: UUID) -> None:
+        """Exclusão de verdade (não é 'desativar') — PROFESSOR nunca é
+        excluído aqui: fica só a opção de desativar (`ativo=false`), pra
+        preservar o vínculo com turmas/frequências já registradas. Pra
+        qualquer outro perfil, tenta excluir de verdade; se o usuário já
+        tiver algo vinculado no sistema (anexos, entregas, movimentações
+        etc.), o banco recusa a exclusão (violação de chave estrangeira,
+        traduzida como erro 400) — nesse caso, desative o acesso em vez de
+        excluir."""
+        usuario = self.repo.buscar_por_id(usuario_id)
+        if not usuario:
+            raise RecursoNaoEncontrado("Usuário não encontrado.")
+        if usuario.perfil == PerfilUsuario.PROFESSOR:
+            raise RegraDeNegocioViolada(
+                "Professor não pode ser excluído — desative o acesso em vez disso."
+            )
+        self.repo.remover(usuario_id)

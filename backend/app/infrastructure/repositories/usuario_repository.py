@@ -14,7 +14,7 @@ def _to_entity(m: UsuarioModel) -> Usuario:
     return Usuario(
         id=m.id, nome=m.nome, email=m.email, senha_hash=m.senha_hash,
         perfil=PerfilUsuario(m.perfil), polo_id=m.polo_id, ativo=m.ativo,
-        telefone=m.telefone, carga_horaria_semanal=m.carga_horaria_semanal,
+        telefone=m.telefone, cpf=m.cpf, carga_horaria_semanal=m.carga_horaria_semanal,
         almoxarifado_id=m.almoxarifado_id, papel_id=m.papel_id,
     )
 
@@ -55,7 +55,7 @@ class UsuarioRepository:
         m = UsuarioModel(
             nome=usuario.nome, email=usuario.email, senha_hash=usuario.senha_hash,
             perfil=usuario.perfil.value, polo_id=usuario.polo_id, ativo=usuario.ativo,
-            telefone=usuario.telefone, carga_horaria_semanal=usuario.carga_horaria_semanal,
+            telefone=usuario.telefone, cpf=usuario.cpf, carga_horaria_semanal=usuario.carga_horaria_semanal,
             almoxarifado_id=usuario.almoxarifado_id, papel_id=usuario.papel_id,
         )
         self.db.add(m)
@@ -80,3 +80,9 @@ class UsuarioRepository:
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)
+
+    def remover(self, usuario_id: UUID) -> None:
+        m = self.db.get(UsuarioModel, usuario_id)
+        if m:
+            self.db.delete(m)
+            self.db.commit()

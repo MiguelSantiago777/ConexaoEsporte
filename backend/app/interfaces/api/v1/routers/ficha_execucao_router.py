@@ -87,7 +87,7 @@ def atualizar_ficha(
     "/{ficha_id}/exportar",
     summary="Exportar Ficha de Execução em .xlsx (somente MASTER)",
     description="Gera o arquivo preenchido no layout oficial do modelo, combinando os dados "
-    "da parceria cadastrados no polo com os desta ficha.",
+    "da parceria (Termo de Fomento) cadastrados na Configuração Geral com os desta ficha.",
 )
 def exportar_ficha(
     ficha_id: UUID, usuario: SomenteMaster, db: DbSession, formato: Literal["xlsx", "pdf"] = "xlsx"
@@ -96,7 +96,8 @@ def exportar_ficha(
     if not ficha:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ficha de Execução não encontrada.")
     polo = PoloRepository(db).buscar_por_id(ficha.polo_id)
-    cabecalho = texto_cabecalho(ConfiguracaoGeralRepository(db).buscar())
+    config = ConfiguracaoGeralRepository(db).buscar()
+    cabecalho = texto_cabecalho(config)
 
-    buffer = exportar_ficha_execucao(ficha, polo, cabecalho_convenio=cabecalho)
+    buffer = exportar_ficha_execucao(ficha, polo, config, cabecalho_convenio=cabecalho)
     return resposta_relatorio(buffer, f"Ficha Tecnica de Execucao - {ficha.periodo_referencia}", "xlsx", formato)

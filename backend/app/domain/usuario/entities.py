@@ -15,6 +15,7 @@ class Usuario:
     polo_id: UUID | None  # obrigatório apenas para GESTOR_POLO; usado também por PROFESSOR do polo
     ativo: bool = True
     telefone: str | None = None
+    cpf: str | None = None
     carga_horaria_semanal: str | None = None
     almoxarifado_id: UUID | None = None  # obrigatório apenas para COORDENADOR_ALMOXARIFADO
     papel_id: UUID | None = None  # obrigatório apenas para PERSONALIZADO

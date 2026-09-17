@@ -4,8 +4,8 @@ modelo. Carrega o arquivo-modelo em
 `app/infrastructure/templates/termo_responsabilidade.docx`.
 
 O parágrafo principal do modelo mistura o texto fixo do termo com vários
-espaços em branco para preencher à mão (nome, RG, CPF, endereço, bairro,
-cidade) tudo numa frase só — a forma confiável de preencher isso via
+espaços em branco para preencher à mão (nome, RG, CPF, endereço) tudo numa
+frase só — a forma confiável de preencher isso via
 python-docx é reconstruir a frase inteira (mesma estratégia já usada nos
 demais exportadores para células/parágrafos "rótulo + preenchimento
 manual na mesma célula").
@@ -41,8 +41,6 @@ def exportar_termo_responsabilidade(
     representante_rg: str,
     representante_cpf: str,
     endereco: str,
-    bairro: str,
-    cidade: str,
     data_assinatura: date | None = None,
     cabecalho_convenio: str | None = None,
 ) -> io.BytesIO:
@@ -51,12 +49,14 @@ def exportar_termo_responsabilidade(
 
     texto_termo = (
         f"Eu, {representante_nome}, RG nº {representante_rg}, CPF nº {representante_cpf}, "
-        f"residente e domiciliado(a) na {endereco}, Bairro {bairro}, Cidade {cidade}, "
+        f"residente e domiciliado(a) na {endereco}, "
         "declaro que entregarei os documentos a mim solicitados, conforme Art. 22 e seus "
         "incisos, da Portaria nº 102, de 22 de outubro de 2024, e sou responsável pelas "
         "informações nelas contidas."
     )
-    texto_data = f"{cidade}, {data_assinatura.day} de {MESES_PT[data_assinatura.month]} de {data_assinatura.year}."
+    # Sem um campo de cidade separado (endereço é um texto livre único, o da
+    # própria instituição/polo) — a linha de assinatura fica só com a data.
+    texto_data = f"{data_assinatura.day} de {MESES_PT[data_assinatura.month]} de {data_assinatura.year}."
 
     for paragrafo in wb.paragraphs:
         if paragrafo.text.startswith("Eu, (nome"):
