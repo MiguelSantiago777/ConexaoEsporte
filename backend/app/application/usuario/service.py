@@ -1,5 +1,4 @@
 """Use cases de Usuário: cadastro de funcionários (MASTER cria GESTOR_POLO/PROFESSOR)."""
-import secrets
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -10,6 +9,12 @@ from app.domain.shared.exceptions import RecursoJaExiste, RecursoNaoEncontrado, 
 from app.domain.usuario.entities import Usuario
 from app.infrastructure.repositories.polo_repository import PoloRepository
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
+
+# Senha padrão de quem é cadastrado sem escolher uma — não depende do envio
+# de email (que hoje não está configurado em produção). O usuário é
+# obrigado a trocá-la no primeiro acesso (`deve_trocar_senha`, checado em
+# `ProtectedRoute` no frontend e liberado em `AuthService.alterar_senha`).
+SENHA_TEMPORARIA_PADRAO = "!Nata@!"
 
 
 class UsuarioService:
@@ -25,9 +30,8 @@ class UsuarioService:
     ) -> Usuario:
         """Monta e valida o usuário sem gravar — reaproveitado por `criar_usuario`
         e pela prévia de importação em massa (que precisa validar sem persistir).
-        `senha=None` gera uma senha aleatória inutilizável (ninguém a conhece);
-        o chamador (router) é quem dispara o email de 'defina sua senha' nesse
-        caso — ver `criar_usuario` em usuario_router.py."""
+        `senha=None` usa a senha temporária padrão (`SENHA_TEMPORARIA_PADRAO`) e
+        marca `deve_trocar_senha=True`, forçando a troca no primeiro acesso."""
         if self.repo.buscar_por_email(email):
             raise RecursoJaExiste("Já existe um usuário com este email.")
 
@@ -42,10 +46,10 @@ class UsuarioService:
                 polo_id = criado_por_polo_id  # força o polo do próprio gestor
 
         return Usuario(
-            id=None, nome=nome, email=email, senha_hash=hash_password(senha or secrets.token_urlsafe(32)),
+            id=None, nome=nome, email=email, senha_hash=hash_password(senha or SENHA_TEMPORARIA_PADRAO),
             perfil=perfil, polo_id=polo_id, ativo=True,
             telefone=telefone, cpf=cpf, carga_horaria_semanal=carga_horaria_semanal,
-            almoxarifado_id=almoxarifado_id, papel_id=papel_id,
+            almoxarifado_id=almoxarifado_id, papel_id=papel_id, deve_trocar_senha=senha is None,
         )
 
     def criar_usuario(

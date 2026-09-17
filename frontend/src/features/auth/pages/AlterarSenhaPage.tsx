@@ -1,5 +1,7 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { alterarSenha } from "../authService";
+import { useAuth } from "../AuthContext";
 import { mensagemErroApi } from "@/lib/erros";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +13,8 @@ import { staggerStyle } from "@/lib/animation";
 
 export function AlterarSenhaPage() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const { usuario, recarregarUsuario } = useAuth();
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
@@ -35,6 +39,8 @@ export function AlterarSenhaPage() {
       setNovaSenha("");
       setConfirmarSenha("");
       toast.success("Senha alterada com sucesso.");
+      await recarregarUsuario();
+      navigate("/");
     } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao alterar a senha."));
     } finally {
@@ -50,7 +56,11 @@ export function AlterarSenhaPage() {
           <div className="w-9 h-9 rounded-lg bg-brand-light flex items-center justify-center shrink-0">
             <KeyIcon className="w-5 h-5" />
           </div>
-          <p className="text-sm text-gray-500">Sua senha atual é necessária para confirmar a troca.</p>
+          <p className="text-sm text-gray-500">
+            {usuario?.deve_trocar_senha
+              ? "Você está com a senha temporária padrão — escolha uma senha só sua para continuar."
+              : "Sua senha atual é necessária para confirmar a troca."}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

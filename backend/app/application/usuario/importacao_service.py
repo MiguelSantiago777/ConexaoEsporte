@@ -1,9 +1,9 @@
 """Importação em massa de USUÁRIOS (professores/funcionários) a partir de
-planilha (.xlsx). A senha nunca vem da planilha — é gerada aleatoriamente e
-enviada por e-mail só na confirmação (nunca durante a prévia), reaproveitando
-a mesma infraestrutura de envio usada na redefinição de senha."""
-import secrets
-import string
+planilha (.xlsx). A senha nunca vem da planilha — todo mundo entra com a
+senha temporária padrão (`SENHA_TEMPORARIA_PADRAO`) e é obrigado a trocá-la
+no primeiro acesso. O e-mail de aviso é só um bônus best-effort: se o envio
+falhar (SMTP fora do ar), a pessoa ainda consegue logar normalmente, já que
+a senha não depende do e-mail chegar."""
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from app.application.importacao.campos import resolver_por_nome, texto, texto_ob
 from app.application.importacao.executor import executar_importacao
 from app.application.importacao.planilha import ColunaModelo, gerar_modelo
 from app.application.importacao.resultado import ResultadoImportacao
-from app.application.usuario.service import UsuarioService
+from app.application.usuario.service import SENHA_TEMPORARIA_PADRAO, UsuarioService
 from app.core.dependencies import UsuarioAutenticado
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RegraDeNegocioViolada
@@ -29,11 +29,6 @@ COL_ALMOXARIFADO = "Almoxarifado"
 COL_PAPEL = "Papel (Central de Acessos)"
 COL_TELEFONE = "Telefone"
 COL_CARGA_HORARIA = "Carga horária semanal"
-
-
-def _gerar_senha_temporaria() -> str:
-    alfabeto = string.ascii_letters + string.digits
-    return "".join(secrets.choice(alfabeto) for _ in range(12))
 
 
 def _colunas(perfis_disponiveis: list[PerfilUsuario], incluir_polo: bool) -> list[ColunaModelo]:
@@ -104,10 +99,9 @@ class UsuarioImportacaoService:
                 COL_ALMOXARIFADO, texto(linha, COL_ALMOXARIFADO), opcoes_almoxarifado, obrigatorio=False
             )
             papel_id = resolver_por_nome(COL_PAPEL, texto(linha, COL_PAPEL), opcoes_papel, obrigatorio=False)
-            senha_temporaria = _gerar_senha_temporaria()
 
             dados = dict(
-                nome=nome, email=email, senha=senha_temporaria, perfil=perfil, polo_id=polo_id,
+                nome=nome, email=email, senha=None, perfil=perfil, polo_id=polo_id,
                 criado_por_perfil=usuario.perfil, criado_por_polo_id=usuario.polo_id,
                 telefone=texto(linha, COL_TELEFONE), carga_horaria_semanal=texto(linha, COL_CARGA_HORARIA),
                 almoxarifado_id=almoxarifado_id, papel_id=papel_id,
@@ -118,14 +112,13 @@ class UsuarioImportacaoService:
 
             self.service.criar_usuario(**dados)
             try:
-                self.email_service.enviar_credenciais_acesso(email, nome, senha_temporaria)
+                self.email_service.enviar_credenciais_acesso(email, nome, SENHA_TEMPORARIA_PADRAO)
             except Exception:
-                # O usuário já foi criado com sucesso — uma falha no envio do
-                # e-mail (SMTP fora do ar, por exemplo) não deve derrubar a
-                # linha nem o restante do lote. Quem não recebeu o e-mail
-                # ainda consegue entrar via "Esqueci minha senha" na tela de
-                # login, usando o mesmo e-mail cadastrado.
-                return f"{nome} ({email}) — criado, mas o e-mail de credenciais não pôde ser enviado."
+                # O usuário já foi criado com sucesso e já consegue logar com a
+                # senha temporária padrão — uma falha no envio do e-mail
+                # (SMTP fora do ar, por exemplo) é só cosmética, não bloqueia
+                # o acesso.
+                return f"{nome} ({email}) — criado, mas o e-mail de aviso não pôde ser enviado."
             return f"{nome} ({email})"
 
         return executar_importacao(self.db, linhas, processar, confirmar)

@@ -15,7 +15,7 @@ def _to_entity(m: UsuarioModel) -> Usuario:
         id=m.id, nome=m.nome, email=m.email, senha_hash=m.senha_hash,
         perfil=PerfilUsuario(m.perfil), polo_id=m.polo_id, ativo=m.ativo,
         telefone=m.telefone, cpf=m.cpf, carga_horaria_semanal=m.carga_horaria_semanal,
-        almoxarifado_id=m.almoxarifado_id, papel_id=m.papel_id,
+        almoxarifado_id=m.almoxarifado_id, papel_id=m.papel_id, deve_trocar_senha=m.deve_trocar_senha,
     )
 
 
@@ -57,6 +57,7 @@ class UsuarioRepository:
             perfil=usuario.perfil.value, polo_id=usuario.polo_id, ativo=usuario.ativo,
             telefone=usuario.telefone, cpf=usuario.cpf, carga_horaria_semanal=usuario.carga_horaria_semanal,
             almoxarifado_id=usuario.almoxarifado_id, papel_id=usuario.papel_id,
+            deve_trocar_senha=usuario.deve_trocar_senha,
         )
         self.db.add(m)
         self.db.commit()
@@ -68,6 +69,7 @@ class UsuarioRepository:
         if not m:
             return
         m.senha_hash = novo_senha_hash
+        m.deve_trocar_senha = False
         self.db.commit()
 
     def atualizar(self, usuario_id: UUID, **campos) -> Usuario | None:

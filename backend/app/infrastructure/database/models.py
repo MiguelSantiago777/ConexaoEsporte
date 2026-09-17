@@ -56,6 +56,7 @@ class UsuarioModel(Base):
     telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     cpf: Mapped[str | None] = mapped_column(String(20), nullable=True)
     carga_horaria_semanal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    deve_trocar_senha: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     polo: Mapped["PoloModel"] = relationship(foreign_keys=[polo_id], back_populates="usuarios_vinculados")

@@ -5,7 +5,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
-from app.application.auth.service import AuthService
 from app.application.importacao.planilha import ler_planilha
 from app.application.usuario.documento_service import UsuarioDocumentoService
 from app.application.usuario.importacao_service import UsuarioImportacaoService
@@ -65,8 +64,8 @@ def _assert_acesso_ao_usuario_alvo(usuario: UsuarioAutenticado, db: DbSession, u
     summary="Cadastrar usuário (funcionário)",
     description="**MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode "
     "cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo. Se `senha` for omitida, o "
-    "usuário recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha') em vez "
-    "de ganhar uma senha escolhida por quem cadastrou.",
+    "usuário recebe a senha temporária padrão (informe-a a ele por fora) e é obrigado a trocá-la no "
+    "primeiro acesso.",
 )
 def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSession) -> UsuarioResponse:
     service = UsuarioService(db)
@@ -76,8 +75,6 @@ def criar_usuario(body: UsuarioCreateRequest, usuario: MasterOuGestor, db: DbSes
         telefone=body.telefone, cpf=body.cpf, carga_horaria_semanal=body.carga_horaria_semanal,
         almoxarifado_id=body.almoxarifado_id, papel_id=body.papel_id,
     )
-    if not body.senha:
-        AuthService(db).solicitar_redefinicao_senha(criado.email)
     return UsuarioResponse.model_validate(criado)
 
 
@@ -101,8 +98,9 @@ def baixar_modelo_importacao_usuarios(usuario: MasterOuGestor, db: DbSession) ->
     summary="Importar usuários/professores em massa a partir de planilha (.xlsx)",
     description="Envie o arquivo preenchido a partir do modelo (`GET /usuarios/importar/modelo`). Com "
     "`confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado, nenhum e-mail é enviado. "
-    "Com `confirmar=true` grava as linhas válidas (pulando as com erro) e envia a cada uma um e-mail "
-    "com uma senha temporária gerada aleatoriamente — a senha nunca vem da planilha.",
+    "Com `confirmar=true` grava as linhas válidas (pulando as com erro); cada uma recebe a senha "
+    "temporária padrão (obrigada a trocá-la no primeiro acesso) e, como bônus, um e-mail de aviso — a "
+    "senha nunca vem da planilha.",
 )
 async def importar_usuarios(
     usuario: MasterOuGestor, db: DbSession,

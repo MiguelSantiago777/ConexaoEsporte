@@ -73,7 +73,7 @@ def me(usuario: CurrentUser, db: DbSession) -> UsuarioLogadoResponse:
         id=u.id, nome=u.nome, email=u.email, perfil=u.perfil.value, polo_id=u.polo_id,
         polo_nome=polo.nome if polo else None, polo_codigo=polo.codigo if polo else None,
         almoxarifado_id=u.almoxarifado_id, almoxarifado_nome=almoxarifado.nome if almoxarifado else None,
-        modulos=usuario.modulos,
+        modulos=usuario.modulos, deve_trocar_senha=u.deve_trocar_senha,
     )
 
 

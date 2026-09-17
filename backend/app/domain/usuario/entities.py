@@ -17,6 +17,7 @@ class Usuario:
     telefone: str | None = None
     cpf: str | None = None
     carga_horaria_semanal: str | None = None
+    deve_trocar_senha: bool = False
     almoxarifado_id: UUID | None = None  # obrigatório apenas para COORDENADOR_ALMOXARIFADO
     papel_id: UUID | None = None  # obrigatório apenas para PERSONALIZADO
 

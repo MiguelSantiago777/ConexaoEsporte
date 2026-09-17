@@ -119,7 +119,7 @@ export function PolosPage() {
     <div className="space-y-6">
       <PageHeader
         title="Polos"
-        subtitle="Unidades onde os projetos esportivos são executados. Os dados do Termo de Fomento (entidade parceira, CNPJ, representante legal etc.) ficam em Configurações — são únicos para o projeto inteiro."
+        subtitle="Unidades onde os projetos esportivos são executados. Os dados da entidade parceira (CNPJ, objeto, vigência etc.) ficam em Configurações, já que são únicos para o projeto inteiro — o representante legal fica aqui em cada polo, já que polos diferentes podem ter representantes diferentes."
       />
       <CadastrarPoloWizard
         onCadastrado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}

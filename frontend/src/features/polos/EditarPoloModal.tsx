@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { TrashIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone } from "@/lib/masks";
+import { SENHA_TEMPORARIA_PADRAO } from "@/lib/constants";
 import { EnderecoMapaField } from "./EnderecoMapaField";
 
 interface Props {
@@ -71,7 +72,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       return novoGestor;
     },
     onSuccess: (novoGestor) => {
-      toast.success("Acesso criado — enviamos um email para o gestor definir a própria senha.");
+      toast.success(`Acesso criado. Senha temporária: ${SENHA_TEMPORARIA_PADRAO} (o gestor deve trocá-la no primeiro acesso).`);
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       setGestorId(novoGestor.id);
       setGestorForm(GESTOR_FORM_VAZIO);
@@ -253,8 +254,8 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
           ) : (
             <div className="space-y-4">
               <p className="text-xs text-gray-400">
-                Este polo ainda não tem um acesso de Gestor de Polo vinculado. O gestor recebe por email um
-                link para definir a própria senha — ninguém mais precisa conhecê-la.
+                Este polo ainda não tem um acesso de Gestor de Polo vinculado. O gestor entra com a senha
+                temporária padrão e é obrigado a trocá-la no primeiro acesso.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">

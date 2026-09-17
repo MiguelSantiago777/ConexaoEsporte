@@ -9,6 +9,10 @@ interface AuthContextValue {
   entrar: (email: string, senha: string) => Promise<void>;
   sair: () => void;
   temPerfil: (...perfis: Perfil[]) => boolean;
+  /** Busca os dados do usuário logado de novo — usado depois de trocar a
+   * própria senha, pra `deve_trocar_senha` virar false sem precisar recarregar
+   * a página. */
+  recarregarUsuario: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -45,8 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !!usuario && perfis.includes(usuario.perfil);
   }
 
+  async function recarregarUsuario() {
+    setUsuario(await fetchMe());
+  }
+
   return (
-    <AuthContext.Provider value={{ usuario, carregando, entrar, sair, temPerfil }}>
+    <AuthContext.Provider value={{ usuario, carregando, entrar, sair, temPerfil, recarregarUsuario }}>
       {children}
     </AuthContext.Provider>
   );

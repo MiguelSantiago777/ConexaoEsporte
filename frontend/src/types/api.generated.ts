@@ -3844,6 +3844,8 @@ export interface components {
             almoxarifado_nome?: string | null;
             /** Modulos */
             modulos?: string[];
+            /** Deve Trocar Senha */
+            deve_trocar_senha?: boolean;
         };
         /** UsuarioResponse */
         UsuarioResponse: {
@@ -3874,6 +3876,8 @@ export interface components {
             cpf: string | null;
             /** Carga Horaria Semanal */
             carga_horaria_semanal: string | null;
+            /** Deve Trocar Senha */
+            deve_trocar_senha: boolean;
         };
         /** UsuarioUpdateRequest */
         UsuarioUpdateRequest: {

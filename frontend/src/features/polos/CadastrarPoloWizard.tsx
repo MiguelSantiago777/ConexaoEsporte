@@ -7,21 +7,20 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone } from "@/lib/masks";
+import { SENHA_TEMPORARIA_PADRAO } from "@/lib/constants";
 import { EnderecoMapaField } from "./EnderecoMapaField";
 
 const FORM_VAZIO = {
   nome: "", codigo: "", endereco: "", horario_funcionamento: "",
   representante_legal_nome: "", representante_legal_cpf: "", representante_legal_rg: "",
-  responsavel_nome: "", responsavel_email: "", responsavel_telefone: "",
   gestor_nome: "", gestor_email: "", gestor_telefone: "", gestor_cpf: "",
 };
 
-const TOTAL_ETAPAS = 4;
+const TOTAL_ETAPAS = 3;
 const TITULOS_ETAPA: Record<number, string> = {
   1: "Dados do polo",
   2: "Representante legal",
-  3: "Contato do núcleo",
-  4: "Acesso do Gestor de Polo",
+  3: "Acesso do Gestor de Polo",
 };
 
 export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () => void; style?: React.CSSProperties }) {
@@ -67,8 +66,6 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
         representante_legal_nome: form.representante_legal_nome || null,
         representante_legal_cpf: form.representante_legal_cpf || null,
         representante_legal_rg: form.representante_legal_rg || null,
-        responsavel_nome: form.responsavel_nome || null, responsavel_email: form.responsavel_email || null,
-        responsavel_telefone: form.responsavel_telefone || null,
         latitude, longitude,
       });
       poloId = data.id;
@@ -89,8 +86,17 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
         perfil: "GESTOR_POLO",
         polo_id: poloId,
       });
-      await api.patch(`/polos/${poloId}`, { gestor_responsavel_id: gestor.id });
-      toast.success("Polo cadastrado. Enviamos um email para o gestor definir a própria senha.");
+      // O contato do núcleo (usado na Ficha de Execução) nasce igual ao do
+      // gestor recém-criado — evita perguntar nome/telefone/e-mail de novo;
+      // dá pra ajustar depois em "Editar Polo" se algum dia precisar ser
+      // uma pessoa diferente.
+      await api.patch(`/polos/${poloId}`, {
+        gestor_responsavel_id: gestor.id,
+        responsavel_nome: form.gestor_nome,
+        responsavel_email: form.gestor_email,
+        responsavel_telefone: form.gestor_telefone || null,
+      });
+      toast.success(`Polo cadastrado. Senha temporária do gestor: ${SENHA_TEMPORARIA_PADRAO} (ele deve trocá-la no primeiro acesso).`);
     } catch (err: unknown) {
       toast.error(
         `Polo cadastrado, mas houve um problema ao criar o acesso do gestor: ${
@@ -175,21 +181,9 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
 
         {etapa === 3 && (
           <div className="space-y-4">
-            <p className="text-xs text-gray-400">Usado na Identificação do Núcleo da Ficha de Execução.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Responsável" value={form.responsavel_nome} onChange={(e) => set("responsavel_nome", e.target.value)} />
-              <Input label="Telefone" value={form.responsavel_telefone} onChange={(e) => set("responsavel_telefone", e.target.value)} />
-              <div className="sm:col-span-2">
-                <Input label="E-mail" value={form.responsavel_email} onChange={(e) => set("responsavel_email", e.target.value)} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {etapa === 4 && (
-          <div className="space-y-4">
             <p className="text-xs text-gray-400">
-              O gestor recebe por email um link para definir a própria senha — ninguém mais precisa conhecê-la.
+              O gestor entra com a senha temporária padrão (informe-a a ele por fora) e é obrigado a trocá-la
+              no primeiro acesso. Esses mesmos dados também identificam o núcleo na Ficha de Execução.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">

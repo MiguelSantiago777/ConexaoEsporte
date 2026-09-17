@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     telefone                VARCHAR(20),
     cpf                     VARCHAR(20),
     carga_horaria_semanal   VARCHAR(20),
+    deve_trocar_senha       BOOLEAN NOT NULL DEFAULT FALSE,
     criado_em               TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Regra: GESTOR_POLO deve estar vinculado a um polo
     CONSTRAINT chk_gestor_tem_polo
@@ -738,3 +739,9 @@ ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS termos_aditivos JSONB NO
 -- Gestor de Polo (etapa 3 do cadastro de polo), mas fica disponível pra
 -- qualquer perfil.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cpf VARCHAR(20);
+
+-- Usuário criado sem senha escolhida recebe a senha temporária padrão
+-- (ver SENHA_TEMPORARIA_PADRAO em usuario/service.py) e fica marcado pra
+-- trocar no primeiro acesso — o frontend força a tela de troca até essa
+-- flag virar false (ver PATCH /auth/senha).
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS deve_trocar_senha BOOLEAN NOT NULL DEFAULT false;

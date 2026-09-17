@@ -12,8 +12,8 @@ class UsuarioCreateRequest(BaseModel):
     email: EmailStr
     senha: str | None = Field(
         default=None, min_length=8,
-        description="Opcional: se omitida, o usuário é criado sem senha utilizável e recebe por email um "
-        "link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha').",
+        description="Opcional: se omitida, o usuário recebe a senha temporária padrão e é obrigado a "
+        "trocá-la no primeiro acesso.",
     )
     perfil: PerfilUsuario
     polo_id: UUID | None = Field(
@@ -53,6 +53,7 @@ class UsuarioResponse(BaseModel):
     telefone: str | None
     cpf: str | None
     carga_horaria_semanal: str | None
+    deve_trocar_senha: bool
 
     model_config = {"from_attributes": True}
 
