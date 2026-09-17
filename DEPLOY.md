@@ -201,11 +201,23 @@ consegue resolver `gen_random_uuid()`):
 sudo -u postgres psql -d conexao_esporte -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto";'
 ```
 
+Antes de aplicar o schema, salve a senha num `~/.pgpass` do usuário
+`conexao_esporte` — evita repetir `PGPASSWORD='...'` em todo comando daqui
+pra frente (e, mais importante, evita que ela apareça em `ps aux`/histórico
+do shell, visível a qualquer outro usuário deste servidor compartilhado
+com o outro app). `chmod 600` é obrigatório: o `psql` recusa o arquivo se
+a permissão for mais aberta que isso.
+
+```bash
+sudo -u conexao_esporte bash -c 'echo "localhost:5432:conexao_esporte:conexao_esporte_app:SUA_SENHA" > ~/.pgpass'
+sudo -u conexao_esporte chmod 600 /home/conexao_esporte/.pgpass
+```
+
 Aplique o schema (rode como o novo usuário, para que ele já seja o *owner*
 das tabelas):
 
 ```bash
-PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app -d conexao_esporte \
+sudo -u conexao_esporte psql -h localhost -U conexao_esporte_app -d conexao_esporte \
   -f database/schema.sql
 ```
 
@@ -643,8 +655,10 @@ Depois, com o código atualizado (por qualquer um dos dois caminhos):
 ```bash
 cd /home/conexao_esporte/conexao-esporte
 
-# Backend: reaplica o schema (é idempotente — só cria/altera o que mudou)
-PGPASSWORD='SUA_SENHA' psql -h localhost -U conexao_esporte_app \
+# Backend: reaplica o schema (é idempotente — só cria/altera o que mudou).
+# Usa a senha do ~/.pgpass de conexao_esporte criado no passo 2 — se esse
+# arquivo não existir ainda, veja lá como criá-lo antes de rodar isto.
+sudo -u conexao_esporte psql -h localhost -U conexao_esporte_app \
   -d conexao_esporte -f database/schema.sql
 cd backend
 sudo -u conexao_esporte .venv/bin/pip install -r requirements.txt
