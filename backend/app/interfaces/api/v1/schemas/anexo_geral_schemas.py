@@ -13,9 +13,14 @@ class AnexoGeralResponse(BaseModel):
     nome_arquivo: str
     content_type: str | None
     tamanho_bytes: int | None
+    publico: bool
     criado_em: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class AnexoGeralVisibilidadeRequest(BaseModel):
+    publico: bool
 
 
 TipoDocumentoConsolidado = Literal[

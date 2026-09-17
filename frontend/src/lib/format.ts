@@ -4,3 +4,7 @@ export function formatarData(iso: string | null | undefined): string {
   if (!ano || !mes || !dia) return iso;
   return `${dia}/${mes}/${ano}`;
 }
+
+export function formatarMoeda(valor: number): string {
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}

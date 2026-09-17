@@ -118,6 +118,12 @@ export type AnexoGeral = components["schemas"]["AnexoGeralResponse"];
 export type DocumentoConsolidado = components["schemas"]["DocumentoConsolidadoResponse"];
 export type TipoDocumentoConsolidado = DocumentoConsolidado["tipo"];
 
+// Portal Transparência: resumo público (sem autenticação) e Lançamentos
+// Financeiros do Termo de Fomento (CRUD exclusivo do MASTER).
+export type PortalTransparencia = components["schemas"]["PortalTransparenciaResponse"];
+export type LancamentoFinanceiro = components["schemas"]["LancamentoFinanceiroResponse"];
+export type TipoLancamentoFinanceiro = LancamentoFinanceiro["tipo"];
+
 // Envelope de paginação das listagens principais (Beneficiários, Turmas,
 // Professores, Polos, Entregas de Materiais, Fichas de Execução) — o
 // backend gera um schema nomeado por entidade (ex.:

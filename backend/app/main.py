@@ -35,6 +35,7 @@ from app.interfaces.api.v1.routers import (
     polo_router,
     produto_router,
     relatorio_aula_router,
+    transparencia_router,
     turma_router,
     usuario_router,
 )
@@ -93,6 +94,12 @@ tags_metadata = [
         "name": "Lista de Espera",
         "description": "Inscrição pública de interesse (formulário embutido na landing page do projeto) "
         "e o aceite por MASTER/GESTOR_POLO, que vira Beneficiário + Matrícula na turma escolhida.",
+    },
+    {
+        "name": "Portal Transparência",
+        "description": "Resumo público (sem autenticação) de execução física, financeiro (Lançamentos "
+        "Financeiros do Termo de Fomento) e documentos marcados como públicos — para o órgão fiscalizador "
+        "e qualquer visitante. CRUD dos lançamentos e da visibilidade de documentos é exclusivo do MASTER.",
     },
 ]
 
@@ -176,6 +183,7 @@ app.include_router(dashboard_router.router, prefix=API)
 app.include_router(anexo_geral_router.router, prefix=API)
 app.include_router(configuracao_geral_router.router, prefix=API)
 app.include_router(lista_espera_router.router, prefix=API)
+app.include_router(transparencia_router.router, prefix=API)
 
 
 @app.get("/", tags=["Health"], summary="Health check")

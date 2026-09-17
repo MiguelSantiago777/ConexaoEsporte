@@ -1464,6 +1464,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/anexos-gerais/{anexo_id}/visibilidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Marcar/desmarcar um Anexo Geral como público
+         * @description Controla se o anexo aparece no Portal Transparência (página pública, sem autenticação). Exclusivo do MASTER.
+         */
+        patch: operations["definir_visibilidade_api_v1_anexos_gerais__anexo_id__visibilidade_patch"];
+        trace?: never;
+    };
     "/api/v1/anexos-gerais/{anexo_id}": {
         parameters: {
             query?: never;
@@ -1561,6 +1581,87 @@ export interface paths {
          */
         post: operations["aceitar_api_v1_lista_espera__inscricao_id__aceitar_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparencia/publico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * [Público] Resumo do Portal Transparência
+         * @description Sem autenticação — execução física (polos, turmas, beneficiários atendidos, frequência), resumo financeiro (Lançamentos Financeiros do Termo de Fomento) e documentos marcados como públicos pelo MASTER. Limitado a 30 consultas por minuto por IP.
+         */
+        get: operations["resumo_publico_api_v1_transparencia_publico_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparencia/publico/documentos/{anexo_id}/arquivo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * [Público] Baixar um documento do Portal Transparência
+         * @description Sem autenticação — só funciona para Anexos Gerais marcados como públicos pelo MASTER. Limitado a 30 downloads por minuto por IP.
+         */
+        get: operations["baixar_documento_publico_api_v1_transparencia_publico_documentos__anexo_id__arquivo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparencia/lancamentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar Lançamentos Financeiros (somente MASTER)
+         * @description Informe `polo_id` pra filtrar por polo. Lançamentos sem polo são gerais do convênio.
+         */
+        get: operations["listar_lancamentos_api_v1_transparencia_lancamentos_get"];
+        put?: never;
+        /**
+         * Criar Lançamento Financeiro (somente MASTER)
+         * @description Registra um valor repassado (REPASSE) ou executado (EXECUCAO) do Termo de Fomento, por categoria — passa a compor o resumo financeiro do Portal Transparência.
+         */
+        post: operations["criar_lancamento_api_v1_transparencia_lancamentos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparencia/lancamentos/{lancamento_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remover Lançamento Financeiro (somente MASTER) */
+        delete: operations["remover_lancamento_api_v1_transparencia_lancamentos__lancamento_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1670,8 +1771,15 @@ export interface components {
             content_type: string | null;
             /** Tamanho Bytes */
             tamanho_bytes: number | null;
+            /** Publico */
+            publico: boolean;
             /** Criado Em */
             criado_em: string | null;
+        };
+        /** AnexoGeralVisibilidadeRequest */
+        AnexoGeralVisibilidadeRequest: {
+            /** Publico */
+            publico: boolean;
         };
         /** AtividadeComparativoItem */
         AtividadeComparativoItem: {
@@ -2107,6 +2215,24 @@ export interface components {
             /** Possui Arquivo */
             possui_arquivo: boolean;
         };
+        /** DocumentoPublicoResponse */
+        DocumentoPublicoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Titulo */
+            titulo: string;
+            /** Polo Nome */
+            polo_nome: string;
+            /** Nome Arquivo */
+            nome_arquivo: string;
+            /** Content Type */
+            content_type: string | null;
+            /** Criado Em */
+            criado_em: string | null;
+        };
         /** EntregaMaterialCreateRequest */
         EntregaMaterialCreateRequest: {
             /**
@@ -2181,6 +2307,19 @@ export interface components {
              * @default
              */
             executado: string;
+        };
+        /** ExecucaoFisicaPublica */
+        ExecucaoFisicaPublica: {
+            /** Total Polos */
+            total_polos: number;
+            /** Total Modalidades */
+            total_modalidades: number;
+            /** Total Turmas Ativas */
+            total_turmas_ativas: number;
+            /** Total Beneficiarios Ativos */
+            total_beneficiarios_ativos: number;
+            /** Frequencia Media Pct */
+            frequencia_media_pct: number;
         };
         /** FichaChamadaResponse */
         FichaChamadaResponse: {
@@ -2512,6 +2651,17 @@ export interface components {
             /** Criado Em */
             criado_em: string | null;
         };
+        /** InstitucionalPublico */
+        InstitucionalPublico: {
+            /** Nome Projeto */
+            nome_projeto: string | null;
+            /** Numero Convenio */
+            numero_convenio: string | null;
+            /** Data Inicio Projeto */
+            data_inicio_projeto: string | null;
+            /** Data Fim Projeto */
+            data_fim_projeto: string | null;
+        };
         /** ItemEntregaRequest */
         ItemEntregaRequest: {
             /** Descricao */
@@ -2577,6 +2727,55 @@ export interface components {
             aulas_registradas: number;
             /** Fotos Evidencia */
             fotos_evidencia: number;
+        };
+        /** LancamentoFinanceiroCreateRequest */
+        LancamentoFinanceiroCreateRequest: {
+            /** Categoria */
+            categoria: string;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "REPASSE" | "EXECUCAO";
+            /** Valor */
+            valor: number;
+            /**
+             * Data Lancamento
+             * Format: date
+             */
+            data_lancamento: string;
+            /** Descricao */
+            descricao?: string | null;
+            /** Polo Id */
+            polo_id?: string | null;
+        };
+        /** LancamentoFinanceiroResponse */
+        LancamentoFinanceiroResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Polo Id */
+            polo_id: string | null;
+            /** Categoria */
+            categoria: string;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "REPASSE" | "EXECUCAO";
+            /** Valor */
+            valor: number;
+            /**
+             * Data Lancamento
+             * Format: date
+             */
+            data_lancamento: string;
+            /** Descricao */
+            descricao: string | null;
+            /** Criado Em */
+            criado_em: string | null;
         };
         /** LinhaFichaChamada */
         LinhaFichaChamada: {
@@ -3114,6 +3313,19 @@ export interface components {
             /** Longitude */
             longitude?: number | null;
         };
+        /** PortalTransparenciaResponse */
+        PortalTransparenciaResponse: {
+            institucional: components["schemas"]["InstitucionalPublico"];
+            execucao_fisica: components["schemas"]["ExecucaoFisicaPublica"];
+            financeiro: components["schemas"]["ResumoFinanceiroPublico"];
+            /** Documentos */
+            documentos: components["schemas"]["DocumentoPublicoResponse"][];
+            /**
+             * Atualizado Em
+             * Format: date-time
+             */
+            atualizado_em: string;
+        };
         /** ProdutoCreateRequest */
         ProdutoCreateRequest: {
             /**
@@ -3350,6 +3562,26 @@ export interface components {
             sem_marcacao: number;
             /** Total */
             total: number;
+        };
+        /** ResumoFinanceiroCategoria */
+        ResumoFinanceiroCategoria: {
+            /** Categoria */
+            categoria: string;
+            /** Repassado */
+            repassado: number;
+            /** Executado */
+            executado: number;
+        };
+        /** ResumoFinanceiroPublico */
+        ResumoFinanceiroPublico: {
+            /** Total Repassado */
+            total_repassado: number;
+            /** Total Executado */
+            total_executado: number;
+            /** Saldo */
+            saldo: number;
+            /** Por Categoria */
+            por_categoria: components["schemas"]["ResumoFinanceiroCategoria"][];
         };
         /**
          * SaldoAlmoxarifadoItem
@@ -6843,6 +7075,41 @@ export interface operations {
             };
         };
     };
+    definir_visibilidade_api_v1_anexos_gerais__anexo_id__visibilidade_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnexoGeralVisibilidadeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnexoGeralResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     remover_anexo_api_v1_anexos_gerais__anexo_id__delete: {
         parameters: {
             query?: never;
@@ -7023,6 +7290,150 @@ export interface operations {
                 "application/json": components["schemas"]["AceitarInscricaoRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resumo_publico_api_v1_transparencia_publico_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalTransparenciaResponse"];
+                };
+            };
+        };
+    };
+    baixar_documento_publico_api_v1_transparencia_publico_documentos__anexo_id__arquivo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                anexo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_lancamentos_api_v1_transparencia_lancamentos_get: {
+        parameters: {
+            query?: {
+                polo_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LancamentoFinanceiroResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    criar_lancamento_api_v1_transparencia_lancamentos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LancamentoFinanceiroCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LancamentoFinanceiroResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_lancamento_api_v1_transparencia_lancamentos__lancamento_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lancamento_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

@@ -18,6 +18,7 @@ MODULOS_SISTEMA: dict[str, str] = {
     "anexos_gerais": "Anexos Gerais",
     "fichas_execucao": "Fichas de Execução",
     "configuracoes": "Configurações",
+    "transparencia": "Portal Transparência",
 }
 
 

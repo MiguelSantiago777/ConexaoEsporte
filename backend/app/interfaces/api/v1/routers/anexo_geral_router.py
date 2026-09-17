@@ -10,7 +10,11 @@ from app.application.anexo_geral.service import AnexoGeralService
 from app.core.dependencies import DbSession, UsuarioAutenticado, assert_acesso_ao_polo, require_modulo_ou_perfis
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
-from app.interfaces.api.v1.schemas.anexo_geral_schemas import AnexoGeralResponse, DocumentoConsolidadoResponse
+from app.interfaces.api.v1.schemas.anexo_geral_schemas import (
+    AnexoGeralResponse,
+    AnexoGeralVisibilidadeRequest,
+    DocumentoConsolidadoResponse,
+)
 
 router = APIRouter(prefix="/anexos-gerais", tags=["Anexos Gerais"])
 
@@ -78,6 +82,24 @@ def baixar_anexo(anexo_id: UUID, usuario: SomenteMaster, db: DbSession) -> Respo
     with armazenamento_anexos_gerais.abrir(anexo.caminho_arquivo) as f:
         conteudo = f.read()
     return resposta_download(conteudo, anexo.content_type, anexo.nome_arquivo)
+
+
+@router.patch(
+    "/{anexo_id}/visibilidade", response_model=AnexoGeralResponse,
+    summary="Marcar/desmarcar um Anexo Geral como público",
+    description="Controla se o anexo aparece no Portal Transparência (página pública, sem autenticação). "
+    "Exclusivo do MASTER.",
+)
+def definir_visibilidade(
+    anexo_id: UUID, body: AnexoGeralVisibilidadeRequest, usuario: SomenteMaster, db: DbSession
+) -> AnexoGeralResponse:
+    service = AnexoGeralService(db)
+    anexo = service.buscar(anexo_id)
+    if not anexo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
+    assert_acesso_ao_polo(usuario, anexo.polo_id, "anexos_gerais")
+    atualizado = service.definir_publico(anexo_id, body.publico)
+    return AnexoGeralResponse.model_validate(atualizado)
 
 
 @router.delete("/{anexo_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Remover um Anexo Geral")

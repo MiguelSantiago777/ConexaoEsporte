@@ -253,6 +253,17 @@ export function ChartBarIcon({ className = "w-5 h-5" }: Props) {
   );
 }
 
+export function ScaleIcon({ className = "w-5 h-5" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 4v16M8 4h8" strokeLinecap="round" />
+      <path d="M4.5 8h4.5l-2.25 5a2.25 2.25 0 01-4.5 0L4.5 8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 8h4.5l-2.25 5a2.25 2.25 0 01-4.5 0L15 8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.5 20h11" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function SettingsIcon({ className = "w-5 h-5" }: Props) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">

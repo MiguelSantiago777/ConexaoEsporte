@@ -27,12 +27,15 @@ import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
 import { AnexosGeraisPage } from "@/features/anexos-gerais/AnexosGeraisPage";
 import { PapeisPage } from "@/features/papeis/PapeisPage";
 import { ImportarPage } from "@/features/importacao/ImportarPage";
+import { PortalTransparenciaPage } from "@/features/transparencia/PortalTransparenciaPage";
+import { TransparenciaAdminPage } from "@/features/transparencia/TransparenciaAdminPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/esqueci-senha", element: <EsqueciSenhaPage /> },
   { path: "/redefinir-senha", element: <RedefinirSenhaPage /> },
   { path: "/inscricao-lista-espera", element: <InscricaoListaEsperaPage /> },
+  { path: "/transparencia", element: <PortalTransparenciaPage /> },
   { path: "/sem-acesso", element: <div className="p-8">Você não tem acesso a esta área.</div> },
   {
     element: <ProtectedRoute />,
@@ -55,6 +58,7 @@ export const router = createBrowserRouter([
               { path: "/estoque", element: <EstoquePage /> },
               { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
               { path: "/importar", element: <ImportarPage /> },
+              { path: "/transparencia-admin", element: <TransparenciaAdminPage /> },
             ],
           },
           // MASTER + GESTOR_POLO

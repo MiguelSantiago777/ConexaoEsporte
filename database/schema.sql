@@ -684,3 +684,29 @@ CREATE TABLE IF NOT EXISTS inscricoes_lista_espera (
 CREATE INDEX IF NOT EXISTS idx_inscricoes_lista_espera_polo ON inscricoes_lista_espera(polo_id);
 
 ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_projeto VARCHAR(200);
+
+-- ---------------------------------------------------------------------
+-- TABELA: lancamentos_financeiros — lançamentos de valores repassados e
+-- executados do Termo de Fomento, alimentados manualmente pelo MASTER,
+-- usados para compor o resumo financeiro do Portal Transparência
+-- (app/application/transparencia/service.py). polo_id nulo = lançamento
+-- geral do convênio, não atribuído a um polo específico.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS lancamentos_financeiros (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    polo_id           UUID REFERENCES polos(id) ON DELETE SET NULL,
+    categoria         VARCHAR(100) NOT NULL,
+    tipo              VARCHAR(20) NOT NULL CHECK (tipo IN ('REPASSE', 'EXECUCAO')),
+    valor             NUMERIC(14,2) NOT NULL CHECK (valor > 0),
+    data_lancamento   DATE NOT NULL,
+    descricao         TEXT,
+    criado_por_id     UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_financeiros_polo ON lancamentos_financeiros(polo_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_financeiros_tipo ON lancamentos_financeiros(tipo);
+
+-- Portal Transparência: um Anexo Geral só aparece na página pública quando
+-- o MASTER marca explicitamente esta flag (ver PATCH /anexos-gerais/{id}/visibilidade).
+ALTER TABLE anexos_gerais ADD COLUMN IF NOT EXISTS publico BOOLEAN NOT NULL DEFAULT false;

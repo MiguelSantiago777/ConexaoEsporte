@@ -6,6 +6,7 @@ definidas em app/domain/**/entities.py.
 """
 import uuid
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -287,6 +289,32 @@ class AnexoGeralModel(Base):
     content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tamanho_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     enviado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
+    )
+    # Portal Transparência: só aparece na página pública quando o MASTER
+    # marca esta flag explicitamente (ver PATCH /anexos-gerais/{id}/visibilidade).
+    publico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class LancamentoFinanceiroModel(Base):
+    """Lançamento de valor repassado ou executado do Termo de Fomento,
+    alimentado manualmente pelo MASTER — compõe o resumo financeiro do
+    Portal Transparência (público). `polo_id` nulo = lançamento geral do
+    convênio, não atribuído a um polo específico."""
+
+    __tablename__ = "lancamentos_financeiros"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    polo_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("polos.id", ondelete="SET NULL"), nullable=True
+    )
+    categoria: Mapped[str] = mapped_column(String(100), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False)  # "REPASSE" | "EXECUCAO"
+    valor: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    data_lancamento: Mapped[date] = mapped_column(Date, nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_por_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True
     )
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

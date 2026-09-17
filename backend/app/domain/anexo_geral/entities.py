@@ -16,6 +16,7 @@ class AnexoGeral:
     content_type: str | None
     tamanho_bytes: int | None
     enviado_por_id: UUID | None
+    publico: bool = False
     criado_em: datetime | None = None
 
     def __post_init__(self) -> None:

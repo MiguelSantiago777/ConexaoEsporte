@@ -12,7 +12,7 @@ def _to_entity(m: AnexoGeralModel) -> AnexoGeral:
     return AnexoGeral(
         id=m.id, polo_id=m.polo_id, titulo=m.titulo, nome_arquivo=m.nome_arquivo,
         caminho_arquivo=m.caminho_arquivo, content_type=m.content_type, tamanho_bytes=m.tamanho_bytes,
-        enviado_por_id=m.enviado_por_id, criado_em=m.criado_em,
+        enviado_por_id=m.enviado_por_id, publico=m.publico, criado_em=m.criado_em,
     )
 
 
@@ -47,3 +47,12 @@ class AnexoGeralRepository:
         if m:
             self.db.delete(m)
             self.db.commit()
+
+    def definir_publico(self, anexo_id: UUID, publico: bool) -> AnexoGeral | None:
+        m = self.db.get(AnexoGeralModel, anexo_id)
+        if not m:
+            return None
+        m.publico = publico
+        self.db.commit()
+        self.db.refresh(m)
+        return _to_entity(m)

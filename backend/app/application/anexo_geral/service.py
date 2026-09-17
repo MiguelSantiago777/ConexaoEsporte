@@ -236,3 +236,11 @@ class AnexoGeralService:
             raise RecursoNaoEncontrado("Anexo não encontrado.")
         armazenamento_anexos_gerais.remover(anexo.caminho_arquivo)
         self.repo.remover(anexo_id)
+
+    def definir_publico(self, anexo_id: UUID, publico: bool) -> AnexoGeral:
+        """Controla a visibilidade do anexo no Portal Transparência (público,
+        sem autenticação) — ver app/application/transparencia/service.py."""
+        atualizado = self.repo.definir_publico(anexo_id, publico)
+        if not atualizado:
+            raise RecursoNaoEncontrado("Anexo não encontrado.")
+        return atualizado
