@@ -8,12 +8,14 @@ from app.core.security import hash_password
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RecursoJaExiste, RecursoNaoEncontrado, RegraDeNegocioViolada
 from app.domain.usuario.entities import Usuario
+from app.infrastructure.repositories.polo_repository import PoloRepository
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
 
 class UsuarioService:
     def __init__(self, db: Session):
         self.repo = UsuarioRepository(db)
+        self.polo_repo = PoloRepository(db)
 
     def validar(
         self, nome: str, email: str, senha: str | None, perfil: PerfilUsuario, polo_id: UUID | None,
@@ -90,4 +92,8 @@ class UsuarioService:
             raise RegraDeNegocioViolada(
                 "Professor não pode ser excluído — desative o acesso em vez disso."
             )
+        # Se este usuário é o Gestor de Polo vinculado a algum polo, desfaz
+        # o vínculo primeiro — senão a exclusão esbarraria na constraint de
+        # chave estrangeira de `polos.gestor_responsavel_id`.
+        self.polo_repo.limpar_gestor_responsavel(usuario_id)
         self.repo.remover(usuario_id)

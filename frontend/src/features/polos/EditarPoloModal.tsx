@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { TrashIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone } from "@/lib/masks";
 import { EnderecoMapaField } from "./EnderecoMapaField";
@@ -88,6 +89,29 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       return;
     }
     criarGestorMutation.mutate();
+  }
+
+  const excluirGestorMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/usuarios/${id}`),
+    onSuccess: () => {
+      toast.success("Acesso do gestor excluído.");
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      setGestorId(null);
+      onAtualizado?.();
+    },
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao excluir o gestor.")),
+  });
+
+  function handleExcluirGestor() {
+    if (!gestorId || !gestor) return;
+    if (
+      !window.confirm(
+        `Excluir o acesso de ${gestor.nome} definitivamente? Essa ação não pode ser desfeita.`
+      )
+    ) {
+      return;
+    }
+    excluirGestorMutation.mutate(gestorId);
   }
 
   if (polo !== poloAnterior) {
@@ -211,9 +235,20 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
         <div className="border-t border-gray-100 pt-4">
           <h3 className="text-sm font-semibold text-brand-dark mb-3">Acesso do Gestor de Polo</h3>
           {gestorId ? (
-            <div className="text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <p><span className="font-medium text-gray-800">Nome:</span> {gestor?.nome ?? "—"}</p>
-              <p><span className="font-medium text-gray-800">E-mail:</span> {gestor?.email ?? "—"}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <p><span className="font-medium text-gray-800">Nome:</span> {gestor?.nome ?? "—"}</p>
+                <p><span className="font-medium text-gray-800">E-mail:</span> {gestor?.email ?? "—"}</p>
+              </div>
+              <button
+                type="button"
+                title="Excluir acesso do gestor"
+                onClick={handleExcluirGestor}
+                disabled={excluirGestorMutation.isPending}
+                className="text-gray-400 hover:text-red-600 transition-colors shrink-0 disabled:opacity-50"
+              >
+                <TrashIcon />
+              </button>
             </div>
           ) : (
             <div className="space-y-4">

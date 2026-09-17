@@ -1,7 +1,7 @@
 """Repositório de Polo."""
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.domain.polo.entities import Polo
@@ -79,3 +79,14 @@ class PoloRepository:
         if m:
             self.db.delete(m)
             self.db.commit()
+
+    def limpar_gestor_responsavel(self, usuario_id: UUID) -> None:
+        """Desvincula `usuario_id` de qualquer polo que o tenha como
+        gestor_responsavel_id — chamado antes de excluir um Gestor de Polo
+        de verdade, pra não esbarrar na constraint de chave estrangeira."""
+        self.db.execute(
+            update(PoloModel)
+            .where(PoloModel.gestor_responsavel_id == usuario_id)
+            .values(gestor_responsavel_id=None)
+        )
+        self.db.commit()

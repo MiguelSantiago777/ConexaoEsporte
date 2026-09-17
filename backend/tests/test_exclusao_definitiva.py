@@ -75,6 +75,35 @@ def test_master_exclui_gestor_de_polo_sem_vinculos(client, seed_basico):
     assert resp_login.status_code == 401
 
 
+def test_master_exclui_gestor_vinculado_como_responsavel_do_polo(client, seed_basico):
+    """O gestor pode estar referenciado em polos.gestor_responsavel_id —
+    excluir precisa desfazer esse vínculo primeiro, senão esbarra na
+    constraint de chave estrangeira."""
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+    polo_id = str(seed_basico["polo_b"].id)
+    gestor = client.post(
+        "/api/v1/usuarios",
+        json={
+            "nome": "Gestor Responsável", "email": "gestor.responsavel@test.com", "senha": "senha123",
+            "perfil": "GESTOR_POLO", "polo_id": polo_id,
+        },
+        headers=headers,
+    ).json()
+    resp_vincular = client.patch(
+        f"/api/v1/polos/{polo_id}", json={"gestor_responsavel_id": gestor["id"]}, headers=headers
+    )
+    assert resp_vincular.status_code == 200, resp_vincular.text
+    assert resp_vincular.json()["gestor_responsavel_id"] == gestor["id"]
+
+    resp_excluir = client.delete(f"/api/v1/usuarios/{gestor['id']}", headers=headers)
+    assert resp_excluir.status_code == 204, resp_excluir.text
+
+    resp_polo = client.get("/api/v1/polos", headers=headers)
+    polo_b = next(p for p in resp_polo.json() if p["id"] == polo_id)
+    assert polo_b["gestor_responsavel_id"] is None
+
+
 def test_professor_nunca_e_excluido_so_desativado(client, seed_basico):
     token_gestor = login(client, "gestor.a@test.com")
     headers = {"Authorization": f"Bearer {token_gestor}"}
