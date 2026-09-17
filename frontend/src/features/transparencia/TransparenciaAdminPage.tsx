@@ -188,7 +188,10 @@ function AbaFinanceiro() {
                     <td className="py-2 pr-4 text-right font-mono tabular-nums text-ink">{formatarMoeda(l.valor)}</td>
                     <td className="py-2 pr-4 text-right">
                       <button
-                        type="button" onClick={() => remover.mutate(l.id)}
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("Remover este lançamento?")) remover.mutate(l.id);
+                        }}
                         className="text-slate-400 hover:text-danger transition-colors" aria-label="Remover lançamento"
                       >
                         <TrashIcon />
