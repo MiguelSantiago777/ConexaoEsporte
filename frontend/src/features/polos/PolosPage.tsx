@@ -8,12 +8,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
-import { CalendarCheckIcon, ClipboardIcon, DocumentTextIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
+import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
-import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
 import { CadastrarPoloWizard } from "./CadastrarPoloWizard";
 import { EditarPoloModal } from "./EditarPoloModal";
 
@@ -50,9 +49,6 @@ export function PolosPage() {
   const totalPolos = paginaPolos?.total ?? 0;
 
   const [poloEditando, setPoloEditando] = useState<Polo | null>(null);
-  const [exportandoGrade, setExportandoGrade] = useState<string | null>(null);
-  const [exportandoNucleos, setExportandoNucleos] = useState<string | null>(null);
-  const [exportandoTermo, setExportandoTermo] = useState<string | null>(null);
 
   const excluirMutation = useMutation({
     mutationFn: (p: Polo) => api.delete(`/polos/${p.id}`),
@@ -74,45 +70,6 @@ export function PolosPage() {
       return;
     }
     excluirMutation.mutate(p);
-  }
-
-  async function exportarGradeHoraria(p: Polo) {
-    const entrada = window.prompt("Horas de planejamento semanal (opcional):", "0");
-    if (entrada === null) return;
-    const planejamento = Number(entrada.replace(",", ".")) || 0;
-    setExportandoGrade(p.id);
-    try {
-      await baixarExportacao(
-        `/polos/${p.id}/grade-horaria/exportar?planejamento_horas=${planejamento}`,
-        `Grade Horaria - ${p.nome}.docx`
-      );
-    } catch (err: unknown) {
-      toast.error(mensagemErroApi(err, "Erro ao exportar a Grade Horária."));
-    } finally {
-      setExportandoGrade(null);
-    }
-  }
-
-  async function exportarPlanilhaNucleos(p: Polo) {
-    setExportandoNucleos(p.id);
-    try {
-      await baixarExportacao(`/polos/${p.id}/planilha-nucleos/exportar`, `Planilha de Nucleos - ${p.nome}.xlsx`);
-    } catch (err: unknown) {
-      toast.error(mensagemErroApi(err, "Erro ao exportar a Planilha de Núcleos."));
-    } finally {
-      setExportandoNucleos(null);
-    }
-  }
-
-  async function exportarTermoResponsabilidade(p: Polo) {
-    setExportandoTermo(p.id);
-    try {
-      await baixarExportacao(`/polos/${p.id}/termo-responsabilidade/exportar`, `Termo de Responsabilidade - ${p.nome}.docx`);
-    } catch (err: unknown) {
-      toast.error(mensagemErroApi(err, "Erro ao exportar o Termo de Responsabilidade."));
-    } finally {
-      setExportandoTermo(null);
-    }
   }
 
   return (
@@ -157,33 +114,6 @@ export function PolosPage() {
                   <div className="flex items-center gap-5 mt-3 flex-wrap">
                     <button
                       type="button"
-                      title="Exportar Grade Horária"
-                      onClick={() => exportarGradeHoraria(p)}
-                      disabled={exportandoGrade === p.id}
-                      className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40 -m-1.5 p-1.5"
-                    >
-                      <CalendarCheckIcon className="w-[18px] h-[18px]" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Exportar Planilha de Núcleos"
-                      onClick={() => exportarPlanilhaNucleos(p)}
-                      disabled={exportandoNucleos === p.id}
-                      className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40 -m-1.5 p-1.5"
-                    >
-                      <ClipboardIcon className="w-[18px] h-[18px]" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Exportar Termo de Responsabilidade"
-                      onClick={() => exportarTermoResponsabilidade(p)}
-                      disabled={exportandoTermo === p.id}
-                      className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40 -m-1.5 p-1.5"
-                    >
-                      <DocumentTextIcon className="w-[18px] h-[18px]" />
-                    </button>
-                    <button
-                      type="button"
                       title="Editar"
                       onClick={() => setPoloEditando(p)}
                       className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
@@ -225,33 +155,6 @@ export function PolosPage() {
                       </td>
                       <td className="px-3 text-right pr-8">
                         <div className="flex items-center justify-end gap-3">
-                          <button
-                            type="button"
-                            title="Exportar Grade Horária"
-                            onClick={() => exportarGradeHoraria(p)}
-                            disabled={exportandoGrade === p.id}
-                            className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
-                          >
-                            <CalendarCheckIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            title="Exportar Planilha de Núcleos"
-                            onClick={() => exportarPlanilhaNucleos(p)}
-                            disabled={exportandoNucleos === p.id}
-                            className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
-                          >
-                            <ClipboardIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            title="Exportar Termo de Responsabilidade"
-                            onClick={() => exportarTermoResponsabilidade(p)}
-                            disabled={exportandoTermo === p.id}
-                            className="text-gray-400 hover:text-brand transition-colors disabled:opacity-40"
-                          >
-                            <DocumentTextIcon className="w-4 h-4" />
-                          </button>
                           <button
                             type="button"
                             title="Editar"

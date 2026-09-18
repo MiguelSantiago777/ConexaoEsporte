@@ -57,6 +57,7 @@ const MENU: ItemMenu[] = [
       { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: ClipboardIcon },
       { label: "Lista de Espera", to: "/lista-espera", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: InboxIcon },
       { label: "Polos", to: "/polos", perfis: ["MASTER"], modulo: "polos", icon: BuildingIcon },
+      { label: "Usuários", to: "/usuarios", perfis: ["MASTER"], icon: UsersIcon },
       { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], modulo: "professores", icon: AcademicCapIcon },
       { label: "Turmas", to: "/turmas", perfis: ["MASTER", "GESTOR_POLO"], modulo: "turmas", icon: UsersIcon },
       { label: "Modalidades", to: "/modalidades", perfis: ["MASTER", "GESTOR_POLO"], modulo: "modalidades", icon: TrophyIcon },

@@ -9,6 +9,7 @@ import { ListaEsperaPage } from "@/features/lista-espera/ListaEsperaPage";
 import { DashboardPage } from "@/features/auth/pages/DashboardPage";
 import { AlterarSenhaPage } from "@/features/auth/pages/AlterarSenhaPage";
 import { PolosPage } from "@/features/polos/PolosPage";
+import { UsuariosPage } from "@/features/usuarios/UsuariosPage";
 import { ModalidadesPage } from "@/features/modalidades/ModalidadesPage";
 import { TurmasPage } from "@/features/turmas/TurmasPage";
 import { BeneficiariosPage } from "@/features/beneficiarios/BeneficiariosPage";
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute perfisPermitidos={["MASTER"]} />,
             children: [
               { path: "/polos", element: <PolosPage /> },
+              { path: "/usuarios", element: <UsuariosPage /> },
               { path: "/fichas-execucao", element: <FichasExecucaoPage /> },
               { path: "/fichas-execucao/:id", element: <FichaExecucaoDetalhePage /> },
               { path: "/configuracoes", element: <ConfiguracoesPage /> },
