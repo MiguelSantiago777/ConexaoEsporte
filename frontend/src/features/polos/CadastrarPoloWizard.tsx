@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone } from "@/lib/masks";
-import { SENHA_TEMPORARIA_PADRAO } from "@/lib/constants";
 import { EnderecoMapaField } from "./EnderecoMapaField";
 
 const FORM_VAZIO = {
@@ -96,7 +95,7 @@ export function CadastrarPoloWizard({ onCadastrado, style }: { onCadastrado: () 
         responsavel_email: form.gestor_email,
         responsavel_telefone: form.gestor_telefone || null,
       });
-      toast.success(`Polo cadastrado. Senha temporária do gestor: ${SENHA_TEMPORARIA_PADRAO} (ele deve trocá-la no primeiro acesso).`);
+      toast.success("Polo cadastrado. O gestor entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso.");
     } catch (err: unknown) {
       toast.error(
         `Polo cadastrado, mas houve um problema ao criar o acesso do gestor: ${

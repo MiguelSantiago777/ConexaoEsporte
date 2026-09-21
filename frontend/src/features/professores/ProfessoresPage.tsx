@@ -23,7 +23,7 @@ import { EditarProfessorModal } from "./EditarProfessorModal";
 const TAMANHO_PAGINA = 10;
 
 const FORM_INICIAL = {
-  nome: "", email: "", senha: "", polo_id: "", modalidade_id: "", turma_id: "",
+  nome: "", email: "", polo_id: "", modalidade_id: "", turma_id: "",
   telefone: "", carga_horaria_semanal: "",
 };
 
@@ -130,7 +130,6 @@ export function ProfessoresPage() {
       const { data: criado } = await api.post<Usuario>("/usuarios", {
         nome: form.nome,
         email: form.email,
-        senha: form.senha,
         perfil: "PROFESSOR",
         polo_id: ehMaster ? form.polo_id || null : null,
         telefone: form.telefone || null,
@@ -139,7 +138,10 @@ export function ProfessoresPage() {
       await enviarAnexos(criado.id);
       try {
         await api.patch(`/turmas/${form.turma_id}`, { professor_id: criado.id });
-        toast.success("Professor cadastrado e vinculado à turma com sucesso.");
+        toast.success(
+          "Professor cadastrado e vinculado à turma com sucesso. Ele entra com a senha temporária padrão e é " +
+          "obrigado a trocá-la no primeiro acesso."
+        );
       } catch (err: unknown) {
         toast.error(
           `Professor cadastrado, mas houve um problema ao vincular à turma: ${
@@ -165,6 +167,9 @@ export function ProfessoresPage() {
         subtitle="Cadastre o acesso dos professores responsáveis pelas turmas do seu polo."
       />
       <Card title="Cadastrar professor" className="animate-fade-in-up" style={staggerStyle(0)}>
+        <p className="text-xs text-gray-400">
+          O professor entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso.
+        </p>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Nome"
@@ -177,15 +182,6 @@ export function ProfessoresPage() {
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
-          />
-          <Input
-            label="Senha"
-            type="password"
-            minLength={8}
-            hint="Mínimo de 8 caracteres."
-            value={form.senha}
-            onChange={(e) => setForm({ ...form, senha: e.target.value })}
             required
           />
           {ehMaster ? (

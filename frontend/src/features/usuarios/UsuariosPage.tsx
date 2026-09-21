@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import { maskCPF, maskTelefone } from "@/lib/masks";
-import { SENHA_TEMPORARIA_PADRAO } from "@/lib/constants";
 import type { Almoxarifado, Pagina, Papel, Perfil, Polo, Usuario } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -96,7 +95,7 @@ export function UsuariosPage() {
         papel_id: form.perfil === "PERSONALIZADO" ? form.papel_id || null : null,
       });
       setForm(FORM_VAZIO);
-      toast.success(`Usuário cadastrado. Senha temporária: ${SENHA_TEMPORARIA_PADRAO} (ele deve trocá-la no primeiro acesso).`);
+      toast.success("Usuário cadastrado. Ele entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso.");
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
     } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar usuário."));

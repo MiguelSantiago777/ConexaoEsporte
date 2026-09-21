@@ -10,7 +10,6 @@ import { Select } from "@/components/ui/Select";
 import { TrashIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone } from "@/lib/masks";
-import { SENHA_TEMPORARIA_PADRAO } from "@/lib/constants";
 import { EnderecoMapaField } from "./EnderecoMapaField";
 
 interface Props {
@@ -72,7 +71,7 @@ export function EditarPoloModal({ polo, onClose, onSalvo, onAtualizado }: Props)
       return novoGestor;
     },
     onSuccess: (novoGestor) => {
-      toast.success(`Acesso criado. Senha temporária: ${SENHA_TEMPORARIA_PADRAO} (o gestor deve trocá-la no primeiro acesso).`);
+      toast.success("Acesso criado. O gestor entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso.");
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       setGestorId(novoGestor.id);
       setGestorForm(GESTOR_FORM_VAZIO);

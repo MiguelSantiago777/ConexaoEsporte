@@ -18,7 +18,7 @@ import { staggerStyle } from "@/lib/animation";
 import { EditarAlmoxarifadoModal } from "./EditarAlmoxarifadoModal";
 import { EditarCoordenadorModal } from "./EditarCoordenadorModal";
 
-const FORM_COORDENADOR_INICIAL = { nome: "", email: "", senha: "", almoxarifado_id: "" };
+const FORM_COORDENADOR_INICIAL = { nome: "", email: "", almoxarifado_id: "" };
 
 export function AlmoxarifadosPage() {
   const { temPerfil } = useAuth();
@@ -86,11 +86,13 @@ export function AlmoxarifadosPage() {
     setSalvandoCoordenador(true);
     try {
       await api.post("/usuarios", {
-        nome: formCoordenador.nome, email: formCoordenador.email, senha: formCoordenador.senha,
+        nome: formCoordenador.nome, email: formCoordenador.email,
         perfil: "COORDENADOR_ALMOXARIFADO", almoxarifado_id: formCoordenador.almoxarifado_id,
       });
       setFormCoordenador(FORM_COORDENADOR_INICIAL);
-      toast.success("Coordenador cadastrado com sucesso.");
+      toast.success(
+        "Coordenador cadastrado. Ele entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso."
+      );
       queryClient.invalidateQueries({ queryKey: ["usuarios", "coordenadores-almoxarifado"] });
     } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar coordenador."));
@@ -178,14 +180,13 @@ export function AlmoxarifadosPage() {
       {ehMaster && (
         <Card
           title="Cadastrar coordenador de almoxarifado"
-          subtitle="O coordenador só tem acesso ao almoxarifado vinculado — registra Entradas nele e acompanha o próprio saldo."
+          subtitle="O coordenador só tem acesso ao almoxarifado vinculado — registra Entradas nele e acompanha o próprio saldo. Entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso."
           className="animate-fade-in-up"
           style={staggerStyle(2)}
         >
           <form onSubmit={cadastrarCoordenador} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Nome" value={formCoordenador.nome} onChange={(e) => setFormCoordenador({ ...formCoordenador, nome: e.target.value })} required />
             <Input label="Email" type="email" value={formCoordenador.email} onChange={(e) => setFormCoordenador({ ...formCoordenador, email: e.target.value })} required />
-            <Input label="Senha" type="password" minLength={8} hint="Mínimo de 8 caracteres." value={formCoordenador.senha} onChange={(e) => setFormCoordenador({ ...formCoordenador, senha: e.target.value })} required />
             <Select label="Almoxarifado" value={formCoordenador.almoxarifado_id} onChange={(e) => setFormCoordenador({ ...formCoordenador, almoxarifado_id: e.target.value })} required>
               <option value="">Selecione…</option>
               {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
