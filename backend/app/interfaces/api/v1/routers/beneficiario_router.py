@@ -122,6 +122,7 @@ def criar_beneficiario(
         responsavel_legal_rede_social=body.responsavel_legal_rede_social,
         endereco=body.endereco, autoriza_whatsapp=body.autoriza_whatsapp,
         observacoes_medicas=body.observacoes_medicas,
+        tamanho_camisa=body.tamanho_camisa, tamanho_calcado=body.tamanho_calcado,
     )
     return BeneficiarioResponse.model_validate(criado)
 

@@ -10,7 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.domain.beneficiario.entities import Beneficiario
+from app.domain.beneficiario.entities import Beneficiario, validar_tamanhos
 from app.domain.shared.exceptions import RecursoJaExiste
 from app.infrastructure.repositories.beneficiario_repository import BeneficiarioRepository
 
@@ -38,6 +38,7 @@ class BeneficiarioService:
         responsavel_legal_telefone_2: str | None, responsavel_legal_email: str | None,
         responsavel_legal_rede_social: str | None, endereco: str | None,
         autoriza_whatsapp: bool, observacoes_medicas: str | None,
+        tamanho_camisa: str | None = None, tamanho_calcado: str | None = None,
     ) -> Beneficiario:
         """Monta e valida o beneficiário sem gravar — reaproveitado por `criar`
         e pela prévia de importação em massa (que precisa validar sem persistir)."""
@@ -59,6 +60,7 @@ class BeneficiarioService:
             responsavel_legal_rede_social=responsavel_legal_rede_social,
             endereco=endereco, autoriza_whatsapp=autoriza_whatsapp,
             observacoes_medicas=observacoes_medicas,
+            tamanho_camisa=tamanho_camisa, tamanho_calcado=tamanho_calcado,
         )
         beneficiario.validar_responsavel_legal_se_menor()
         return beneficiario
@@ -71,6 +73,7 @@ class BeneficiarioService:
         responsavel_legal_telefone_2: str | None, responsavel_legal_email: str | None,
         responsavel_legal_rede_social: str | None, endereco: str | None,
         autoriza_whatsapp: bool, observacoes_medicas: str | None,
+        tamanho_camisa: str | None = None, tamanho_calcado: str | None = None,
     ) -> Beneficiario:
         beneficiario = self.validar(
             nome_completo=nome_completo, data_nascimento=data_nascimento, documento=documento,
@@ -83,8 +86,11 @@ class BeneficiarioService:
             responsavel_legal_rede_social=responsavel_legal_rede_social,
             endereco=endereco, autoriza_whatsapp=autoriza_whatsapp,
             observacoes_medicas=observacoes_medicas,
+            tamanho_camisa=tamanho_camisa, tamanho_calcado=tamanho_calcado,
         )
         return self.repo.criar(beneficiario)
 
     def atualizar(self, beneficiario_id: UUID, **campos) -> Beneficiario | None:
+        # O PATCH grava direto no model, sem passar pelo __post_init__ da entidade.
+        validar_tamanhos(campos.get("tamanho_camisa"), campos.get("tamanho_calcado"))
         return self.repo.atualizar(beneficiario_id, **campos)

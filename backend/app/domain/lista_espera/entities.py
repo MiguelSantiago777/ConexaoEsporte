@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import UUID
 
+from app.domain.beneficiario.entities import validar_tamanhos
+
 # Faixa etária atendida pelo projeto — participantes fora disso não podem
 # se inscrever na lista de espera (ver ListaEsperaService.inscrever).
 IDADE_MINIMA_PROJETO = 6
@@ -30,6 +32,8 @@ class InscricaoListaEspera:
     modalidade_id: UUID
     polo_id: UUID
     como_conheceu: str | None
+    tamanho_camisa: str | None = None
+    tamanho_calcado: str | None = None
     # Preenchidos só no aceite (ver LiataEsperaService.aceitar) — None = pendente.
     beneficiario_id: UUID | None = None
     turma_id: UUID | None = None
@@ -46,6 +50,7 @@ class InscricaoListaEspera:
             raise ValueError("Telefone/WhatsApp é obrigatório.")
         if not self.email or not self.email.strip():
             raise ValueError("Email é obrigatório.")
+        validar_tamanhos(self.tamanho_camisa, self.tamanho_calcado)
 
     @property
     def pendente(self) -> bool:

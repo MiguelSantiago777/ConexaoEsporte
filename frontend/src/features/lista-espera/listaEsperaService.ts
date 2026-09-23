@@ -14,6 +14,8 @@ export interface InscricaoListaEsperaPayload {
   modalidade_id: string;
   polo_id: string;
   como_conheceu: string | null;
+  tamanho_camisa: string | null;
+  tamanho_calcado: string | null;
 }
 
 export async function buscarOpcoesPublicas(): Promise<OpcoesPublicasListaEspera> {

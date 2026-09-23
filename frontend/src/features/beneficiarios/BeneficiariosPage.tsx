@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { maskCPF, maskTelefone, onlyDigits } from "@/lib/masks";
 import { formatarData } from "@/lib/format";
-import { TIPOS_RELACAO } from "./constants";
+import { TAMANHOS_CALCADO, TAMANHOS_CAMISA, TIPOS_RELACAO } from "./constants";
 import { DocumentosModal } from "./DocumentosModal";
 import { EditarBeneficiarioModal } from "./EditarBeneficiarioModal";
 import { MatriculasModal } from "./MatriculasModal";
@@ -45,6 +45,8 @@ const FORM_INICIAL = {
   endereco: "",
   autoriza_whatsapp: false,
   observacoes_medicas: "",
+  tamanho_camisa: "",
+  tamanho_calcado: "",
 };
 
 type CampoDocumento =
@@ -203,6 +205,8 @@ export function BeneficiariosPage() {
         responsavel_legal_rede_social: form.responsavel_legal_rede_social || null,
         endereco: form.endereco || null,
         observacoes_medicas: form.observacoes_medicas || null,
+        tamanho_camisa: form.tamanho_camisa || null,
+        tamanho_calcado: form.tamanho_calcado || null,
       });
       await enviarDocumentos(criado.id);
       try {
@@ -409,12 +413,34 @@ export function BeneficiariosPage() {
             </div>
           </section>
 
-          <section>
-            <Input
-              label="Observações médicas"
-              value={form.observacoes_medicas}
-              onChange={(e) => setForm({ ...form, observacoes_medicas: e.target.value })}
-            />
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Select
+              label="Tamanho da camisa"
+              value={form.tamanho_camisa}
+              onChange={(e) => setForm({ ...form, tamanho_camisa: e.target.value })}
+            >
+              <option value="">Selecione</option>
+              {TAMANHOS_CAMISA.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </Select>
+            <Select
+              label="Tamanho do calçado"
+              value={form.tamanho_calcado}
+              onChange={(e) => setForm({ ...form, tamanho_calcado: e.target.value })}
+            >
+              <option value="">Selecione</option>
+              {TAMANHOS_CALCADO.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </Select>
+            <div className="sm:col-span-2">
+              <Input
+                label="Observações médicas"
+                value={form.observacoes_medicas}
+                onChange={(e) => setForm({ ...form, observacoes_medicas: e.target.value })}
+              />
+            </div>
           </section>
 
           <div>

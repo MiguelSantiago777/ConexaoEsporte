@@ -47,6 +47,7 @@ class ListaEsperaService:
         self, nome_completo: str, data_nascimento: date, documento: str, nome_responsavel: str | None,
         documento_responsavel: str | None, telefone_whatsapp: str, email: str, bairro: str | None,
         cidade: str | None, modalidade_id: UUID, polo_id: UUID, como_conheceu: str | None,
+        tamanho_camisa: str | None = None, tamanho_calcado: str | None = None,
     ) -> InscricaoListaEspera:
         modalidade = self.modalidade_repo.buscar_por_id(modalidade_id)
         if not modalidade:
@@ -60,7 +61,7 @@ class ListaEsperaService:
             nome_responsavel=nome_responsavel, documento_responsavel=documento_responsavel,
             telefone_whatsapp=telefone_whatsapp, email=email,
             bairro=bairro, cidade=cidade, modalidade_id=modalidade_id, polo_id=polo_id,
-            como_conheceu=como_conheceu,
+            como_conheceu=como_conheceu, tamanho_camisa=tamanho_camisa, tamanho_calcado=tamanho_calcado,
         )
         inscricao.validar_faixa_etaria()
         inscricao.validar_responsavel_se_menor()
@@ -104,6 +105,7 @@ class ListaEsperaService:
                 responsavel_legal_rede_social=None,
                 endereco=", ".join(p for p in [inscricao.bairro, inscricao.cidade] if p),
                 autoriza_whatsapp=True, observacoes_medicas=None,
+                tamanho_camisa=inscricao.tamanho_camisa, tamanho_calcado=inscricao.tamanho_calcado,
             )
 
         matricula = self.matricula_service.matricular(beneficiario.id, turma_id)

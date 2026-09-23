@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone, onlyDigits } from "@/lib/masks";
 import { formatarData } from "@/lib/format";
-import { TIPOS_RELACAO } from "./constants";
+import { TAMANHOS_CALCADO, TAMANHOS_CAMISA, TIPOS_RELACAO } from "./constants";
 
 interface Props {
   beneficiario: Beneficiario | null;
@@ -35,6 +35,8 @@ function formInicialDe(b: Beneficiario) {
     endereco: b.endereco ?? "",
     autoriza_whatsapp: b.autoriza_whatsapp,
     observacoes_medicas: b.observacoes_medicas ?? "",
+    tamanho_camisa: b.tamanho_camisa ?? "",
+    tamanho_calcado: b.tamanho_calcado ?? "",
   };
 }
 
@@ -67,6 +69,8 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
         endereco: payload.form.endereco || null,
         autoriza_whatsapp: payload.form.autoriza_whatsapp,
         observacoes_medicas: payload.form.observacoes_medicas || null,
+        tamanho_camisa: payload.form.tamanho_camisa || null,
+        tamanho_calcado: payload.form.tamanho_calcado || null,
       });
     },
     onSuccess: () => onSalvo(),
@@ -191,6 +195,29 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
               <span className="text-sm text-gray-700">Autorizo o envio de mensagens via WhatsApp</span>
             </label>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Select
+            label="Tamanho da camisa"
+            value={form.tamanho_camisa}
+            onChange={(e) => setForm({ ...form, tamanho_camisa: e.target.value })}
+          >
+            <option value="">Selecione</option>
+            {TAMANHOS_CAMISA.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </Select>
+          <Select
+            label="Tamanho do calçado"
+            value={form.tamanho_calcado}
+            onChange={(e) => setForm({ ...form, tamanho_calcado: e.target.value })}
+          >
+            <option value="">Selecione</option>
+            {TAMANHOS_CALCADO.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </Select>
         </div>
 
         <Input

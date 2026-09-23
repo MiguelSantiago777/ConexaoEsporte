@@ -18,6 +18,8 @@ class InscricaoListaEsperaCreateRequest(BaseModel):
     modalidade_id: UUID
     polo_id: UUID
     como_conheceu: str | None = Field(default=None, max_length=200)
+    tamanho_camisa: str | None = Field(default=None, max_length=5, examples=["10", "M"])
+    tamanho_calcado: str | None = Field(default=None, max_length=3, examples=["34"])
 
 
 class InscricaoListaEsperaResponse(BaseModel):
@@ -34,6 +36,8 @@ class InscricaoListaEsperaResponse(BaseModel):
     modalidade_id: UUID
     polo_id: UUID
     como_conheceu: str | None
+    tamanho_camisa: str | None
+    tamanho_calcado: str | None
     criado_em: datetime | None
 
     model_config = {"from_attributes": True}

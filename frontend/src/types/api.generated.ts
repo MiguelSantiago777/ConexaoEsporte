@@ -1931,6 +1931,17 @@ export interface components {
              * @description Alergias, restrições, condições médicas relevantes.
              */
             observacoes_medicas?: string | null;
+            /**
+             * Tamanho Camisa
+             * @example 10
+             * @example M
+             */
+            tamanho_camisa?: string | null;
+            /**
+             * Tamanho Calcado
+             * @example 34
+             */
+            tamanho_calcado?: string | null;
         };
         /** BeneficiarioDocumentoResponse */
         BeneficiarioDocumentoResponse: {
@@ -1993,6 +2004,10 @@ export interface components {
             autoriza_whatsapp: boolean;
             /** Observacoes Medicas */
             observacoes_medicas: string | null;
+            /** Tamanho Camisa */
+            tamanho_camisa: string | null;
+            /** Tamanho Calcado */
+            tamanho_calcado: string | null;
             /** Ativo */
             ativo: boolean;
         };
@@ -2022,6 +2037,10 @@ export interface components {
             autoriza_whatsapp?: boolean | null;
             /** Observacoes Medicas */
             observacoes_medicas?: string | null;
+            /** Tamanho Camisa */
+            tamanho_camisa?: string | null;
+            /** Tamanho Calcado */
+            tamanho_calcado?: string | null;
             /** Ativo */
             ativo?: boolean | null;
         };
@@ -2754,6 +2773,17 @@ export interface components {
             polo_id: string;
             /** Como Conheceu */
             como_conheceu?: string | null;
+            /**
+             * Tamanho Camisa
+             * @example 10
+             * @example M
+             */
+            tamanho_camisa?: string | null;
+            /**
+             * Tamanho Calcado
+             * @example 34
+             */
+            tamanho_calcado?: string | null;
         };
         /** InscricaoListaEsperaResponse */
         InscricaoListaEsperaResponse: {
@@ -2795,6 +2825,10 @@ export interface components {
             polo_id: string;
             /** Como Conheceu */
             como_conheceu: string | null;
+            /** Tamanho Camisa */
+            tamanho_camisa: string | null;
+            /** Tamanho Calcado */
+            tamanho_calcado: string | null;
             /** Criado Em */
             criado_em: string | null;
         };

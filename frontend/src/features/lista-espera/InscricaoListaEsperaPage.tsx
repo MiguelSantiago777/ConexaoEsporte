@@ -3,6 +3,7 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { buscarOpcoesPublicas, inscreverNaListaEspera } from "./listaEsperaService";
 import { CANAIS_COMO_CONHECEU } from "./constants";
+import { TAMANHOS_CALCADO, TAMANHOS_CAMISA } from "@/features/beneficiarios/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -16,7 +17,7 @@ const IDADE_MAXIMA_PROJETO = 17;
 const FORM_INICIAL = {
   nome_completo: "", data_nascimento: "", documento: "", nome_responsavel: "", documento_responsavel: "",
   telefone_whatsapp: "", email: "", bairro: "", cidade: "", modalidade_id: "", polo_id: "",
-  como_conheceu: "", como_conheceu_outro: "",
+  como_conheceu: "", como_conheceu_outro: "", tamanho_camisa: "", tamanho_calcado: "",
 };
 
 /** Fundo navy com o brasão de linhas brancas ao fundo — mesmo painel de
@@ -111,6 +112,8 @@ export function InscricaoListaEsperaPage() {
         modalidade_id: form.modalidade_id,
         polo_id: form.polo_id,
         como_conheceu: form.como_conheceu === "Outro" ? form.como_conheceu_outro || null : form.como_conheceu || null,
+        tamanho_camisa: form.tamanho_camisa || null,
+        tamanho_calcado: form.tamanho_calcado || null,
       });
       setEnviado(true);
     } catch (err: unknown) {
@@ -234,6 +237,26 @@ export function InscricaoListaEsperaPage() {
                 <option value="">Selecione</option>
                 {opcoes?.polos.map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="Tamanho da camisa" value={form.tamanho_camisa}
+                onChange={(e) => campo("tamanho_camisa")(e.target.value)} required
+              >
+                <option value="">Selecione</option>
+                {TAMANHOS_CAMISA.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+              <Select
+                label="Tamanho do calçado" value={form.tamanho_calcado}
+                onChange={(e) => campo("tamanho_calcado")(e.target.value)} required
+              >
+                <option value="">Selecione</option>
+                {TAMANHOS_CALCADO.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </Select>
             </div>

@@ -29,6 +29,8 @@ class BeneficiarioCreateRequest(BaseModel):
     observacoes_medicas: str | None = Field(
         default=None, description="Alergias, restrições, condições médicas relevantes."
     )
+    tamanho_camisa: str | None = Field(default=None, max_length=5, examples=["10", "M"])
+    tamanho_calcado: str | None = Field(default=None, max_length=3, examples=["34"])
 
 
 class BeneficiarioUpdateRequest(BaseModel):
@@ -44,6 +46,8 @@ class BeneficiarioUpdateRequest(BaseModel):
     endereco: str | None = None
     autoriza_whatsapp: bool | None = None
     observacoes_medicas: str | None = None
+    tamanho_camisa: str | None = Field(default=None, max_length=5)
+    tamanho_calcado: str | None = Field(default=None, max_length=3)
     ativo: bool | None = None
 
 
@@ -63,6 +67,8 @@ class BeneficiarioResponse(BaseModel):
     endereco: str | None
     autoriza_whatsapp: bool
     observacoes_medicas: str | None
+    tamanho_camisa: str | None
+    tamanho_calcado: str | None
     ativo: bool
 
     model_config = {"from_attributes": True}

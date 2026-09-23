@@ -21,6 +21,7 @@ def _to_entity(m: BeneficiarioModel) -> Beneficiario:
         responsavel_legal_rede_social=m.responsavel_legal_rede_social,
         endereco=m.endereco, autoriza_whatsapp=m.autoriza_whatsapp,
         observacoes_medicas=m.observacoes_medicas, ativo=m.ativo,
+        tamanho_camisa=m.tamanho_camisa, tamanho_calcado=m.tamanho_calcado,
     )
 
 
@@ -74,6 +75,7 @@ class BeneficiarioRepository:
             responsavel_legal_rede_social=beneficiario.responsavel_legal_rede_social,
             endereco=beneficiario.endereco, autoriza_whatsapp=beneficiario.autoriza_whatsapp,
             observacoes_medicas=beneficiario.observacoes_medicas, ativo=beneficiario.ativo,
+            tamanho_camisa=beneficiario.tamanho_camisa, tamanho_calcado=beneficiario.tamanho_calcado,
         )
         self.db.add(m)
         self.db.commit()

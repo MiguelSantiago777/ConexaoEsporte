@@ -16,6 +16,7 @@ def _to_entity(m: InscricaoListaEsperaModel) -> InscricaoListaEspera:
         documento_responsavel=m.documento_responsavel,
         telefone_whatsapp=m.telefone_whatsapp, email=m.email, bairro=m.bairro, cidade=m.cidade,
         modalidade_id=m.modalidade_id, polo_id=m.polo_id, como_conheceu=m.como_conheceu,
+        tamanho_camisa=m.tamanho_camisa, tamanho_calcado=m.tamanho_calcado,
         beneficiario_id=m.beneficiario_id, turma_id=m.turma_id, aceito_por_id=m.aceito_por_id,
         aceito_em=m.aceito_em, criado_em=m.criado_em,
     )
@@ -33,6 +34,7 @@ class InscricaoListaEsperaRepository:
             telefone_whatsapp=inscricao.telefone_whatsapp, email=inscricao.email,
             bairro=inscricao.bairro, cidade=inscricao.cidade, modalidade_id=inscricao.modalidade_id,
             polo_id=inscricao.polo_id, como_conheceu=inscricao.como_conheceu,
+            tamanho_camisa=inscricao.tamanho_camisa, tamanho_calcado=inscricao.tamanho_calcado,
         )
         self.db.add(m)
         self.db.commit()

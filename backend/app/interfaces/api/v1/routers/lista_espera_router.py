@@ -59,6 +59,7 @@ def inscrever(
         telefone_whatsapp=body.telefone_whatsapp, email=body.email,
         bairro=body.bairro, cidade=body.cidade, modalidade_id=body.modalidade_id, polo_id=body.polo_id,
         como_conheceu=body.como_conheceu,
+        tamanho_camisa=body.tamanho_camisa, tamanho_calcado=body.tamanho_calcado,
     )
     return InscricaoListaEsperaResponse.model_validate(inscricao)
 

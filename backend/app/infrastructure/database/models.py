@@ -154,6 +154,8 @@ class BeneficiarioModel(Base):
     endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
     autoriza_whatsapp: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     observacoes_medicas: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tamanho_camisa: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    tamanho_calcado: Mapped[str | None] = mapped_column(String(3), nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -566,6 +568,8 @@ class InscricaoListaEsperaModel(Base):
     modalidade_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("modalidades.id"), nullable=False)
     polo_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=False)
     como_conheceu: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tamanho_camisa: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    tamanho_calcado: Mapped[str | None] = mapped_column(String(3), nullable=True)
     beneficiario_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="SET NULL"), nullable=True
     )

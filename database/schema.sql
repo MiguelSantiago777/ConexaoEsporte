@@ -223,6 +223,9 @@ ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS responsavel_legal_telefone_2 
 ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS responsavel_legal_email VARCHAR(150);
 ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS responsavel_legal_rede_social VARCHAR(150);
 ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS autoriza_whatsapp BOOLEAN NOT NULL DEFAULT FALSE;
+-- Tamanhos pra entrega de uniforme/kit (camisa: 4..16 ou PP..XGG; calçado: numeração BR).
+ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS tamanho_camisa VARCHAR(5);
+ALTER TABLE beneficiarios ADD COLUMN IF NOT EXISTS tamanho_calcado VARCHAR(3);
 -- Migra o telefone antigo para telefone_1 antes de remover a coluna, se ela ainda existir.
 DO $$
 BEGIN
@@ -694,6 +697,9 @@ CREATE TABLE IF NOT EXISTS inscricoes_lista_espera (
 );
 
 CREATE INDEX IF NOT EXISTS idx_inscricoes_lista_espera_polo ON inscricoes_lista_espera(polo_id);
+-- Tamanhos informados no pré-cadastro — copiados pro beneficiário no aceite.
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS tamanho_camisa VARCHAR(5);
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS tamanho_calcado VARCHAR(3);
 
 ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_projeto VARCHAR(200);
 

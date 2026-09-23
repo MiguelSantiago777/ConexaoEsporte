@@ -20,7 +20,7 @@ def _criar_turma(client, token, polo_id, modalidade_id, limite_vagas=10):
 
 
 def _inscrever(client, polo_id, modalidade_id, documento="000.111.222-33", data_nascimento="2015-01-01",
-                nome_responsavel="Responsável Teste", documento_responsavel="11122233344"):
+                nome_responsavel="Responsável Teste", documento_responsavel="11122233344", **extras):
     return client.post(
         "/api/v1/lista-espera",
         json={
@@ -29,6 +29,7 @@ def _inscrever(client, polo_id, modalidade_id, documento="000.111.222-33", data_
             "telefone_whatsapp": "(11) 91234-5678",
             "email": "familia@test.com", "bairro": "Centro", "cidade": "São Paulo",
             "modalidade_id": modalidade_id, "polo_id": polo_id, "como_conheceu": "Instagram",
+            **extras,
         },
     )
 
@@ -259,3 +260,43 @@ def test_gestor_b_nao_aceita_inscricao_do_polo_a(client, seed_basico, _sem_envio
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert resp.status_code == 403
+
+
+def test_inscrever_com_tamanho_invalido_falha(client, seed_basico):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+
+    camisa = _inscrever(client, polo_a_id, modalidade_id, documento="44444", tamanho_camisa="XXXL")
+    assert camisa.status_code == 400
+    calcado = _inscrever(client, polo_a_id, modalidade_id, documento="55555", tamanho_calcado="99")
+    assert calcado.status_code == 400
+
+
+def test_aceitar_copia_tamanhos_da_inscricao_pro_beneficiario(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+
+    turma = _criar_turma(client, token_master, polo_a_id, modalidade_id)
+    inscricao = _inscrever(
+        client, polo_a_id, modalidade_id, documento="77777", tamanho_camisa="12", tamanho_calcado="34",
+    ).json()
+    assert (inscricao["tamanho_camisa"], inscricao["tamanho_calcado"]) == ("12", "34")
+
+    resp = client.post(
+        f"/api/v1/lista-espera/{inscricao['id']}/aceitar", json={"turma_id": turma["id"]}, headers=headers,
+    )
+    assert resp.status_code == 204, resp.text
+
+    criado = next(b for b in client.get("/api/v1/beneficiarios", headers=headers).json() if b["documento"] == "77777")
+    assert (criado["tamanho_camisa"], criado["tamanho_calcado"]) == ("12", "34")
+
+    # Edição valida os tamanhos também (o PATCH não passa pela entidade).
+    invalido = client.patch(f"/api/v1/beneficiarios/{criado['id']}", json={"tamanho_camisa": "ZZ"}, headers=headers)
+    assert invalido.status_code == 400
+    editado = client.patch(
+        f"/api/v1/beneficiarios/{criado['id']}", json={"tamanho_camisa": "P", "tamanho_calcado": "36"}, headers=headers,
+    )
+    assert editado.status_code == 200, editado.text
+    assert (editado.json()["tamanho_camisa"], editado.json()["tamanho_calcado"]) == ("P", "36")
