@@ -13,6 +13,7 @@ class LinhaImportacaoResponse(BaseModel):
     status: str
     resumo: str
     erro: str | None = None
+    aviso: str | None = None
 
 
 class ResultadoImportacaoResponse(BaseModel):
@@ -27,5 +28,8 @@ class ResultadoImportacaoResponse(BaseModel):
         return cls(
             confirmado=resultado.confirmado, total=resultado.total,
             sucesso=resultado.sucesso, falha=resultado.falha,
-            linhas=[LinhaImportacaoResponse(linha=l.linha, status=l.status, resumo=l.resumo, erro=l.erro) for l in resultado.linhas],
+            linhas=[
+                LinhaImportacaoResponse(linha=l.linha, status=l.status, resumo=l.resumo, erro=l.erro, aviso=l.aviso)
+                for l in resultado.linhas
+            ],
         )

@@ -21,9 +21,16 @@ export function ResultadoImportacaoTable({ linhas }: { linhas: LinhaImportacao[]
               <td className="px-3 py-2 align-top">
                 <div className="text-ink">{l.resumo || "—"}</div>
                 {l.erro && <div className="text-xs text-danger mt-0.5">{l.erro}</div>}
+                {l.aviso && <div className="text-xs text-accent-dark mt-0.5">{l.aviso}</div>}
               </td>
               <td className="px-3 py-2 align-top">
-                {l.status === "ok" ? <Badge variant="court">OK</Badge> : <Badge variant="danger">Erro</Badge>}
+                {l.status !== "ok" ? (
+                  <Badge variant="danger">Erro</Badge>
+                ) : l.aviso ? (
+                  <Badge variant="accent">Aviso</Badge>
+                ) : (
+                  <Badge variant="court">OK</Badge>
+                )}
               </td>
             </tr>
           ))}

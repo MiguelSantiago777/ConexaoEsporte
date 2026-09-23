@@ -19,7 +19,12 @@ from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download, resposta_relatorio
 from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
-from app.interfaces.api.v1.schemas.polo_schemas import PoloCreateRequest, PoloResponse, PoloUpdateRequest
+from app.interfaces.api.v1.schemas.polo_schemas import (
+    LocalizarPoloResponse,
+    PoloCreateRequest,
+    PoloResponse,
+    PoloUpdateRequest,
+)
 
 router = APIRouter(prefix="/polos", tags=["Polos"])
 
@@ -112,6 +117,19 @@ async def importar_polos(
     linhas = ler_planilha(await arquivo.read())
     resultado = PoloImportacaoService(db).importar(linhas, confirmar)
     return ResultadoImportacaoResponse.de_resultado(resultado)
+
+
+@router.post(
+    "/{polo_id}/localizar",
+    response_model=LocalizarPoloResponse,
+    summary="Localizar o polo no mapa pelo endereço (somente MASTER)",
+    description="Busca latitude/longitude a partir do endereço cadastrado e grava no polo. Um polo por "
+    "chamada (a busca respeita o limite de ~1 requisição/segundo do OpenStreetMap). `situacao`: "
+    "`localizado`, `aproximado` (achado só pelo bairro/cidade) ou `nao_encontrado` (nada gravado).",
+)
+def localizar_polo(polo_id: UUID, usuario: SomenteMaster, db: DbSession) -> LocalizarPoloResponse:
+    polo, situacao = PoloService(db).localizar_no_mapa(polo_id)
+    return LocalizarPoloResponse(polo=PoloResponse.model_validate(polo), situacao=situacao)
 
 
 @router.patch(

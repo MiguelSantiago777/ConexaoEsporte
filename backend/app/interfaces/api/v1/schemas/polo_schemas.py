@@ -76,3 +76,11 @@ class PoloResponse(BaseModel):
     longitude: float | None
 
     model_config = {"from_attributes": True}
+
+
+class LocalizarPoloResponse(BaseModel):
+    """Resultado de `POST /polos/{id}/localizar` — o polo (já com latitude/
+    longitude, se achou) e como foi a busca pelo endereço."""
+
+    polo: PoloResponse
+    situacao: Literal["localizado", "aproximado", "nao_encontrado"]

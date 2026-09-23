@@ -327,6 +327,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/polos/{polo_id}/localizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Localizar o polo no mapa pelo endereço (somente MASTER)
+         * @description Busca latitude/longitude a partir do endereço cadastrado e grava no polo. Um polo por chamada (a busca respeita o limite de ~1 requisição/segundo do OpenStreetMap). `situacao`: `localizado`, `aproximado` (achado só pelo bairro/cidade) ou `nao_encontrado` (nada gravado).
+         */
+        post: operations["localizar_polo_api_v1_polos__polo_id__localizar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/polos/{polo_id}": {
         parameters: {
             query?: never;
@@ -2932,6 +2952,21 @@ export interface components {
             resumo: string;
             /** Erro */
             erro?: string | null;
+            /** Aviso */
+            aviso?: string | null;
+        };
+        /**
+         * LocalizarPoloResponse
+         * @description Resultado de `POST /polos/{id}/localizar` — o polo (já com latitude/
+         *     longitude, se achou) e como foi a busca pelo endereço.
+         */
+        LocalizarPoloResponse: {
+            polo: components["schemas"]["PoloResponse"];
+            /**
+             * Situacao
+             * @enum {string}
+             */
+            situacao: "localizado" | "aproximado" | "nao_encontrado";
         };
         /** MatriculaCreateRequest */
         MatriculaCreateRequest: {
@@ -4602,6 +4637,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResultadoImportacaoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    localizar_polo_api_v1_polos__polo_id__localizar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                polo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalizarPoloResponse"];
                 };
             };
             /** @description Validation Error */

@@ -9,6 +9,7 @@ class LinhaResultado:
     status: str  # "ok" ou "erro"
     resumo: str  # identificação legível do registro (ex.: nome do beneficiário)
     erro: str | None = None
+    aviso: str | None = None  # linha importada, mas com ressalva (ex.: localização aproximada no mapa)
 
 
 @dataclass
@@ -28,8 +29,8 @@ class ResultadoImportacao:
     def falha(self) -> int:
         return sum(1 for l in self.linhas if l.status == "erro")
 
-    def adicionar_sucesso(self, linha: int, resumo: str) -> None:
-        self.linhas.append(LinhaResultado(linha=linha, status="ok", resumo=resumo))
+    def adicionar_sucesso(self, linha: int, resumo: str, aviso: str | None = None) -> None:
+        self.linhas.append(LinhaResultado(linha=linha, status="ok", resumo=resumo, aviso=aviso))
 
     def adicionar_erro(self, linha: int, resumo: str, erro: str) -> None:
         self.linhas.append(LinhaResultado(linha=linha, status="erro", resumo=resumo, erro=erro))

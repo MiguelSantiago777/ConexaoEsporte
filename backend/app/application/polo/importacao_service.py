@@ -40,7 +40,9 @@ _COLUNAS = [
     ColunaModelo(COL_RESP_TELEFONE, False, ""),
     ColunaModelo(
         COL_LATITUDE, False, "",
-        "Opcional — se ficar em branco e o Endereço estiver preenchido, o sistema busca a coordenada automaticamente.",
+        "Opcional — se ficar em branco, o sistema busca a coordenada pelo Endereço. Pra isso, escreva o "
+        "endereço completo: rua, número, bairro e cidade/UF (ex.: Rua Ibitioca, 10 - Parque Lebret - "
+        "Campos dos Goytacazes/RJ).",
     ),
     ColunaModelo(
         COL_LONGITUDE, False, "",
@@ -69,19 +71,34 @@ class PoloImportacaoService:
                 )
             return gestor.id
 
-        def resolver_coordenadas(linha: dict, endereco: str | None) -> tuple[float | None, float | None]:
+        def resolver_coordenadas(
+            linha: dict, endereco: str | None,
+        ) -> tuple[float | None, float | None, str | None]:
+            """Devolve (latitude, longitude, aviso). O aviso aparece na prévia
+            pra quem importa saber que o polo vai ficar fora do mapa (ou com
+            o pino só no bairro) — antes isso acontecia em silêncio."""
             latitude = decimal(linha, COL_LATITUDE)
             longitude = decimal(linha, COL_LONGITUDE)
-            if endereco and (latitude is None or longitude is None):
-                geocodificado = geocodificar(endereco)
-                if geocodificado:
-                    latitude, longitude = geocodificado
-            return latitude, longitude
+            if latitude is not None and longitude is not None:
+                return latitude, longitude, None
+            if not endereco:
+                return None, None, "Sem endereço nem Latitude/Longitude — o polo não vai aparecer no mapa."
+            coordenada = geocodificar(endereco)
+            if not coordenada:
+                return None, None, (
+                    "Endereço não encontrado no mapa — o polo não vai aparecer no mapa. Confira o endereço "
+                    "(rua, número, bairro e cidade) ou preencha Latitude/Longitude."
+                )
+            aviso = (
+                "Localização aproximada (pelo bairro/cidade) — ajuste o pino editando o polo, se precisar."
+                if coordenada.aproximado else None
+            )
+            return coordenada.latitude, coordenada.longitude, aviso
 
-        def processar(linha: dict) -> str:
+        def processar(linha: dict) -> tuple[str, str | None]:
             nome = texto_obrigatorio(linha, COL_NOME)
             endereco = texto(linha, COL_ENDERECO)
-            latitude, longitude = resolver_coordenadas(linha, endereco)
+            latitude, longitude, aviso = resolver_coordenadas(linha, endereco)
             dados = dict(
                 nome=nome,
                 codigo=texto(linha, COL_CODIGO),
@@ -98,6 +115,6 @@ class PoloImportacaoService:
                 self.service.criar(**dados)
             else:
                 self.service.validar(**dados)
-            return nome
+            return nome, aviso
 
         return executar_importacao(self.db, linhas, processar, confirmar)

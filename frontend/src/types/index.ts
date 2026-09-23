@@ -16,6 +16,7 @@ export type UsuarioLogado = Omit<components["schemas"]["UsuarioLogadoResponse"],
 
 export type TermoAditivo = components["schemas"]["TermoAditivoItem"];
 export type Polo = components["schemas"]["PoloResponse"];
+export type LocalizarPoloResposta = components["schemas"]["LocalizarPoloResponse"];
 
 export type ItemEntrega = components["schemas"]["ItemEntregaRequest"];
 export type EntregaMaterial = components["schemas"]["EntregaMaterialResponse"];

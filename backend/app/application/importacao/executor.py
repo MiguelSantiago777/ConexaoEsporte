@@ -1,6 +1,6 @@
 """Motor genérico de importação em massa — comum às 5 entidades importáveis.
 
-Cada entidade fornece um `processar_linha(linha) -> str` que resolve os
+Cada entidade fornece um `processar_linha(linha) -> str` (ou `(str, aviso)`) que resolve os
 nomes/e-mails digitados na planilha pra IDs, roda a mesma validação do
 cadastro individual (via `XxxService.validar`) e, se `confirmar=True`,
 persiste de fato (via `XxxService.criar`) — devolvendo um resumo legível do
@@ -28,14 +28,15 @@ from app.domain.shared.exceptions import DomainError
 def executar_importacao(
     db: Session,
     linhas: list[dict[str, str | None]],
-    processar_linha: Callable[[dict[str, str | None]], str],
+    processar_linha: Callable[[dict[str, str | None]], str | tuple[str, str | None]],
     confirmar: bool,
 ) -> ResultadoImportacao:
     resultado = ResultadoImportacao(confirmado=confirmar)
     for numero, linha in enumerate(linhas, start=2):  # linha 1 é o cabeçalho
         try:
-            resumo = processar_linha(linha)
-            resultado.adicionar_sucesso(numero, resumo)
+            retorno = processar_linha(linha)
+            resumo, aviso = retorno if isinstance(retorno, tuple) else (retorno, None)
+            resultado.adicionar_sucesso(numero, resumo, aviso)
         except (DomainError, ValueError) as e:
             db.rollback()
             resultado.adicionar_erro(numero, _resumo_bruto(linha), str(e))

@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { CadastrarPoloWizard } from "./CadastrarPoloWizard";
 import { EditarPoloModal } from "./EditarPoloModal";
+import { PolosForaDoMapaCard } from "./PolosForaDoMapaCard";
 
 const TAMANHO_PAGINA = 10;
 
@@ -78,6 +79,7 @@ export function PolosPage() {
         title="Polos"
         subtitle="Unidades onde os projetos esportivos são executados. Os dados da entidade parceira (CNPJ, objeto, vigência etc.) ficam em Configurações, já que são únicos para o projeto inteiro — o representante legal fica aqui em cada polo, já que polos diferentes podem ter representantes diferentes."
       />
+      <PolosForaDoMapaCard style={staggerStyle(0)} />
       <CadastrarPoloWizard
         onCadastrado={() => queryClient.invalidateQueries({ queryKey: ["polos"] })}
         style={staggerStyle(0)}

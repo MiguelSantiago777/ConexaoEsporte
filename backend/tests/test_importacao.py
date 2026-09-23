@@ -9,6 +9,7 @@ import io
 import openpyxl
 import pytest
 
+from app.application.importacao.geocodificacao import Coordenada
 from tests.conftest import login
 
 
@@ -205,7 +206,7 @@ def test_importar_polos_geocodifica_endereco_quando_falta_coordenada(client, see
 
     def _geocodificar_falso(endereco):
         chamadas.append(endereco)
-        return (-23.5, -46.6)
+        return Coordenada(-23.5, -46.6, aproximado=False)
 
     monkeypatch.setattr(polo_importacao_service, "geocodificar", _geocodificar_falso)
 
@@ -220,6 +221,86 @@ def test_importar_polos_geocodifica_endereco_quando_falta_coordenada(client, see
     polo = next(p for p in resp_lista.json() if p["nome"] == "Polo Geocodificado")
     assert polo["latitude"] == -23.5
     assert polo["longitude"] == -46.6
+
+
+def test_importar_polos_avisa_localizacao_aproximada_e_endereco_nao_encontrado(client, seed_basico, monkeypatch):
+    """Antes, um endereço não encontrado deixava o polo fora do mapa em
+    silêncio. Agora a linha continua OK (o polo é criado), mas com aviso."""
+    from app.application.polo import importacao_service as polo_importacao_service
+
+    respostas = {
+        "Rua Achada, 1 - Bairro: Centro/RJ": Coordenada(-22.9, -43.2, aproximado=False),
+        "Rua Só Bairro - Bairro: Freguesia/RJ": Coordenada(-22.94, -43.34, aproximado=True),
+        "Lugar Nenhum": None,
+    }
+    monkeypatch.setattr(polo_importacao_service, "geocodificar", lambda endereco: respostas[endereco])
+
+    token = login(client, "master@test.com")
+    arquivo = _planilha(
+        ["Nome*", "Endereço"],
+        [["Polo Exato", "Rua Achada, 1 - Bairro: Centro/RJ"],
+         ["Polo Aproximado", "Rua Só Bairro - Bairro: Freguesia/RJ"],
+         ["Polo Sem Mapa", "Lugar Nenhum"]],
+    )
+    resp = _upload(client, token, "/api/v1/polos/importar", arquivo, confirmar=False)
+    assert resp.status_code == 200, resp.text
+    linhas = {l["resumo"]: l for l in resp.json()["linhas"]}
+    assert all(l["status"] == "ok" for l in linhas.values())
+    assert linhas["Polo Exato"]["aviso"] is None
+    assert "aproximada" in linhas["Polo Aproximado"]["aviso"].lower()
+    assert "não vai aparecer no mapa" in linhas["Polo Sem Mapa"]["aviso"]
+
+
+def test_consultas_candidatas_limpam_enderecos_da_planilha_real():
+    """Formatos reais que o Nominatim não achava (11 de 12 de uma planilha
+    de núcleos): "Bairro:", "esquina com", "/RJ", "s/n", "Cobertura"."""
+    from app.application.importacao.geocodificacao import consultas_candidatas
+
+    def consultas(endereco):
+        return [c for c, _ in consultas_candidatas(endereco)]
+
+    assert consultas("Rua Geovani de Castro, 90  - Bairro: Freguesia/RJ")[0] == (
+        "Rua Geovani de Castro, 90, Freguesia, RJ, Brasil"
+    )
+    assert consultas("Avenida Gerémario Dantas, 436, Cobertura - Bairro: Tanque/RJ")[0] == (
+        "Avenida Gerémario Dantas, 436, Tanque, RJ, Brasil"
+    )
+    assert consultas(
+        "Rua Professora Evangelina Guedes - esquina com R: Santa Catarina - Bairro: Cidade Luz - Campos dos Goytacazes/RJ"
+    )[0] == "Rua Professora Evangelina Guedes, Cidade Luz, Campos dos Goytacazes, RJ, Brasil"
+    assert consultas("Rua Ibitioca, s/n, bairro: Parque Lebret - Campos dos Goytacazes/RJ")[0] == (
+        "Rua Ibitioca, Parque Lebret, Campos dos Goytacazes, RJ, Brasil"
+    )
+    # A última tentativa é sempre só o bairro/cidade — marcada como aproximada.
+    ultima, aproximado = consultas_candidatas("Rua Geovani de Castro, 90 - Bairro: Freguesia/RJ")[-1]
+    assert ultima == "Freguesia, RJ"
+    assert aproximado is True
+
+
+def test_localizar_polo_sem_coordenada_pelo_endereco(client, seed_basico, monkeypatch):
+    from app.application.polo import service as polo_service
+
+    monkeypatch.setattr(polo_service, "geocodificar", lambda endereco: Coordenada(-22.8, -43.4, aproximado=True))
+    token = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    criado = client.post("/api/v1/polos", json={"nome": "Polo Sem Pino", "endereco": "Rua X - Bairro: Anchieta/RJ"}, headers=headers)
+    assert criado.status_code == 201, criado.text
+
+    resp = client.post(f"/api/v1/polos/{criado.json()['id']}/localizar", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["situacao"] == "aproximado"
+    assert resp.json()["polo"]["latitude"] == -22.8
+
+    monkeypatch.setattr(polo_service, "geocodificar", lambda endereco: None)
+    resp_nada = client.post(f"/api/v1/polos/{criado.json()['id']}/localizar", headers=headers)
+    assert resp_nada.json()["situacao"] == "nao_encontrado"
+    assert resp_nada.json()["polo"]["latitude"] == -22.8  # não apaga o que já tinha
+
+    token_gestor = login(client, "gestor.a@test.com")
+    resp_gestor = client.post(
+        f"/api/v1/polos/{criado.json()['id']}/localizar", headers={"Authorization": f"Bearer {token_gestor}"}
+    )
+    assert resp_gestor.status_code == 403
 
 
 def test_importar_polos_nao_geocodifica_quando_coordenada_ja_vem_preenchida(client, seed_basico, monkeypatch):

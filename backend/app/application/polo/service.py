@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.application.importacao.geocodificacao import geocodificar
 from app.domain.polo.entities import Polo
 from app.domain.shared.exceptions import RecursoJaExiste, RecursoNaoEncontrado, RegraDeNegocioViolada
 from app.infrastructure.repositories.beneficiario_repository import BeneficiarioRepository
@@ -56,6 +57,22 @@ class PoloService:
             horario_funcionamento=horario_funcionamento, **dados_parceria,
         )
         return self.repo.criar(polo)
+
+    def localizar_no_mapa(self, polo_id: UUID) -> tuple[Polo, str]:
+        """Busca latitude/longitude pelo endereço do polo e grava. Pensado pra
+        consertar polos que ficaram fora do mapa (ex.: importados antes da
+        busca aceitar endereços como "Rua X - Bairro: Y/RJ"). Devolve o polo e
+        a situação: "localizado", "aproximado" ou "nao_encontrado"."""
+        polo = self.repo.buscar_por_id(polo_id)
+        if not polo:
+            raise RecursoNaoEncontrado("Polo não encontrado.")
+        if not polo.endereco or not polo.endereco.strip():
+            return polo, "nao_encontrado"
+        coordenada = geocodificar(polo.endereco)
+        if not coordenada:
+            return polo, "nao_encontrado"
+        atualizado = self.repo.atualizar(polo_id, latitude=coordenada.latitude, longitude=coordenada.longitude)
+        return atualizado, "aproximado" if coordenada.aproximado else "localizado"
 
     def atualizar(self, polo_id: UUID, **campos) -> Polo | None:
         if "codigo" in campos:
