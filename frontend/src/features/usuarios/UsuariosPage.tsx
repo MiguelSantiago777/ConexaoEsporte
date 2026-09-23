@@ -24,7 +24,6 @@ const PERFIS: { value: Perfil; label: string }[] = [
   { value: "MASTER", label: "Master" },
   { value: "GESTOR_POLO", label: "Gestor de Polo" },
   { value: "PROFESSOR", label: "Professor" },
-  { value: "COORDENADOR_ALMOXARIFADO", label: "Coordenador de Almoxarifado" },
   { value: "PERSONALIZADO", label: "Personalizado" },
 ];
 
@@ -156,7 +155,7 @@ export function UsuariosPage() {
             </Select>
           )}
           {form.perfil === "COORDENADOR_ALMOXARIFADO" && (
-            <Select label="Almoxarifado" value={form.almoxarifado_id} onChange={(e) => setForm({ ...form, almoxarifado_id: e.target.value })} required>
+            <Select label="Estoque" value={form.almoxarifado_id} onChange={(e) => setForm({ ...form, almoxarifado_id: e.target.value })} required>
               <option value="">Selecione…</option>
               {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
             </Select>

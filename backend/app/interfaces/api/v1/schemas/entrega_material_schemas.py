@@ -15,7 +15,8 @@ class ItemEntregaRequest(BaseModel):
     )
     almoxarifado_id: UUID | None = Field(
         default=None,
-        description="Obrigatório quando produto_id é informado — de qual almoxarifado a Saída sai.",
+        description="Legado — o estoque é único e a Saída sai do saldo total do produto. Só é "
+        "considerado se enviado (clientes antigos).",
     )
 
 

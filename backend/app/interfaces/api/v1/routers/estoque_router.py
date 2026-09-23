@@ -1,10 +1,10 @@
 """Rotas de Movimento de Estoque (Entrada/Saída de um Produto) e do
 Relatório de Estoque. Tag Swagger: 'Estoque'.
 
-ENTRADA é lançada manualmente (com nota fiscal/comprovante em anexo),
-exclusiva do MASTER. SAÍDA não tem rota própria — ela nasce automaticamente
-quando um item de uma Entrega de Materiais referencia um produto (ver
-`entrega_material_router.py`). MASTER e COORDENADOR_ALMOXARIFADO podem consultar."""
+O estoque é único. ENTRADA é lançada na tela de Estoque (comprovante
+opcional). SAÍDA vem da Baixa direta pra um polo (`POST /baixa`) ou de um
+item de Entrega de Materiais que referencia um produto (ver
+`entrega_material_router.py`)."""
 from datetime import date
 from typing import Annotated
 from uuid import UUID
@@ -21,7 +21,11 @@ from app.core.dependencies import (
 )
 from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download
-from app.interfaces.api.v1.schemas.estoque_schemas import MovimentoEstoqueResponse, RelatorioEstoqueResponse
+from app.interfaces.api.v1.schemas.estoque_schemas import (
+    BaixaEstoqueRequest,
+    MovimentoEstoqueResponse,
+    RelatorioEstoqueResponse,
+)
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
 
 router = APIRouter(prefix="/movimentos-estoque", tags=["Estoque"])
@@ -89,26 +93,41 @@ def listar_movimentos(
 @router.post(
     "", response_model=MovimentoEstoqueResponse, status_code=status.HTTP_201_CREATED,
     summary="Registrar Entrada de estoque",
-    description="MASTER pode lançar em qualquer almoxarifado. COORDENADOR_ALMOXARIFADO só no seu "
-    "próprio. O comprovante (nota fiscal, foto do recibo etc.) é obrigatório — aceita PDF, JPG, PNG "
-    "ou WEBP, até o limite configurado de tamanho.",
+    description="O comprovante (nota fiscal, foto do recibo etc.) é opcional — se enviado, aceita PDF, "
+    "JPG, PNG ou WEBP, até o limite configurado de tamanho. `almoxarifado_id` é legado (estoque único) "
+    "e pode ser omitido.",
 )
 async def registrar_entrada(
     usuario: MasterOuCoordenador, db: DbSession,
     produto_id: Annotated[UUID, Form()],
-    almoxarifado_id: Annotated[UUID, Form()],
     quantidade: Annotated[int, Form(gt=0)],
     data: Annotated[date, Form()],
-    arquivo: Annotated[UploadFile, File()],
+    arquivo: Annotated[UploadFile | None, File()] = None,
+    almoxarifado_id: Annotated[UUID | None, Form()] = None,
     observacao: Annotated[str | None, Form()] = None,
     entregue_por: Annotated[str | None, Form()] = None,
     recebido_por: Annotated[str | None, Form()] = None,
 ) -> MovimentoEstoqueResponse:
-    assert_acesso_ao_almoxarifado(usuario, almoxarifado_id, "estoque", "almoxarifados")
+    if almoxarifado_id:
+        assert_acesso_ao_almoxarifado(usuario, almoxarifado_id, "estoque", "almoxarifados")
     criado = await MovimentoEstoqueService(db).registrar_entrada(
         produto_id=produto_id, almoxarifado_id=almoxarifado_id, quantidade=quantidade, data_ref=data,
         observacao=observacao, arquivo=arquivo, criado_por_id=usuario.id,
         entregue_por=entregue_por, recebido_por=recebido_por,
+    )
+    return MovimentoEstoqueResponse.model_validate(criado)
+
+
+@router.post(
+    "/baixa", response_model=MovimentoEstoqueResponse, status_code=status.HTTP_201_CREATED,
+    summary="Dar baixa no estoque (Saída pra um polo)",
+    description="Tira a quantidade do estoque e registra o polo de destino. Recusa se a quantidade "
+    "pedida for maior que o saldo atual do produto.",
+)
+def dar_baixa(body: BaixaEstoqueRequest, usuario: MasterOuCoordenador, db: DbSession) -> MovimentoEstoqueResponse:
+    criado = MovimentoEstoqueService(db).dar_baixa(
+        produto_id=body.produto_id, polo_id=body.polo_id, quantidade=body.quantidade, data_ref=body.data,
+        observacao=body.observacao, recebido_por=body.recebido_por, criado_por_id=usuario.id,
     )
     return MovimentoEstoqueResponse.model_validate(criado)
 
@@ -119,7 +138,8 @@ def baixar_arquivo(movimento_id: UUID, usuario: CurrentUser, db: DbSession):
     movimento, conteudo = MovimentoEstoqueService(db).buscar_arquivo(movimento_id)
     if not movimento or conteudo is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comprovante não encontrado.")
-    assert_acesso_ao_almoxarifado(usuario, movimento.almoxarifado_id, "estoque", "almoxarifados")
+    if movimento.almoxarifado_id:
+        assert_acesso_ao_almoxarifado(usuario, movimento.almoxarifado_id, "estoque", "almoxarifados")
     return resposta_download(conteudo, movimento.content_type, movimento.nome_arquivo or "comprovante")
 
 

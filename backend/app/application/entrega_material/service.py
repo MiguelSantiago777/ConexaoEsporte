@@ -53,25 +53,26 @@ class EntregaMaterialService:
     def buscar(self, entrega_id: UUID) -> EntregaMaterial | None:
         return self.repo.buscar_por_id(entrega_id)
 
-    def _itens_com_produto(self, itens: list[dict]) -> list[tuple[UUID, UUID, int]]:
+    def _itens_com_produto(self, itens: list[dict]) -> list[tuple[UUID, UUID | None, int]]:
         """Extrai (produto_id, almoxarifado_id, quantidade) de cada item que
         referencia o catálogo de estoque, validando que a quantidade é um
-        inteiro positivo e que um almoxarifado foi escolhido — ambos
-        obrigatórios pra virar uma Saída de verdade."""
+        inteiro positivo. O estoque é único, então `almoxarifado_id`
+        normalmente vem vazio (None = sai do total do produto); só clientes
+        antigos ainda o enviam."""
         trincas = []
         for item in itens:
             produto_id = item.get("produto_id")
             if not produto_id:
                 continue
             almoxarifado_id = item.get("almoxarifado_id")
-            if not almoxarifado_id:
-                raise RegraDeNegocioViolada("Quando o item vem do estoque, escolha de qual almoxarifado ele sai.")
             quantidade_str = str(item.get("quantidade", "")).strip()
             if not quantidade_str.isdigit() or int(quantidade_str) <= 0:
                 raise RegraDeNegocioViolada(
                     "Quando o item vem do estoque, a quantidade deve ser um número inteiro positivo."
                 )
-            trincas.append((UUID(str(produto_id)), UUID(str(almoxarifado_id)), int(quantidade_str)))
+            trincas.append((
+                UUID(str(produto_id)), UUID(str(almoxarifado_id)) if almoxarifado_id else None, int(quantidade_str),
+            ))
         return trincas
 
     def criar(
@@ -84,12 +85,12 @@ class EntregaMaterialService:
 
         itens_com_produto = self._itens_com_produto(itens)
 
-        # Valida estoque suficiente de cada par (produto, almoxarifado) ANTES
-        # de criar qualquer coisa — evita a entrega ficar registrada com só
-        # parte das saídas se faltar estoque de um item no meio da lista. Um
-        # produto pode ter saldo num almoxarifado e não ter em outro, então a
-        # checagem é sempre por par, nunca pelo total do produto.
-        pedido_por_par: dict[tuple[UUID, UUID], int] = {}
+        # Valida estoque suficiente de cada produto ANTES de criar qualquer
+        # coisa — evita a entrega ficar registrada com só parte das saídas se
+        # faltar estoque de um item no meio da lista. Sem almoxarifado (o
+        # normal agora) confere o saldo total do produto; com almoxarifado
+        # (clientes antigos), o daquele almoxarifado.
+        pedido_por_par: dict[tuple[UUID, UUID | None], int] = {}
         for produto_id, almoxarifado_id, quantidade in itens_com_produto:
             chave = (produto_id, almoxarifado_id)
             pedido_por_par[chave] = pedido_por_par.get(chave, 0) + quantidade
@@ -97,13 +98,12 @@ class EntregaMaterialService:
             produto = self.produto_repo.buscar_por_id(produto_id)
             if not produto:
                 raise RecursoNaoEncontrado("Produto do estoque não encontrado.")
-            almoxarifado = self.almoxarifado_repo.buscar_por_id(almoxarifado_id)
-            if not almoxarifado:
-                raise RecursoNaoEncontrado("Almoxarifado não encontrado.")
+            if almoxarifado_id and not self.almoxarifado_repo.buscar_por_id(almoxarifado_id):
+                raise RecursoNaoEncontrado("Estoque não encontrado.")
             saldo = self.produto_repo.saldo_atual(produto_id, almoxarifado_id)
             if quantidade_pedida > saldo:
                 raise RegraDeNegocioViolada(
-                    f'Estoque insuficiente de "{produto.nome}" no almoxarifado "{almoxarifado.nome}": '
+                    f'Estoque insuficiente de "{produto.nome}": '
                     f"disponível {saldo} {produto.unidade_medida}, pedido {quantidade_pedida}."
                 )
 
@@ -120,7 +120,7 @@ class EntregaMaterialService:
             for produto_id, almoxarifado_id, quantidade in itens_com_produto:
                 movimento_service.registrar_saida(
                     produto_id=produto_id, almoxarifado_id=almoxarifado_id, quantidade=quantidade,
-                    data_ref=data_movimento,
+                    data_ref=data_movimento, polo_id=polo_id,
                     entrega_material_id=criada.id, criado_por_id=criado_por_id,
                 )
 

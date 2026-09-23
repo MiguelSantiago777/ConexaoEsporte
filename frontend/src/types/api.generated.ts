@@ -141,7 +141,7 @@ export interface paths {
         put?: never;
         /**
          * Cadastrar usuário (funcionário)
-         * @description **MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo. Se `senha` for omitida, o usuário recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha') em vez de ganhar uma senha escolhida por quem cadastrou.
+         * @description **MASTER** pode cadastrar qualquer perfil. **GESTOR_POLO** pode cadastrar apenas **PROFESSOR**, sempre vinculado ao seu próprio polo. Se `senha` for omitida, o usuário recebe a senha temporária padrão (informe-a a ele por fora) e é obrigado a trocá-la no primeiro acesso.
          */
         post: operations["criar_usuario_api_v1_usuarios_post"];
         delete?: never;
@@ -178,7 +178,7 @@ export interface paths {
         put?: never;
         /**
          * Importar usuários/professores em massa a partir de planilha (.xlsx)
-         * @description Envie o arquivo preenchido a partir do modelo (`GET /usuarios/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado, nenhum e-mail é enviado. Com `confirmar=true` grava as linhas válidas (pulando as com erro) e envia a cada uma um e-mail com uma senha temporária gerada aleatoriamente — a senha nunca vem da planilha.
+         * @description Envie o arquivo preenchido a partir do modelo (`GET /usuarios/importar/modelo`). Com `confirmar=false` (padrão) só valida e devolve a prévia — nada é gravado, nenhum e-mail é enviado. Com `confirmar=true` grava as linhas válidas (pulando as com erro); cada uma recebe a senha temporária padrão (obrigada a trocá-la no primeiro acesso) e, como bônus, um e-mail de aviso — a senha nunca vem da planilha.
          */
         post: operations["importar_usuarios_api_v1_usuarios_importar_post"];
         delete?: never;
@@ -1277,9 +1277,29 @@ export interface paths {
         put?: never;
         /**
          * Registrar Entrada de estoque
-         * @description MASTER pode lançar em qualquer almoxarifado. COORDENADOR_ALMOXARIFADO só no seu próprio. O comprovante (nota fiscal, foto do recibo etc.) é obrigatório — aceita PDF, JPG, PNG ou WEBP, até o limite configurado de tamanho.
+         * @description O comprovante (nota fiscal, foto do recibo etc.) é opcional — se enviado, aceita PDF, JPG, PNG ou WEBP, até o limite configurado de tamanho. `almoxarifado_id` é legado (estoque único) e pode ser omitido.
          */
         post: operations["registrar_entrada_api_v1_movimentos_estoque_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movimentos-estoque/baixa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dar baixa no estoque (Saída pra um polo)
+         * @description Tira a quantidade do estoque e registra o polo de destino. Recusa se a quantidade pedida for maior que o saldo atual do produto.
+         */
+        post: operations["dar_baixa_api_v1_movimentos_estoque_baixa_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1815,6 +1835,36 @@ export interface components {
              */
             observacoes: string;
         };
+        /**
+         * BaixaEstoqueRequest
+         * @description Saída direta pela tela de Estoque — quanto sai e pra qual polo vai.
+         */
+        BaixaEstoqueRequest: {
+            /**
+             * Produto Id
+             * Format: uuid
+             */
+            produto_id: string;
+            /**
+             * Polo Id
+             * Format: uuid
+             */
+            polo_id: string;
+            /** Quantidade */
+            quantidade: number;
+            /**
+             * Data
+             * Format: date
+             */
+            data: string;
+            /**
+             * Recebido Por
+             * @description Quem retirou/recebeu o material.
+             */
+            recebido_por?: string | null;
+            /** Observacao */
+            observacao?: string | null;
+        };
         /** BeneficiarioCreateRequest */
         BeneficiarioCreateRequest: {
             /** Nome Completo */
@@ -1964,12 +2014,18 @@ export interface components {
             polo_id: string;
             /** Titulo */
             titulo: string;
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post */
         Body_enviar_comprovante_api_v1_entregas_materiais__entrega_id__comprovante_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
             /** Recebido Por */
             recebido_por?: string | null;
@@ -1981,7 +2037,10 @@ export interface components {
              * @enum {string}
              */
             tipo: "FOTO" | "DOCUMENTO" | "CONTRATO";
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_enviar_documentos_api_v1_beneficiarios__beneficiario_id__documentos_post */
@@ -2014,27 +2073,42 @@ export interface components {
         };
         /** Body_importar_beneficiarios_api_v1_beneficiarios_importar_post */
         Body_importar_beneficiarios_api_v1_beneficiarios_importar_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_importar_polos_api_v1_polos_importar_post */
         Body_importar_polos_api_v1_polos_importar_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_importar_produtos_api_v1_produtos_importar_post */
         Body_importar_produtos_api_v1_produtos_importar_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_importar_turmas_api_v1_turmas_importar_post */
         Body_importar_turmas_api_v1_turmas_importar_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_importar_usuarios_api_v1_usuarios_importar_post */
         Body_importar_usuarios_api_v1_usuarios_importar_post: {
-            /** Arquivo */
+            /**
+             * Arquivo
+             * Format: binary
+             */
             arquivo: string;
         };
         /** Body_login_api_v1_auth_login_post */
@@ -2043,10 +2117,7 @@ export interface components {
             grant_type?: string | null;
             /** Username */
             username: string;
-            /**
-             * Password
-             * Format: password
-             */
+            /** Password */
             password: string;
             /**
              * Scope
@@ -2055,10 +2126,7 @@ export interface components {
             scope: string;
             /** Client Id */
             client_id?: string | null;
-            /**
-             * Client Secret
-             * Format: password
-             */
+            /** Client Secret */
             client_secret?: string | null;
         };
         /** Body_registrar_entrada_api_v1_movimentos_estoque_post */
@@ -2068,11 +2136,6 @@ export interface components {
              * Format: uuid
              */
             produto_id: string;
-            /**
-             * Almoxarifado Id
-             * Format: uuid
-             */
-            almoxarifado_id: string;
             /** Quantidade */
             quantidade: number;
             /**
@@ -2081,7 +2144,9 @@ export interface components {
              */
             data: string;
             /** Arquivo */
-            arquivo: string;
+            arquivo?: string | null;
+            /** Almoxarifado Id */
+            almoxarifado_id?: string | null;
             /** Observacao */
             observacao?: string | null;
             /** Entregue Por */
@@ -2740,7 +2805,7 @@ export interface components {
             produto_id?: string | null;
             /**
              * Almoxarifado Id
-             * @description Obrigatório quando produto_id é informado — de qual almoxarifado a Saída sai.
+             * @description Legado — o estoque é único e a Saída sai do saldo total do produto. Só é considerado se enviado (clientes antigos).
              */
             almoxarifado_id?: string | null;
         };
@@ -2953,11 +3018,10 @@ export interface components {
              * Format: uuid
              */
             produto_id: string;
-            /**
-             * Almoxarifado Id
-             * Format: uuid
-             */
-            almoxarifado_id: string;
+            /** Almoxarifado Id */
+            almoxarifado_id: string | null;
+            /** Polo Id */
+            polo_id?: string | null;
             /** Tipo */
             tipo: string;
             /** Quantidade */
@@ -3296,6 +3360,17 @@ export interface components {
             unidade_medida: string;
             /** Descricao */
             descricao?: string | null;
+            /**
+             * Ncm
+             * @example 9506.62.00
+             */
+            ncm?: string | null;
+            /**
+             * Quantidade
+             * @description Quantidade que já existe em estoque — lança a Entrada inicial junto com o cadastro.
+             * @default 0
+             */
+            quantidade: number;
         };
         /** ProdutoResponse */
         ProdutoResponse: {
@@ -3308,6 +3383,8 @@ export interface components {
             nome: string;
             /** Unidade Medida */
             unidade_medida: string;
+            /** Ncm */
+            ncm?: string | null;
             /** Descricao */
             descricao: string | null;
             /** Ativo */
@@ -3326,6 +3403,11 @@ export interface components {
             unidade_medida?: string | null;
             /** Descricao */
             descricao?: string | null;
+            /**
+             * Ncm
+             * @description Envie "" pra apagar o NCM.
+             */
+            ncm?: string | null;
             /** Ativo */
             ativo?: boolean | null;
         };
@@ -3764,7 +3846,7 @@ export interface components {
             email: string;
             /**
              * Senha
-             * @description Opcional: se omitida, o usuário é criado sem senha utilizável e recebe por email um link de 'defina sua senha' (mesmo fluxo de 'esqueci minha senha').
+             * @description Opcional: se omitida, o usuário recebe a senha temporária padrão e é obrigado a trocá-la no primeiro acesso.
              */
             senha?: string | null;
             perfil: components["schemas"]["PerfilUsuario"];
@@ -3844,8 +3926,11 @@ export interface components {
             almoxarifado_nome?: string | null;
             /** Modulos */
             modulos?: string[];
-            /** Deve Trocar Senha */
-            deve_trocar_senha?: boolean;
+            /**
+             * Deve Trocar Senha
+             * @default false
+             */
+            deve_trocar_senha: boolean;
         };
         /** UsuarioResponse */
         UsuarioResponse: {
@@ -3909,10 +3994,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -6716,6 +6797,39 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_registrar_entrada_api_v1_movimentos_estoque_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoEstoqueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dar_baixa_api_v1_movimentos_estoque_baixa_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BaixaEstoqueRequest"];
             };
         };
         responses: {

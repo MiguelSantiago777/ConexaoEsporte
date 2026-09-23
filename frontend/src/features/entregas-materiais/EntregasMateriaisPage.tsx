@@ -1,8 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { EntregaMaterial, ItemEntrega, Pagina, Polo, Produto, SaldoAlmoxarifado } from "@/types";
+import type { EntregaMaterial, ItemEntrega, Pagina, Polo, Produto } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,7 +19,7 @@ import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage"
 import { useAuth } from "@/features/auth/AuthContext";
 import { ConfirmarRecebimentoModal } from "./ConfirmarRecebimentoModal";
 
-const ITEM_VAZIO: ItemEntrega = { descricao: "", quantidade: "", produto_id: undefined, almoxarifado_id: undefined };
+const ITEM_VAZIO: ItemEntrega = { descricao: "", quantidade: "", produto_id: undefined };
 const TAMANHO_PAGINA = 10;
 
 export function EntregasMateriaisPage() {
@@ -57,21 +57,6 @@ export function EntregasMateriaisPage() {
   const [entreguePor, setEntreguePor] = useState("");
   const [itens, setItens] = useState<ItemEntrega[]>([{ ...ITEM_VAZIO }]);
 
-  // --- Saldo por almoxarifado de cada produto escolhido num item — busca
-  // sob demanda (não dá pra usar useQuery dentro do .map dos itens), só uma
-  // vez por produto, pra popular o <select> de Almoxarifado daquele item. ---
-  const [saldosPorProduto, setSaldosPorProduto] = useState<Record<string, SaldoAlmoxarifado[]>>({});
-  useEffect(() => {
-    const idsUnicos = [...new Set(itens.map((i) => i.produto_id).filter((id): id is string => !!id))];
-    idsUnicos.forEach((id) => {
-      if (saldosPorProduto[id]) return;
-      api.get<SaldoAlmoxarifado[]>(`/produtos/${id}/saldos-por-almoxarifado`).then((r) => {
-        setSaldosPorProduto((atual) => ({ ...atual, [id]: r.data }));
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itens]);
-
   const [usuarioAnterior, setUsuarioAnterior] = useState(usuario);
   if (usuario !== usuarioAnterior) {
     setUsuarioAnterior(usuario);
@@ -94,15 +79,10 @@ export function EntregasMateriaisPage() {
         return {
           ...item,
           produto_id: produtoId || undefined,
-          almoxarifado_id: undefined,
           descricao: produto ? produto.nome : item.descricao,
         };
       })
     );
-  }
-
-  function selecionarAlmoxarifadoItem(idx: number, almoxarifadoId: string) {
-    setItens((lista) => lista.map((item, i) => (i === idx ? { ...item, almoxarifado_id: almoxarifadoId || undefined } : item)));
   }
 
   function removerItem(idx: number) {
@@ -194,9 +174,8 @@ export function EntregasMateriaisPage() {
             </p>
             <div className="space-y-2">
               {itens.map((item, idx) => {
-                const saldosDoProduto = item.produto_id ? saldosPorProduto[item.produto_id] ?? [] : [];
                 return (
-                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_100px_auto] gap-2 items-end">
+                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_100px_auto] gap-2 items-end">
                     <Select
                       label={idx === 0 ? "Produto do estoque (opcional)" : undefined}
                       value={item.produto_id ?? ""}
@@ -204,18 +183,6 @@ export function EntregasMateriaisPage() {
                     >
                       <option value="">— Item livre —</option>
                       {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} (saldo: {p.saldo_atual})</option>)}
-                    </Select>
-                    <Select
-                      label={idx === 0 ? "Almoxarifado" : undefined}
-                      value={item.almoxarifado_id ?? ""}
-                      onChange={(e) => selecionarAlmoxarifadoItem(idx, e.target.value)}
-                      disabled={!item.produto_id}
-                      required={!!item.produto_id}
-                    >
-                      <option value="">{item.produto_id ? "— Selecione —" : "— (item livre) —"}</option>
-                      {saldosDoProduto.map((s) => (
-                        <option key={s.almoxarifado_id} value={s.almoxarifado_id}>{s.almoxarifado_nome} (saldo: {s.saldo})</option>
-                      ))}
                     </Select>
                     <Input
                       label={idx === 0 ? "Descrição do item" : undefined}

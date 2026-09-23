@@ -83,7 +83,7 @@ def buscar_almoxarifado(almoxarifado_id: UUID, usuario: CurrentUser, db: DbSessi
     assert_acesso_ao_almoxarifado(usuario, almoxarifado_id, "almoxarifados", "estoque")
     almoxarifado = AlmoxarifadoService(db).buscar(almoxarifado_id)
     if not almoxarifado:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Almoxarifado não encontrado.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estoque não encontrado.")
     return AlmoxarifadoResponse.model_validate(almoxarifado)
 
 

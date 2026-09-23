@@ -258,6 +258,42 @@ def test_importar_produtos(client, seed_basico):
     assert corpo["falha"] == 0
 
 
+def test_importar_produtos_com_quantidade_e_ncm(client, seed_basico):
+    """Quantidade vira a Entrada inicial no estoque; NCM aceita pontuação e
+    também número (Excel sem formatação de texto perde o zero à esquerda)."""
+    token = login(client, "master@test.com")
+    arquivo = _planilha(
+        ["Nome*", "Unidade de medida*", "Quantidade", "NCM", "Descrição"],
+        [
+            ["Bola de futebol", "unidade", 25, "9506.62.00", ""],
+            ["Rede", "unidade", "", 1012100, ""],
+            ["Cone", "unidade", 5, "123", ""],  # NCM inválido
+        ],
+    )
+    resp = _upload(client, token, "/api/v1/produtos/importar", arquivo, confirmar=True)
+    assert resp.status_code == 200, resp.text
+    corpo = resp.json()
+    assert corpo["sucesso"] == 2
+    assert corpo["falha"] == 1
+
+    produtos = client.get("/api/v1/produtos", headers={"Authorization": f"Bearer {token}"}).json()
+    por_nome = {p["nome"]: p for p in produtos}
+    assert por_nome["Bola de futebol"]["saldo_atual"] == 25
+    assert por_nome["Bola de futebol"]["ncm"] == "95066200"
+    assert por_nome["Rede"]["saldo_atual"] == 0
+    assert por_nome["Rede"]["ncm"] == "01012100"
+    assert "Cone" not in por_nome
+
+
+def test_modelo_de_importacao_de_produtos_tem_quantidade_e_ncm(client, seed_basico):
+    token = login(client, "master@test.com")
+    resp = client.get("/api/v1/produtos/importar/modelo", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content))
+    cabecalho = [c.value for c in wb["Dados"][1]]
+    assert cabecalho == ["Nome*", "Unidade de medida*", "Descrição", "Quantidade", "NCM"]
+
+
 def test_gestor_polo_nao_pode_importar_produtos(client, seed_basico):
     token = login(client, "gestor.a@test.com")
     arquivo = _planilha(["Nome*", "Unidade de medida*", "Descrição"], [["Bola", "unidade", ""]])

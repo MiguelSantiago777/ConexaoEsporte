@@ -11,7 +11,7 @@ MODULOS_SISTEMA: dict[str, str] = {
     "professores": "Professores",
     "turmas": "Turmas",
     "modalidades": "Modalidades",
-    "almoxarifados": "Almoxarifados",
+    "almoxarifados": "Estoque (cadastro)",
     "estoque": "Estoque",
     "entregas_materiais": "Entregas de Materiais",
     "relatorios_gerenciais": "Relatórios",

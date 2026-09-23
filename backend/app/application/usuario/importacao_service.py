@@ -25,7 +25,7 @@ COL_NOME = "Nome*"
 COL_EMAIL = "E-mail*"
 COL_PERFIL = "Perfil*"
 COL_POLO = "Polo"
-COL_ALMOXARIFADO = "Almoxarifado"
+COL_ALMOXARIFADO = "Estoque"
 COL_PAPEL = "Papel (Central de Acessos)"
 COL_TELEFONE = "Telefone"
 COL_CARGA_HORARIA = "Carga horária semanal"
@@ -43,7 +43,7 @@ def _colunas(perfis_disponiveis: list[PerfilUsuario], incluir_polo: bool) -> lis
             ColunaModelo(COL_POLO, False, "Polo Zona Norte", "Obrigatório para perfil GESTOR_POLO ou PROFESSOR.")
         )
     colunas += [
-        ColunaModelo(COL_ALMOXARIFADO, False, "", "Obrigatório para perfil COORDENADOR_ALMOXARIFADO."),
+        ColunaModelo(COL_ALMOXARIFADO, False, "", "Obrigatório para o perfil de Coordenador de Estoque."),
         ColunaModelo(COL_PAPEL, False, "", "Obrigatório para perfil PERSONALIZADO (Central de Acessos)."),
         ColunaModelo(COL_TELEFONE, False, "(11) 91234-5678"),
         ColunaModelo(COL_CARGA_HORARIA, False, "20h"),

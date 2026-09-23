@@ -19,6 +19,12 @@ export function maskCEP(value: string): string {
   return digits.replace(/(\d{5})(\d)/, "$1-$2");
 }
 
+/** NCM (Nomenclatura Comum do Mercosul): 8 dígitos exibidos como 0000.00.00. */
+export function maskNCM(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits.replace(/(\d{4})(\d)/, "$1.$2").replace(/(\d{4}\.\d{2})(\d)/, "$1.$2");
+}
+
 export function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }

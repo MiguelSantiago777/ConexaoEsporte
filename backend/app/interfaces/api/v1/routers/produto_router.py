@@ -33,8 +33,8 @@ def _com_saldo(service: ProdutoService, produtos) -> list[ProdutoResponse]:
     saldos = service.saldos_em_lote([p.id for p in produtos])
     return [
         ProdutoResponse(
-            id=p.id, nome=p.nome, unidade_medida=p.unidade_medida, descricao=p.descricao, ativo=p.ativo,
-            saldo_atual=saldos.get(p.id, 0),
+            id=p.id, nome=p.nome, unidade_medida=p.unidade_medida, ncm=p.ncm, descricao=p.descricao,
+            ativo=p.ativo, saldo_atual=saldos.get(p.id, 0),
         )
         for p in produtos
     ]
@@ -92,10 +92,13 @@ def saldos_por_almoxarifado(produto_id: UUID, usuario: CurrentUser, db: DbSessio
 )
 def criar_produto(body: ProdutoCreateRequest, usuario: SomenteMaster, db: DbSession) -> ProdutoResponse:
     service = ProdutoService(db)
-    criado = service.criar(nome=body.nome, unidade_medida=body.unidade_medida, descricao=body.descricao)
+    criado = service.criar(
+        nome=body.nome, unidade_medida=body.unidade_medida, descricao=body.descricao,
+        ncm=body.ncm, quantidade_inicial=body.quantidade, criado_por_id=usuario.id,
+    )
     return ProdutoResponse(
-        id=criado.id, nome=criado.nome, unidade_medida=criado.unidade_medida, descricao=criado.descricao,
-        ativo=criado.ativo, saldo_atual=0,
+        id=criado.id, nome=criado.nome, unidade_medida=criado.unidade_medida, ncm=criado.ncm,
+        descricao=criado.descricao, ativo=criado.ativo, saldo_atual=body.quantidade,
     )
 
 
@@ -126,7 +129,7 @@ async def importar_produtos(
     confirmar: bool = Query(False),
 ) -> ResultadoImportacaoResponse:
     linhas = ler_planilha(await arquivo.read())
-    resultado = ProdutoImportacaoService(db).importar(linhas, confirmar)
+    resultado = ProdutoImportacaoService(db).importar(linhas, confirmar, criado_por_id=usuario.id)
     return ResultadoImportacaoResponse.de_resultado(resultado)
 
 
@@ -135,10 +138,11 @@ def editar_produto(produto_id: UUID, body: ProdutoUpdateRequest, usuario: Soment
     service = ProdutoService(db)
     atualizado = service.atualizar(
         produto_id, nome=body.nome, unidade_medida=body.unidade_medida, descricao=body.descricao, ativo=body.ativo,
+        ncm=body.ncm,
     )
     saldo = service.saldo_atual(produto_id)
     return ProdutoResponse(
-        id=atualizado.id, nome=atualizado.nome, unidade_medida=atualizado.unidade_medida,
+        id=atualizado.id, nome=atualizado.nome, unidade_medida=atualizado.unidade_medida, ncm=atualizado.ncm,
         descricao=atualizado.descricao, ativo=atualizado.ativo, saldo_atual=saldo,
     )
 

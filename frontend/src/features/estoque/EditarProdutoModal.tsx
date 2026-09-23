@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
+import { maskNCM } from "@/lib/masks";
 import type { Produto } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -16,14 +17,14 @@ interface Props {
 
 export function EditarProdutoModal({ produto, onClose, onSalvo }: Props) {
   const toast = useToast();
-  const [form, setForm] = useState({ nome: "", unidade_medida: "", descricao: "", ativo: true });
+  const [form, setForm] = useState({ nome: "", unidade_medida: "", ncm: "", descricao: "", ativo: true });
   const [produtoAnterior, setProdutoAnterior] = useState(produto);
 
   if (produto !== produtoAnterior) {
     setProdutoAnterior(produto);
     if (produto) {
       setForm({
-        nome: produto.nome, unidade_medida: produto.unidade_medida,
+        nome: produto.nome, unidade_medida: produto.unidade_medida, ncm: maskNCM(produto.ncm ?? ""),
         descricao: produto.descricao ?? "", ativo: produto.ativo,
       });
     }
@@ -33,6 +34,8 @@ export function EditarProdutoModal({ produto, onClose, onSalvo }: Props) {
     mutationFn: (payload: { id: string } & typeof form) =>
       api.patch(`/produtos/${payload.id}`, {
         nome: payload.nome, unidade_medida: payload.unidade_medida,
+        // "" apaga o NCM no backend; mandar sempre mantém o campo em sincronia com o form.
+        ncm: payload.ncm,
         descricao: payload.descricao || null, ativo: payload.ativo,
       }),
     onSuccess: () => onSalvo(),
@@ -51,8 +54,15 @@ export function EditarProdutoModal({ produto, onClose, onSalvo }: Props) {
     <Modal open={!!produto} onClose={onClose} title={`Editar — ${produto.nome}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
-        <Input label="Unidade de medida" value={form.unidade_medida} onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })} required />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Unidade de medida" value={form.unidade_medida} onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })} required />
+          <Input label="NCM (opcional)" placeholder="0000.00.00" inputMode="numeric" value={form.ncm}
+            onChange={(e) => setForm({ ...form, ncm: maskNCM(e.target.value) })} />
+        </div>
         <Input label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
+        <p className="text-xs text-gray-500">
+          Para mudar a quantidade em estoque, use os botões <strong>Entrada</strong> e <strong>Dar baixa</strong> na lista.
+        </p>
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className="rounded border-gray-300 text-brand focus:ring-brand" />
           Produto ativo

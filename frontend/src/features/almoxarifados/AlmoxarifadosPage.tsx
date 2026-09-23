@@ -43,10 +43,10 @@ export function AlmoxarifadosPage() {
     try {
       await api.post("/almoxarifados", { nome: form.nome, descricao: form.descricao || null });
       setForm({ nome: "", descricao: "" });
-      toast.success("Almoxarifado cadastrado com sucesso.");
+      toast.success("Estoque cadastrado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["almoxarifados"] });
     } catch (err: unknown) {
-      toast.error(mensagemErroApi(err, "Erro ao cadastrar almoxarifado."));
+      toast.error(mensagemErroApi(err, "Erro ao cadastrar estoque."));
     } finally {
       setSalvando(false);
     }
@@ -55,14 +55,14 @@ export function AlmoxarifadosPage() {
   const removerMutation = useMutation({
     mutationFn: (a: Almoxarifado) => api.delete(`/almoxarifados/${a.id}`),
     onSuccess: () => {
-      toast.success("Almoxarifado removido.");
+      toast.success("Estoque removido.");
       queryClient.invalidateQueries({ queryKey: ["almoxarifados"] });
     },
-    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover almoxarifado.")),
+    onError: (err: unknown) => toast.error(mensagemErroApi(err, "Erro ao remover estoque.")),
   });
 
   function removerAlmoxarifado(a: Almoxarifado) {
-    if (!window.confirm(`Remover o almoxarifado "${a.nome}"?`)) return;
+    if (!window.confirm(`Remover o estoque "${a.nome}"?`)) return;
     removerMutation.mutate(a);
   }
 
@@ -124,14 +124,14 @@ export function AlmoxarifadosPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Almoxarifados"
+        title="Estoque"
         subtitle="Locais físicos onde o estoque central fica guardado — o saldo de cada produto é controlado separadamente em cada um."
       />
 
       {podeGerenciarAlmoxarifados && (
-        <Card title="Cadastrar almoxarifado" className="animate-fade-in-up" style={staggerStyle(0)}>
+        <Card title="Cadastrar estoque" className="animate-fade-in-up" style={staggerStyle(0)}>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Nome" placeholder="ex.: Almoxarifado Central" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
+            <Input label="Nome" placeholder="ex.: Estoque Central" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
             <Input label="Descrição (opcional)" placeholder="ex.: Sede, Rua X, 123" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
             <div className="sm:col-span-2">
               <Button type="submit" disabled={salvando}>{salvando ? "Cadastrando…" : "Cadastrar"}</Button>
@@ -141,15 +141,15 @@ export function AlmoxarifadosPage() {
       )}
 
       <Card
-        title="Almoxarifados"
+        title="Estoques"
         actions={<Badge variant="accent">{almoxarifados.length}</Badge>}
         className="animate-fade-in-up"
         style={staggerStyle(1)}
       >
         {carregando ? (
-          <Spinner label="Carregando almoxarifados…" />
+          <Spinner label="Carregando estoques…" />
         ) : almoxarifados.length === 0 ? (
-          <EmptyState message="Nenhum almoxarifado cadastrado ainda." />
+          <EmptyState message="Nenhum estoque cadastrado ainda." />
         ) : (
           <ul className="divide-y divide-gray-100">
             {almoxarifados.map((a) => (
@@ -179,15 +179,15 @@ export function AlmoxarifadosPage() {
 
       {ehMaster && (
         <Card
-          title="Cadastrar coordenador de almoxarifado"
-          subtitle="O coordenador só tem acesso ao almoxarifado vinculado — registra Entradas nele e acompanha o próprio saldo. Entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso."
+          title="Cadastrar coordenador de estoque"
+          subtitle="O coordenador só tem acesso ao estoque vinculado — registra Entradas nele e acompanha o próprio saldo. Entra com a senha temporária padrão e é obrigado a trocá-la no primeiro acesso."
           className="animate-fade-in-up"
           style={staggerStyle(2)}
         >
           <form onSubmit={cadastrarCoordenador} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Nome" value={formCoordenador.nome} onChange={(e) => setFormCoordenador({ ...formCoordenador, nome: e.target.value })} required />
             <Input label="Email" type="email" value={formCoordenador.email} onChange={(e) => setFormCoordenador({ ...formCoordenador, email: e.target.value })} required />
-            <Select label="Almoxarifado" value={formCoordenador.almoxarifado_id} onChange={(e) => setFormCoordenador({ ...formCoordenador, almoxarifado_id: e.target.value })} required>
+            <Select label="Estoque" value={formCoordenador.almoxarifado_id} onChange={(e) => setFormCoordenador({ ...formCoordenador, almoxarifado_id: e.target.value })} required>
               <option value="">Selecione…</option>
               {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
             </Select>
@@ -200,7 +200,7 @@ export function AlmoxarifadosPage() {
 
       {ehMaster && (
         <Card
-          title="Coordenadores de almoxarifado"
+          title="Coordenadores de estoque"
           actions={<Badge variant="accent">{coordenadores.length}</Badge>}
           className="animate-fade-in-up"
           style={staggerStyle(3)}

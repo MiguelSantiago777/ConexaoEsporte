@@ -41,7 +41,7 @@ const ENTIDADES: EntidadeImportavel[] = [
   },
   {
     recurso: "produtos", titulo: "Produtos",
-    descricao: "Catálogo de produtos do Estoque.",
+    descricao: "Produtos do Estoque, com quantidade inicial e NCM.",
     icon: StackIcon, queryKey: "produtos",
     nomeArquivoModelo: "modelo-importacao-produtos.xlsx",
   },

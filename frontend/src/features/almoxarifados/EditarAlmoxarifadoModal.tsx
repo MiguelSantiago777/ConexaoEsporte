@@ -48,7 +48,7 @@ export function EditarAlmoxarifadoModal({ almoxarifado, onClose, onSalvo }: Prop
         <Input label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className="rounded border-gray-300 text-brand focus:ring-brand" />
-          Almoxarifado ativo
+          Estoque ativo
         </label>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={salvarMutation.isPending}>

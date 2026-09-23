@@ -52,7 +52,7 @@ const MENU: ItemMenu[] = [
   { label: "Dashboard", to: "/", perfis: ["MASTER", "GESTOR_POLO", "PROFESSOR", "PERSONALIZADO"], icon: HomeIcon },
   { label: "Fichas de Execução", to: "/fichas-execucao", perfis: ["MASTER"], modulo: "fichas_execucao", icon: ArchiveIcon },
   {
-    label: "Cadastros", to: "/polos", perfis: ["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"], icon: IdentificationIcon,
+    label: "Cadastros", to: "/polos", perfis: ["MASTER", "GESTOR_POLO"], icon: IdentificationIcon,
     subitens: [
       { label: "Beneficiários", to: "/beneficiarios", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: ClipboardIcon },
       { label: "Lista de Espera", to: "/lista-espera", perfis: ["MASTER", "GESTOR_POLO"], modulo: "beneficiarios", icon: InboxIcon },
@@ -61,17 +61,13 @@ const MENU: ItemMenu[] = [
       { label: "Professores", to: "/professores", perfis: ["MASTER", "GESTOR_POLO"], modulo: "professores", icon: AcademicCapIcon },
       { label: "Turmas", to: "/turmas", perfis: ["MASTER", "GESTOR_POLO"], modulo: "turmas", icon: UsersIcon },
       { label: "Modalidades", to: "/modalidades", perfis: ["MASTER", "GESTOR_POLO"], modulo: "modalidades", icon: TrophyIcon },
-      {
-        label: "Almoxarifados", to: "/almoxarifados",
-        perfis: ["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"], modulo: "almoxarifados", icon: StackIcon,
-      },
     ],
   },
   { label: "Importar", to: "/importar", perfis: ["MASTER"], icon: UploadIcon },
   {
     label: "Estoque", to: "/estoque", perfis: ["MASTER"], icon: StackIcon,
     subitens: [
-      { label: "Catálogo e movimentações", to: "/estoque", perfis: ["MASTER"], modulo: "estoque", icon: ArchiveIcon },
+      { label: "Produtos e movimentações", to: "/estoque", perfis: ["MASTER"], modulo: "estoque", icon: ArchiveIcon },
       { label: "Registrar entrega", to: "/entregas-materiais", perfis: ["MASTER"], modulo: "entregas_materiais", icon: BoxIcon },
     ],
   },
@@ -91,7 +87,6 @@ const MENU: ItemMenu[] = [
   { label: "Configurações", to: "/configuracoes", perfis: ["MASTER"], modulo: "configuracoes", icon: SettingsIcon },
   { label: "Frequência", to: "/frequencia", perfis: ["PROFESSOR"], icon: CalendarCheckIcon },
   { label: "Relatórios de Aula", to: "/relatorios", perfis: ["PROFESSOR"], icon: DocumentTextIcon },
-  { label: "Meu Almoxarifado", to: "/meu-almoxarifado", perfis: ["COORDENADOR_ALMOXARIFADO"], icon: StackIcon },
   { label: "Central de Acessos", to: "/central-acessos", perfis: ["MASTER"], icon: ShieldIcon },
 ];
 
@@ -106,11 +101,11 @@ function acessivel(item: { perfis: Perfil[]; modulo?: string }, usuario: { perfi
   return item.perfis.includes(usuario.perfil);
 }
 
-const PERFIL_LABEL: Record<Perfil, string> = {
+export const PERFIL_LABEL: Record<Perfil, string> = {
   MASTER: "Master",
   GESTOR_POLO: "Gestor de polo",
   PROFESSOR: "Professor",
-  COORDENADOR_ALMOXARIFADO: "Coordenador de almoxarifado",
+  COORDENADOR_ALMOXARIFADO: "Coordenador de estoque",
   PERSONALIZADO: "Personalizado",
 };
 

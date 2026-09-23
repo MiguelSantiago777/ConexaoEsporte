@@ -14,6 +14,15 @@ export function PencilIcon({ className = "w-4 h-4" }: Props) {
   );
 }
 
+export function PlusCircleIcon({ className = "w-4 h-4" }: Props) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="10" cy="10" r="7.25" />
+      <path d="M10 7v6M7 10h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function TrashIcon({ className = "w-4 h-4" }: Props) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">

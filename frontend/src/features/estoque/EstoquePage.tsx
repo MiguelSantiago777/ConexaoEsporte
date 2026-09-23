@@ -1,15 +1,15 @@
-import { Fragment, FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Almoxarifado, MovimentoEstoque, Pagina, Produto, SaldoAlmoxarifado } from "@/types";
+import { maskNCM } from "@/lib/masks";
+import type { MovimentoEstoque, Pagina, Polo, Produto } from "@/types";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { FileInput } from "@/components/ui/FileInput";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
@@ -21,13 +21,11 @@ import { staggerStyle } from "@/lib/animation";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { dataBR } from "@/features/frequencia/statusChamada";
 import { EditarProdutoModal } from "./EditarProdutoModal";
+import { RegistrarEntradaModal } from "./RegistrarEntradaModal";
+import { DarBaixaModal } from "./DarBaixaModal";
 
 const TAMANHO_PAGINA = 10;
-const FORM_PRODUTO_INICIAL = { nome: "", unidade_medida: "", descricao: "" };
-
-function hoje() {
-  return new Date().toISOString().slice(0, 10);
-}
+const FORM_PRODUTO_INICIAL = { nome: "", unidade_medida: "", quantidade: "", ncm: "", descricao: "" };
 
 export function EstoquePage() {
   const { temPerfil } = useAuth();
@@ -46,6 +44,8 @@ export function EstoquePage() {
     try {
       await api.post("/produtos", {
         nome: formProduto.nome, unidade_medida: formProduto.unidade_medida,
+        quantidade: Number(formProduto.quantidade) || 0,
+        ncm: formProduto.ncm || null,
         descricao: formProduto.descricao || null,
       });
       setFormProduto(FORM_PRODUTO_INICIAL);
@@ -79,59 +79,23 @@ export function EstoquePage() {
     queryFn: () => api.get<Produto[]>("/produtos", { params: { apenas_ativos: true } }).then((r) => r.data),
   });
 
-  // --- Almoxarifados — cadastro fica na página dedicada (Cadastros >
-  // Almoxarifados); aqui só reaproveita a lista completa pros <select> de
-  // Entrada/Movimentações. ---
-  const { data: almoxarifados = [] } = useQuery({
-    queryKey: ["almoxarifados"],
-    queryFn: () => api.get<Almoxarifado[]>("/almoxarifados").then((r) => r.data),
+  // --- Polos — destino de uma baixa e coluna "Destino" das movimentações. ---
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"],
+    queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
   });
 
-  function nomeAlmoxarifado(id: string) {
-    return almoxarifados.find((a) => a.id === id)?.nome ?? "—";
+  function nomePolo(id: string | null | undefined) {
+    return (id && polos.find((p) => p.id === id)?.nome) || "—";
   }
 
-  // --- Detalhamento de saldo por almoxarifado (só busca quando expandido) ---
-  const [produtoDetalhado, setProdutoDetalhado] = useState<string | null>(null);
-  const { data: saldosDetalhados = [], isLoading: carregandoSaldos } = useQuery({
-    queryKey: ["produtos", produtoDetalhado, "saldos-por-almoxarifado"],
-    queryFn: () => api.get<SaldoAlmoxarifado[]>(`/produtos/${produtoDetalhado}/saldos-por-almoxarifado`).then((r) => r.data),
-    enabled: !!produtoDetalhado,
-  });
+  // --- Registrar entrada (MASTER) — modal, aberto tanto pelo botão "Nova
+  // entrada" do card (produto genérico, a escolher) quanto pelo botão
+  // "Entrada" de um produto específico na lista (produto travado). ---
+  const [modalEntrada, setModalEntrada] = useState<{ produtoFixo: Produto | null } | null>(null);
 
-  // --- Registrar entrada (MASTER) ---
-  const FORM_ENTRADA_INICIAL = { produto_id: "", almoxarifado_id: "", quantidade: "", data: hoje(), observacao: "", entregue_por: "", recebido_por: "" };
-  const [formEntrada, setFormEntrada] = useState(FORM_ENTRADA_INICIAL);
-  const [arquivoEntrada, setArquivoEntrada] = useState<File | null>(null);
-  const [enviandoEntrada, setEnviandoEntrada] = useState(false);
-
-  async function registrarEntrada(e: FormEvent) {
-    e.preventDefault();
-    if (!arquivoEntrada) return;
-    setEnviandoEntrada(true);
-    try {
-      const dados = new FormData();
-      dados.append("produto_id", formEntrada.produto_id);
-      dados.append("almoxarifado_id", formEntrada.almoxarifado_id);
-      dados.append("quantidade", formEntrada.quantidade);
-      dados.append("data", formEntrada.data);
-      if (formEntrada.observacao) dados.append("observacao", formEntrada.observacao);
-      if (formEntrada.entregue_por) dados.append("entregue_por", formEntrada.entregue_por);
-      if (formEntrada.recebido_por) dados.append("recebido_por", formEntrada.recebido_por);
-      dados.append("arquivo", arquivoEntrada);
-      await api.post("/movimentos-estoque", dados);
-      setFormEntrada(FORM_ENTRADA_INICIAL);
-      setArquivoEntrada(null);
-      toast.success("Entrada registrada com sucesso.");
-      queryClient.invalidateQueries({ queryKey: ["produtos"] });
-      queryClient.invalidateQueries({ queryKey: ["movimentos-estoque"] });
-      queryClient.invalidateQueries({ queryKey: ["produtos", formEntrada.produto_id, "saldos-por-almoxarifado"] });
-    } catch (err: unknown) {
-      toast.error(mensagemErroApi(err, "Erro ao registrar entrada."));
-    } finally {
-      setEnviandoEntrada(false);
-    }
-  }
+  // --- Dar baixa (MASTER) — saída de um produto pra um polo. ---
+  const [produtoBaixa, setProdutoBaixa] = useState<Produto | null>(null);
 
   // --- Produtos em estoque (paginado) ---
   const [filtroNomeProduto, setFiltroNomeProduto] = useState("");
@@ -164,33 +128,32 @@ export function EstoquePage() {
 
   // --- Movimentações (paginado, com filtros) ---
   const [filtroProdutoMov, setFiltroProdutoMov] = useState("");
-  const [filtroAlmoxarifadoMov, setFiltroAlmoxarifadoMov] = useState("");
   const [filtroTipoMov, setFiltroTipoMov] = useState("");
   const [paginaMovs, setPaginaMovs] = useState(1);
 
-  const [filtrosMovAnteriores, setFiltrosMovAnteriores] = useState([filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov]);
-  if (
-    filtrosMovAnteriores[0] !== filtroProdutoMov ||
-    filtrosMovAnteriores[1] !== filtroAlmoxarifadoMov ||
-    filtrosMovAnteriores[2] !== filtroTipoMov
-  ) {
-    setFiltrosMovAnteriores([filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov]);
+  const [filtrosMovAnteriores, setFiltrosMovAnteriores] = useState([filtroProdutoMov, filtroTipoMov]);
+  if (filtrosMovAnteriores[0] !== filtroProdutoMov || filtrosMovAnteriores[1] !== filtroTipoMov) {
+    setFiltrosMovAnteriores([filtroProdutoMov, filtroTipoMov]);
     setPaginaMovs(1);
   }
 
   const { data: paginaMovsResp, isLoading: carregandoMovs } = useQuery({
-    queryKey: ["movimentos-estoque", "pagina", paginaMovs, filtroProdutoMov, filtroAlmoxarifadoMov, filtroTipoMov],
+    queryKey: ["movimentos-estoque", "pagina", paginaMovs, filtroProdutoMov, filtroTipoMov],
     queryFn: () =>
       api
         .get<Pagina<MovimentoEstoque>>("/movimentos-estoque", {
           params: {
             pagina: paginaMovs, tamanho_pagina: TAMANHO_PAGINA,
-            produto_id: filtroProdutoMov || undefined, almoxarifado_id: filtroAlmoxarifadoMov || undefined,
-            tipo: filtroTipoMov || undefined,
+            produto_id: filtroProdutoMov || undefined, tipo: filtroTipoMov || undefined,
           },
         })
         .then((r) => r.data),
   });
+
+  function origemMovimento(m: MovimentoEstoque) {
+    if (m.tipo === "ENTRADA") return "Entrada";
+    return m.entrega_material_id ? "Entrega de Materiais" : "Baixa";
+  }
   const movimentos = paginaMovsResp?.itens ?? [];
   const totalMovs = paginaMovsResp?.total ?? 0;
 
@@ -240,72 +203,28 @@ export function EstoquePage() {
     <div className="space-y-6">
       <PageHeader
         title="Estoque"
-        subtitle="Catálogo de produtos e movimentações de Entrada e Saída — a Saída acontece automaticamente ao registrar uma Entrega de Materiais com um item do estoque."
+        subtitle="Cadastre os produtos com a quantidade que já existe. Use Entrada quando chegar material e Dar baixa quando sair para um polo."
       />
 
       {ehMaster && (
         <Card title="Cadastrar produto" className="animate-fade-in-up" style={staggerStyle(0)}>
-          <form onSubmit={cadastrarProduto} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <form onSubmit={cadastrarProduto} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="sm:col-span-2">
               <Input label="Nome" placeholder="ex.: Bola de futebol" value={formProduto.nome}
                 onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} required />
             </div>
             <Input label="Unidade de medida" placeholder="ex.: unidade, par, caixa" value={formProduto.unidade_medida}
               onChange={(e) => setFormProduto({ ...formProduto, unidade_medida: e.target.value })} required />
+            <Input label="Quantidade em estoque" type="number" min={0} placeholder="ex.: 20" value={formProduto.quantidade}
+              onChange={(e) => setFormProduto({ ...formProduto, quantidade: e.target.value })} />
+            <Input label="NCM" placeholder="0000.00.00" inputMode="numeric" value={formProduto.ncm}
+              onChange={(e) => setFormProduto({ ...formProduto, ncm: maskNCM(e.target.value) })} />
             <div className="sm:col-span-3">
-              <Input label="Descrição (opcional)" value={formProduto.descricao}
+              <Input label="Descrição" value={formProduto.descricao}
                 onChange={(e) => setFormProduto({ ...formProduto, descricao: e.target.value })} />
             </div>
-            <div className="sm:col-span-3">
-              <Button type="submit" disabled={salvandoProduto}>{salvandoProduto ? "Cadastrando…" : "Cadastrar produto"}</Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {ehMaster && (
-        <Card
-          title="Registrar entrada"
-          subtitle="Nota fiscal ou comprovante da compra/recebimento é obrigatório — fica anexado ao movimento, junto de quem entregou e quem recebeu no estoque. Não achou o almoxarifado? Cadastre em Cadastros → Almoxarifados."
-          className="animate-fade-in-up"
-          style={staggerStyle(1)}
-        >
-          <form onSubmit={registrarEntrada} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="sm:col-span-2">
-              <Select label="Produto" value={formEntrada.produto_id}
-                onChange={(e) => setFormEntrada({ ...formEntrada, produto_id: e.target.value })} required>
-                <option value="">— Selecione —</option>
-                {produtosAtivos.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nome} ({p.unidade_medida})</option>
-                ))}
-              </Select>
-            </div>
-            <div className="sm:col-span-2">
-              <Select label="Almoxarifado (onde entrou)" value={formEntrada.almoxarifado_id}
-                onChange={(e) => setFormEntrada({ ...formEntrada, almoxarifado_id: e.target.value })} required>
-                <option value="">— Selecione —</option>
-                {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-              </Select>
-            </div>
-            <Input label="Quantidade" type="number" min={1} placeholder="ex.: 50" value={formEntrada.quantidade}
-              onChange={(e) => setFormEntrada({ ...formEntrada, quantidade: e.target.value })} required />
-            <Input label="Data" type="date" value={formEntrada.data}
-              onChange={(e) => setFormEntrada({ ...formEntrada, data: e.target.value })} required />
-            <Input label="Entregue por" placeholder="ex.: Transportadora XYZ" value={formEntrada.entregue_por}
-              onChange={(e) => setFormEntrada({ ...formEntrada, entregue_por: e.target.value })} />
-            <Input label="Recebido por (no estoque)" placeholder="ex.: João do Almoxarifado" value={formEntrada.recebido_por}
-              onChange={(e) => setFormEntrada({ ...formEntrada, recebido_por: e.target.value })} />
-            <div className="sm:col-span-2">
-              <Input label="Observação (opcional)" value={formEntrada.observacao}
-                onChange={(e) => setFormEntrada({ ...formEntrada, observacao: e.target.value })} />
-            </div>
-            <div className="sm:col-span-2">
-              <FileInput label="Comprovante (nota fiscal, recibo etc.)" accept="image/*,application/pdf" file={arquivoEntrada} onChange={setArquivoEntrada} />
-            </div>
             <div className="sm:col-span-4">
-              <Button type="submit" disabled={enviandoEntrada || !arquivoEntrada}>
-                {enviandoEntrada ? "Registrando…" : "Registrar entrada"}
-              </Button>
+              <Button type="submit" disabled={salvandoProduto}>{salvandoProduto ? "Cadastrando…" : "Cadastrar produto"}</Button>
             </div>
           </form>
         </Card>
@@ -313,9 +232,18 @@ export function EstoquePage() {
 
       <Card
         title="Produtos em estoque"
-        actions={<Badge variant="accent">{totalProdutos}</Badge>}
+        actions={
+          <div className="flex items-center gap-3">
+            <Badge variant="accent">{totalProdutos}</Badge>
+            {ehMaster && (
+              <Button variant="secondary" onClick={() => setModalEntrada({ produtoFixo: null })}>
+                Nova entrada
+              </Button>
+            )}
+          </div>
+        }
         className="animate-fade-in-up"
-        style={staggerStyle(2)}
+        style={staggerStyle(1)}
       >
         <div className="mb-4 sm:max-w-xs">
           <Input label="Buscar por nome" placeholder="Nome do produto" value={filtroNomeProduto} onChange={(e) => setFiltroNomeProduto(e.target.value)} />
@@ -336,37 +264,22 @@ export function EstoquePage() {
                         <span className="font-medium text-gray-800 truncate">{p.nome}</span>
                         {!p.ativo && <Badge variant="gray">Inativo</Badge>}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">{p.unidade_medida}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {p.unidade_medida}{p.ncm ? ` · NCM ${maskNCM(p.ncm)}` : ""}
+                      </div>
                       {p.descricao && <div className="text-xs text-gray-500 mt-0.5 truncate">{p.descricao}</div>}
                     </div>
                     <Badge variant="brand">{p.saldo_atual}</Badge>
                   </div>
-                  <button
-                    type="button"
-                    className="text-xs text-brand hover:underline mt-1.5"
-                    onClick={() => setProdutoDetalhado(produtoDetalhado === p.id ? null : p.id)}
-                  >
-                    {produtoDetalhado === p.id ? "ocultar saldo por almoxarifado" : "ver saldo por almoxarifado"}
-                  </button>
-                  {produtoDetalhado === p.id && (
-                    <div className="mt-1.5 text-xs text-gray-600 space-y-0.5">
-                      {carregandoSaldos ? (
-                        <span className="text-gray-400">Carregando…</span>
-                      ) : saldosDetalhados.length === 0 ? (
-                        <span className="text-gray-400">Nenhuma movimentação em nenhum almoxarifado ainda.</span>
-                      ) : (
-                        saldosDetalhados.map((s) => (
-                          <div key={s.almoxarifado_id} className="flex items-center justify-between gap-2">
-                            <span>{s.almoxarifado_nome}</span>
-                            <span className="font-medium text-gray-700">{s.saldo}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
                   {ehMaster && (
-                    <div className="flex items-center gap-5 mt-3">
-                      <button type="button" title="Editar" onClick={() => setProdutoEditando(p)} className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5">
+                    <div className="flex items-center gap-3 mt-3">
+                      <Button variant="secondary" className="px-3 py-1.5" onClick={() => setModalEntrada({ produtoFixo: p })}>
+                        Entrada
+                      </Button>
+                      <Button variant="secondary" className="px-3 py-1.5" onClick={() => setProdutoBaixa(p)} disabled={p.saldo_atual <= 0}>
+                        Dar baixa
+                      </Button>
+                      <button type="button" title="Editar" onClick={() => setProdutoEditando(p)} className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5 ml-auto">
                         <PencilIcon className="w-[18px] h-[18px]" />
                       </button>
                       <button type="button" title="Remover" onClick={() => removerProduto(p)} className="text-gray-400 hover:text-red-600 transition-colors -m-1.5 p-1.5">
@@ -384,64 +297,40 @@ export function EstoquePage() {
                   <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
                     <th className="py-2.5 px-8">Nome</th>
                     <th className="px-3">Unidade</th>
-                    <th className="px-3">Saldo atual</th>
+                    <th className="px-3">NCM</th>
+                    <th className="px-3">Quantidade</th>
                     <th className="px-3">Situação</th>
                     {ehMaster && <th className="px-3 text-right pr-8">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {produtos.map((p) => (
-                    <Fragment key={p.id}>
-                      <tr className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
-                        <td className="py-2.5 px-8 font-medium text-gray-800">{p.nome}</td>
-                        <td className="px-3 text-gray-600">{p.unidade_medida}</td>
-                        <td className="px-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="brand">{p.saldo_atual}</Badge>
-                            <button
-                              type="button"
-                              className="text-xs text-brand hover:underline"
-                              onClick={() => setProdutoDetalhado(produtoDetalhado === p.id ? null : p.id)}
-                            >
-                              {produtoDetalhado === p.id ? "ocultar" : "por almoxarifado"}
+                    <tr key={p.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
+                      <td className="py-2.5 px-8 font-medium text-gray-800">{p.nome}</td>
+                      <td className="px-3 text-gray-600">{p.unidade_medida}</td>
+                      <td className="px-3 text-gray-600 tabular-nums">{p.ncm ? maskNCM(p.ncm) : "—"}</td>
+                      <td className="px-3"><Badge variant="brand">{p.saldo_atual}</Badge></td>
+                      <td className="px-3"><Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Inativo"}</Badge></td>
+                      {ehMaster && (
+                        <td className="px-3 text-right pr-8">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="secondary" className="px-3 py-1.5" onClick={() => setModalEntrada({ produtoFixo: p })}>
+                              Entrada
+                            </Button>
+                            <Button variant="secondary" className="px-3 py-1.5" onClick={() => setProdutoBaixa(p)} disabled={p.saldo_atual <= 0}
+                              title={p.saldo_atual <= 0 ? "Sem quantidade em estoque" : undefined}>
+                              Dar baixa
+                            </Button>
+                            <button type="button" title="Editar" onClick={() => setProdutoEditando(p)} className="text-gray-400 hover:text-brand transition-colors ml-2">
+                              <PencilIcon />
+                            </button>
+                            <button type="button" title="Remover" onClick={() => removerProduto(p)} className="text-gray-400 hover:text-red-600 transition-colors">
+                              <TrashIcon />
                             </button>
                           </div>
                         </td>
-                        <td className="px-3"><Badge variant={p.ativo ? "accent" : "gray"}>{p.ativo ? "Ativo" : "Inativo"}</Badge></td>
-                        {ehMaster && (
-                          <td className="px-3 text-right pr-8">
-                            <div className="flex items-center justify-end gap-3">
-                              <button type="button" title="Editar" onClick={() => setProdutoEditando(p)} className="text-gray-400 hover:text-brand transition-colors">
-                                <PencilIcon />
-                              </button>
-                              <button type="button" title="Remover" onClick={() => removerProduto(p)} className="text-gray-400 hover:text-red-600 transition-colors">
-                                <TrashIcon />
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                      {produtoDetalhado === p.id && (
-                        <tr className="bg-brand-light/40">
-                          <td colSpan={ehMaster ? 5 : 4} className="px-8 py-3">
-                            {carregandoSaldos ? (
-                              <span className="text-xs text-gray-400">Carregando…</span>
-                            ) : saldosDetalhados.length === 0 ? (
-                              <span className="text-xs text-gray-400">Nenhuma movimentação em nenhum almoxarifado ainda.</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                                {saldosDetalhados.map((s) => (
-                                  <div key={s.almoxarifado_id} className="text-xs text-gray-600">
-                                    <span className="text-gray-500">{s.almoxarifado_nome}:</span>{" "}
-                                    <span className="font-medium text-gray-800">{s.saldo}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
                       )}
-                    </Fragment>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -452,19 +341,15 @@ export function EstoquePage() {
       </Card>
 
       <Card
-        title="Movimentações"
+        title="Histórico de movimentações"
         actions={<Badge variant="accent">{totalMovs}</Badge>}
         className="animate-fade-in-up"
-        style={staggerStyle(3)}
+        style={staggerStyle(2)}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <Select label="Filtrar por produto" value={filtroProdutoMov} onChange={(e) => setFiltroProdutoMov(e.target.value)}>
             <option value="">Todos os produtos</option>
             {produtosAtivos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </Select>
-          <Select label="Filtrar por almoxarifado" value={filtroAlmoxarifadoMov} onChange={(e) => setFiltroAlmoxarifadoMov(e.target.value)}>
-            <option value="">Todos os almoxarifados</option>
-            {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
           </Select>
           <Select label="Filtrar por tipo" value={filtroTipoMov} onChange={(e) => setFiltroTipoMov(e.target.value)}>
             <option value="">Entradas e Saídas</option>
@@ -486,7 +371,8 @@ export function EstoquePage() {
                     <span className="font-medium text-gray-800">{nomeProduto(m.produto_id)}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {m.quantidade} un. · {nomeAlmoxarifado(m.almoxarifado_id)} · {dataBR(m.data)}
+                    {m.quantidade} un. · {dataBR(m.data)}
+                    {m.polo_id ? ` · para ${nomePolo(m.polo_id)}` : ""}
                     {m.entrega_material_id ? " · gerado por uma Entrega de Materiais" : ""}
                   </div>
                   {(m.entregue_por || m.recebido_por) && (
@@ -517,10 +403,10 @@ export function EstoquePage() {
                   <tr className="text-left text-xs uppercase tracking-wide text-brand-dark/70 bg-brand-light">
                     <th className="py-2.5 px-8">Tipo</th>
                     <th className="px-3">Produto</th>
-                    <th className="px-3">Almoxarifado</th>
                     <th className="px-3">Quantidade</th>
                     <th className="px-3">Data</th>
                     <th className="px-3">Origem</th>
+                    <th className="px-3">Destino</th>
                     <th className="px-3">Entregue por</th>
                     <th className="px-3">Recebido por</th>
                     <th className="px-3 text-right pr-8">Comprovante</th>
@@ -532,10 +418,10 @@ export function EstoquePage() {
                     <tr key={m.id} className="border-t border-gray-100 hover:bg-brand-light/60 transition-colors">
                       <td className="py-2.5 px-8"><Badge variant={m.tipo === "ENTRADA" ? "accent" : "gray"}>{m.tipo === "ENTRADA" ? "Entrada" : "Saída"}</Badge></td>
                       <td className="px-3 text-gray-600">{nomeProduto(m.produto_id)}</td>
-                      <td className="px-3 text-gray-600">{nomeAlmoxarifado(m.almoxarifado_id)}</td>
                       <td className="px-3 text-gray-600">{m.quantidade}</td>
                       <td className="px-3 text-gray-600">{dataBR(m.data)}</td>
-                      <td className="px-3 text-gray-500 text-xs">{m.entrega_material_id ? "Entrega de Materiais" : "—"}</td>
+                      <td className="px-3 text-gray-500 text-xs">{origemMovimento(m)}</td>
+                      <td className="px-3 text-gray-600">{nomePolo(m.polo_id)}</td>
                       <td className="px-3 text-gray-600">{m.entregue_por ?? "—"}</td>
                       <td className="px-3 text-gray-600">{m.recebido_por ?? "—"}</td>
                       <td className="px-3 text-right pr-8">
@@ -577,6 +463,21 @@ export function EstoquePage() {
         }}
       />
 
+      <RegistrarEntradaModal
+        aberto={!!modalEntrada}
+        produtoFixo={modalEntrada?.produtoFixo ?? null}
+        produtosAtivos={produtosAtivos}
+        onClose={() => setModalEntrada(null)}
+        onRegistrado={() => setModalEntrada(null)}
+      />
+
+      <DarBaixaModal
+        produto={produtoBaixa}
+        polos={polos}
+        onClose={() => setProdutoBaixa(null)}
+        onRegistrado={() => setProdutoBaixa(null)}
+      />
+
       <Modal
         open={!!movimentoTermo}
         onClose={() => setMovimentoTermo(null)}
@@ -600,21 +501,21 @@ export function EstoquePage() {
 
               <p className="mb-6">
                 Registro de <strong>{movimentoTermo.tipo === "ENTRADA" ? "entrada" : "saída"}</strong> de material no
-                almoxarifado <strong>{nomeAlmoxarifado(movimentoTermo.almoxarifado_id)}</strong>, referente ao produto{" "}
-                <strong>{nomeProduto(movimentoTermo.produto_id)}</strong>, quantidade{" "}
-                <strong>{movimentoTermo.quantidade}</strong>, na data <strong>{dataBR(movimentoTermo.data)}</strong>.
+                estoque, referente ao produto <strong>{nomeProduto(movimentoTermo.produto_id)}</strong>, quantidade{" "}
+                <strong>{movimentoTermo.quantidade}</strong>, na data <strong>{dataBR(movimentoTermo.data)}</strong>
+                {movimentoTermo.polo_id ? <>, com destino ao polo <strong>{nomePolo(movimentoTermo.polo_id)}</strong></> : null}.
                 {movimentoTermo.observacao ? ` Observação: ${movimentoTermo.observacao}` : ""}
               </p>
 
               <div className="grid grid-cols-2 gap-10 mt-16">
                 <div className="text-center">
                   <div className="border-t border-gray-400 mb-1" />
-                  <div>{movimentoTermo.tipo === "ENTRADA" ? "Entregue por" : "Retirado por"}</div>
+                  <div>{movimentoTermo.tipo === "ENTRADA" ? "Entregue por" : "Entregue por (estoque)"}</div>
                   <div className="text-gray-500">{movimentoTermo.entregue_por || "________________________"}</div>
                 </div>
                 <div className="text-center">
                   <div className="border-t border-gray-400 mb-1" />
-                  <div>Recebido por (almoxarifado)</div>
+                  <div>{movimentoTermo.tipo === "ENTRADA" ? "Recebido por (estoque)" : "Recebido por"}</div>
                   <div className="text-gray-500">{movimentoTermo.recebido_por || "________________________"}</div>
                 </div>
               </div>

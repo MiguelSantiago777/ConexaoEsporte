@@ -53,7 +53,7 @@ export function EditarCoordenadorModal({ coordenador, almoxarifados, onClose, on
     <Modal open={!!coordenador} onClose={onClose} title={`Editar — ${coordenador.nome}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
-        <Select label="Almoxarifado" value={form.almoxarifado_id} onChange={(e) => setForm({ ...form, almoxarifado_id: e.target.value })} required>
+        <Select label="Estoque" value={form.almoxarifado_id} onChange={(e) => setForm({ ...form, almoxarifado_id: e.target.value })} required>
           <option value="">Selecione…</option>
           {almoxarifados.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
         </Select>

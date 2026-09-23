@@ -455,6 +455,7 @@ class ProdutoModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(150), nullable=False)
     unidade_medida: Mapped[str] = mapped_column(String(30), nullable=False)
+    ncm: Mapped[str | None] = mapped_column(String(8), nullable=True)
     descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -499,9 +500,13 @@ class MovimentoEstoqueModel(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     produto_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("produtos.id"), nullable=False)
-    almoxarifado_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("almoxarifados.id"), nullable=False
+    # NULL nos movimentos novos — o estoque é único; só os lançados antes
+    # dessa simplificação carregam o almoxarifado de origem.
+    almoxarifado_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("almoxarifados.id"), nullable=True
     )
+    # Polo de destino de uma Baixa direta feita na tela de Estoque.
+    polo_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("polos.id"), nullable=True)
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)  # ENTRADA | SAIDA
     quantidade: Mapped[int] = mapped_column(Integer, nullable=False)
     data: Mapped[date] = mapped_column(Date, nullable=False)

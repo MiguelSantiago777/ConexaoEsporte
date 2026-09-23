@@ -13,6 +13,7 @@ import { CATEGORICAL_PALETTE, COR_OUTROS } from "@/components/ui/charts/palette"
 import { staggerStyle } from "@/lib/animation";
 import { PolosMapaCard } from "./PolosMapaCard";
 import { RelatorioEstoquePage } from "@/features/relatorios-gerenciais/RelatorioEstoquePage";
+import { PERFIL_LABEL } from "@/components/layout/AppLayout";
 
 const MAX_TURMAS_NO_GRAFICO = 8;
 const MAX_FATIAS_MODALIDADE = 4;
@@ -21,7 +22,7 @@ const descricaoPorPerfil: Record<string, string> = {
   MASTER: "Você tem acesso total: polos, modalidades, turmas, beneficiários e usuários.",
   GESTOR_POLO: "Você gerencia modalidades, turmas, professores e beneficiários do seu polo.",
   PROFESSOR: "Você registra a frequência dos beneficiários e emite relatórios de aula das suas turmas.",
-  COORDENADOR_ALMOXARIFADO: "Você registra a Entrada de produtos e acompanha o relatório do seu almoxarifado.",
+  COORDENADOR_ALMOXARIFADO: "Você registra a Entrada de produtos e acompanha o relatório do seu estoque.",
 };
 
 export function DashboardPage() {
@@ -106,10 +107,10 @@ export function DashboardPage() {
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-gray-500">Perfil de acesso</dt>
-            <dd className="font-medium text-gray-800 mt-0.5">{usuario?.perfil}</dd>
+            <dd className="font-medium text-gray-800 mt-0.5">{usuario ? PERFIL_LABEL[usuario.perfil] : "—"}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">{mostrarEstoque ? "Almoxarifado vinculado" : "Polo vinculado"}</dt>
+            <dt className="text-gray-500">{mostrarEstoque ? "Estoque vinculado" : "Polo vinculado"}</dt>
             <dd className="font-medium text-gray-800 mt-0.5">
               {mostrarEstoque
                 ? usuario?.almoxarifado_nome ?? "—"

@@ -17,4 +17,4 @@ class Almoxarifado:
 
     def __post_init__(self) -> None:
         if not self.nome or not self.nome.strip():
-            raise ValueError("Nome do Almoxarifado é obrigatório.")
+            raise ValueError("Nome do Estoque é obrigatório.")

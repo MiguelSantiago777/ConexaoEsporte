@@ -30,15 +30,15 @@ class AlmoxarifadoService:
     def atualizar(self, almoxarifado_id: UUID, nome: str | None, descricao: str | None, ativo: bool | None = None) -> Almoxarifado:
         atualizado = self.repo.atualizar(almoxarifado_id, nome=nome, descricao=descricao, ativo=ativo)
         if not atualizado:
-            raise RecursoNaoEncontrado("Almoxarifado não encontrado.")
+            raise RecursoNaoEncontrado("Estoque não encontrado.")
         return atualizado
 
     def remover(self, almoxarifado_id: UUID) -> None:
         _, total_movimentos = self.movimento_repo.listar_pagina(pagina=1, tamanho_pagina=1, almoxarifado_id=almoxarifado_id)
         if total_movimentos > 0:
             raise RegraDeNegocioViolada(
-                "Não é possível remover: existem movimentações de estoque registradas para este almoxarifado. "
+                "Não é possível remover: existem movimentações de estoque registradas para este estoque. "
                 "Desative-o em vez de remover."
             )
         if not self.repo.remover(almoxarifado_id):
-            raise RecursoNaoEncontrado("Almoxarifado não encontrado.")
+            raise RecursoNaoEncontrado("Estoque não encontrado.")

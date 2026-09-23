@@ -12,7 +12,7 @@ from app.infrastructure.repositories.paginacao import paginar
 
 def _to_entity(m: MovimentoEstoqueModel) -> MovimentoEstoque:
     return MovimentoEstoque(
-        id=m.id, produto_id=m.produto_id, almoxarifado_id=m.almoxarifado_id,
+        id=m.id, produto_id=m.produto_id, almoxarifado_id=m.almoxarifado_id, polo_id=m.polo_id,
         tipo=m.tipo, quantidade=m.quantidade, data=m.data,
         observacao=m.observacao, entregue_por=m.entregue_por, recebido_por=m.recebido_por,
         nome_arquivo=m.nome_arquivo, caminho_arquivo=m.caminho_arquivo,
@@ -80,7 +80,7 @@ class MovimentoEstoqueRepository:
     def criar(self, movimento: MovimentoEstoque) -> MovimentoEstoque:
         m = MovimentoEstoqueModel(
             produto_id=movimento.produto_id, almoxarifado_id=movimento.almoxarifado_id,
-            tipo=movimento.tipo, quantidade=movimento.quantidade,
+            polo_id=movimento.polo_id, tipo=movimento.tipo, quantidade=movimento.quantidade,
             data=movimento.data, observacao=movimento.observacao,
             entregue_por=movimento.entregue_por, recebido_por=movimento.recebido_por,
             nome_arquivo=movimento.nome_arquivo, caminho_arquivo=movimento.caminho_arquivo,

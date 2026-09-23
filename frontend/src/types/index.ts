@@ -20,11 +20,10 @@ export type Polo = components["schemas"]["PoloResponse"];
 export type ItemEntrega = components["schemas"]["ItemEntregaRequest"];
 export type EntregaMaterial = components["schemas"]["EntregaMaterialResponse"];
 
-// Estoque — Almoxarifados (locais físicos), catálogo de Produto e
-// Movimentos (Entrada/Saída). O saldo de cada Produto é controlado
-// separadamente em cada Almoxarifado. A Saída não tem rota própria: nasce
-// automaticamente de um item de Entrega de Materiais que referencia um
-// produto + almoxarifado.
+// Estoque (único) — catálogo de Produto e Movimentos (Entrada/Saída). O
+// saldo de cada Produto é o total dos seus movimentos. A Saída vem da Baixa
+// direta pra um polo ou de um item de Entrega de Materiais. Almoxarifado e
+// os saldos por almoxarifado ficam só pra movimentos antigos/legado.
 export type Almoxarifado = components["schemas"]["AlmoxarifadoResponse"];
 export type Produto = components["schemas"]["ProdutoResponse"];
 export type SaldoAlmoxarifado = components["schemas"]["SaldoAlmoxarifadoItem"];

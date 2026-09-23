@@ -5,19 +5,20 @@ from uuid import UUID
 
 @dataclass
 class MovimentoEstoque:
-    """Entrada ou Saída de um Produto no estoque central. A ENTRADA é
-    lançada manualmente na tela de Estoque, com nota fiscal/comprovante em
-    anexo. A SAÍDA nunca é lançada diretamente — ela nasce automaticamente
-    quando um item de uma Entrega de Materiais referencia este produto (ver
-    app/application/entrega_material/service.py), e por isso carrega
-    `entrega_material_id` pra rastrear a origem."""
+    """Entrada ou Saída de um Produto no estoque central (único). A ENTRADA
+    é lançada na tela de Estoque — no próprio cadastro do produto (quantidade
+    inicial), pelo botão de entrada ou pela importação em planilha; o
+    comprovante é opcional. A SAÍDA nasce de uma Baixa direta na tela de
+    Estoque (com o polo de destino em `polo_id`) ou de um item de Entrega de
+    Materiais que referencia o produto (rastreado em `entrega_material_id`)."""
 
     id: UUID | None
     produto_id: UUID
-    almoxarifado_id: UUID
+    almoxarifado_id: UUID | None  # None = estoque único (movimentos novos)
     tipo: str  # "ENTRADA" | "SAIDA"
     quantidade: int
     data: date
+    polo_id: UUID | None = None
     observacao: str | None = None
     entregue_por: str | None = None
     recebido_por: str | None = None

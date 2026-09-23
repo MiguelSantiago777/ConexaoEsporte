@@ -488,6 +488,9 @@ CREATE TABLE IF NOT EXISTS produtos (
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- NCM (Nomenclatura Comum do Mercosul) — 8 dígitos, só números, opcional.
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ncm VARCHAR(8);
+
 -- ---------------------------------------------------------------------
 -- TABELA: almoxarifados — locais físicos onde o estoque central fica
 -- guardado. O saldo de cada Produto é controlado separadamente em cada
@@ -546,6 +549,15 @@ CREATE TABLE IF NOT EXISTS movimentos_estoque (
 CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_produto ON movimentos_estoque(produto_id);
 CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_almoxarifado ON movimentos_estoque(almoxarifado_id);
 CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_entrega ON movimentos_estoque(entrega_material_id);
+
+-- Estoque único: o operador não escolhe mais almoxarifado — movimentos
+-- novos nascem com almoxarifado_id NULL e o saldo de cada produto é sempre
+-- o total de todos os movimentos (os antigos, com almoxarifado, continuam
+-- somando normalmente). A "Baixa" direta da tela de Estoque grava o polo
+-- de destino em polo_id.
+ALTER TABLE movimentos_estoque ALTER COLUMN almoxarifado_id DROP NOT NULL;
+ALTER TABLE movimentos_estoque ADD COLUMN IF NOT EXISTS polo_id UUID REFERENCES polos(id) ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS idx_movimentos_estoque_polo ON movimentos_estoque(polo_id);
 
 -- ---------------------------------------------------------------------
 -- TABELA: chamada_evidencias — fotos anexadas pelo professor a uma chamada

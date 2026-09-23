@@ -20,14 +20,19 @@ def _limpar_uploads_teste():
     shutil.rmtree(Path("uploads/comprovantes_entrega"), ignore_errors=True)
 
 
-def _criar_produto(client, token_master, nome="Bola de futebol", unidade="unidade"):
+def _criar_produto(client, token_master, nome="Bola de futebol", unidade="unidade", quantidade=0, ncm=None):
     resp = client.post(
         "/api/v1/produtos",
-        json={"nome": nome, "unidade_medida": unidade},
+        json={"nome": nome, "unidade_medida": unidade, "quantidade": quantidade, "ncm": ncm},
         headers={"Authorization": f"Bearer {token_master}"},
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def _saldo(client, token_master, produto_id):
+    resp = client.get("/api/v1/produtos", headers={"Authorization": f"Bearer {token_master}"})
+    return next(p for p in resp.json() if p["id"] == produto_id)["saldo_atual"]
 
 
 def _criar_almoxarifado(client, token_master, nome="Almoxarifado Central"):
@@ -160,18 +165,124 @@ def test_entrega_com_produto_baixa_estoque_do_almoxarifado_escolhido(client, see
     assert saidas[0]["entrega_material_id"] == entrega["id"]
 
 
-def test_entrega_exige_almoxarifado_quando_item_tem_produto(client, seed_basico):
+def test_entrega_sem_almoxarifado_sai_do_saldo_total(client, seed_basico):
+    """Estoque único: o item da entrega não precisa mais dizer de qual
+    almoxarifado sai — a Saída desconta do saldo total do produto."""
     token_master = login(client, "master@test.com")
     polo_a_id = str(seed_basico["polo_a"].id)
-    produto = _criar_produto(client, token_master, nome="Apito")
+    produto = _criar_produto(client, token_master, nome="Apito", quantidade=5)
 
     resp = client.post(
         "/api/v1/entregas-materiais",
-        json={"polo_id": polo_a_id, "itens": [{"descricao": "Apito", "quantidade": "1", "produto_id": produto["id"]}]},
+        json={"polo_id": polo_a_id, "itens": [{"descricao": "Apito", "quantidade": "2", "produto_id": produto["id"]}]},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert _saldo(client, token_master, produto["id"]) == 3
+
+    resp_demais = client.post(
+        "/api/v1/entregas-materiais",
+        json={"polo_id": polo_a_id, "itens": [{"descricao": "Apito", "quantidade": "4", "produto_id": produto["id"]}]},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp_demais.status_code == 400
+    assert "insuficiente" in resp_demais.json()["detail"].lower()
+
+
+def test_cadastro_com_quantidade_ja_lanca_entrada_e_grava_ncm(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    produto = _criar_produto(client, token_master, nome="Bola de basquete", quantidade=40, ncm="9506.62.00")
+    assert produto["saldo_atual"] == 40
+    assert produto["ncm"] == "95066200"
+    assert _saldo(client, token_master, produto["id"]) == 40
+
+    resp_movs = client.get(
+        "/api/v1/movimentos-estoque", params={"produto_id": produto["id"], "pagina": 1, "tamanho_pagina": 10},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    entradas = resp_movs.json()["itens"]
+    assert len(entradas) == 1
+    assert entradas[0]["tipo"] == "ENTRADA"
+    assert entradas[0]["quantidade"] == 40
+    assert entradas[0]["almoxarifado_id"] is None
+
+
+def test_ncm_invalido_e_recusado_e_edicao_pode_apagar(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+    resp = client.post("/api/v1/produtos", json={"nome": "Bola", "unidade_medida": "unidade", "ncm": "12345"}, headers=headers)
+    assert resp.status_code == 400
+    assert "ncm" in resp.json()["detail"].lower()
+
+    produto = _criar_produto(client, token_master, ncm="95066200")
+    resp_editar = client.patch(f"/api/v1/produtos/{produto['id']}", json={"nome": "Bola nova"}, headers=headers)
+    assert resp_editar.json()["ncm"] == "95066200"  # não enviar = manter
+    resp_apagar = client.patch(f"/api/v1/produtos/{produto['id']}", json={"ncm": ""}, headers=headers)
+    assert resp_apagar.status_code == 200, resp_apagar.text
+    assert resp_apagar.json()["ncm"] is None
+
+
+def test_entrada_sem_comprovante_e_sem_almoxarifado(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    produto = _criar_produto(client, token_master, nome="Colchonete")
+    resp = client.post(
+        "/api/v1/movimentos-estoque",
+        data={"produto_id": produto["id"], "quantidade": "12", "data": "2026-03-01"},
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["nome_arquivo"] is None
+    assert _saldo(client, token_master, produto["id"]) == 12
+
+
+def test_dar_baixa_pra_um_polo(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+    produto = _criar_produto(client, token_master, nome="Uniforme", quantidade=30)
+
+    resp = client.post(
+        "/api/v1/movimentos-estoque/baixa",
+        json={
+            "produto_id": produto["id"], "polo_id": polo_a_id, "quantidade": 12, "data": "2026-03-10",
+            "recebido_por": "Maria", "observacao": "Turma sub-15",
+        },
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp.status_code == 201, resp.text
+    corpo = resp.json()
+    assert corpo["tipo"] == "SAIDA"
+    assert corpo["polo_id"] == polo_a_id
+    assert corpo["recebido_por"] == "Maria"
+    assert _saldo(client, token_master, produto["id"]) == 18
+
+
+def test_dar_baixa_acima_do_saldo_e_recusada(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+    produto = _criar_produto(client, token_master, nome="Uniforme", quantidade=3)
+
+    resp = client.post(
+        "/api/v1/movimentos-estoque/baixa",
+        json={"produto_id": produto["id"], "polo_id": polo_a_id, "quantidade": 4, "data": "2026-03-10"},
         headers={"Authorization": f"Bearer {token_master}"},
     )
     assert resp.status_code == 400
-    assert "almoxarifado" in resp.json()["detail"].lower()
+    assert "insuficiente" in resp.json()["detail"].lower()
+    assert _saldo(client, token_master, produto["id"]) == 3
+
+
+def test_gestor_nao_pode_dar_baixa(client, seed_basico):
+    token_master = login(client, "master@test.com")
+    token_gestor = login(client, "gestor.a@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+    produto = _criar_produto(client, token_master, quantidade=3)
+
+    resp = client.post(
+        "/api/v1/movimentos-estoque/baixa",
+        json={"produto_id": produto["id"], "polo_id": polo_a_id, "quantidade": 1, "data": "2026-03-10"},
+        headers={"Authorization": f"Bearer {token_gestor}"},
+    )
+    assert resp.status_code == 403
 
 
 def test_saldo_e_separado_por_almoxarifado_saida_recusa_de_onde_nao_tem_estoque(client, seed_basico):
@@ -195,7 +306,6 @@ def test_saldo_e_separado_por_almoxarifado_saida_recusa_de_onde_nao_tem_estoque(
     )
     assert resp_entrega.status_code == 400
     assert "insuficiente" in resp_entrega.json()["detail"].lower()
-    assert "Almoxarifado B" in resp_entrega.json()["detail"]
 
     # Do Almoxarifado A funciona normalmente.
     resp_ok = client.post(

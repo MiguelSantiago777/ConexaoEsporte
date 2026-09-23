@@ -2,13 +2,25 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class BaixaEstoqueRequest(BaseModel):
+    """Saída direta pela tela de Estoque — quanto sai e pra qual polo vai."""
+
+    produto_id: UUID
+    polo_id: UUID
+    quantidade: int = Field(..., gt=0)
+    data: date
+    recebido_por: str | None = Field(default=None, max_length=150, description="Quem retirou/recebeu o material.")
+    observacao: str | None = None
 
 
 class MovimentoEstoqueResponse(BaseModel):
     id: UUID
     produto_id: UUID
-    almoxarifado_id: UUID
+    almoxarifado_id: UUID | None
+    polo_id: UUID | None = None
     tipo: str  # ENTRADA | SAIDA
     quantidade: int
     data: date

@@ -8,12 +8,18 @@ class ProdutoCreateRequest(BaseModel):
     nome: str = Field(..., min_length=2, max_length=150, examples=["Bola de futebol"])
     unidade_medida: str = Field(..., min_length=1, max_length=30, examples=["unidade", "par", "caixa"])
     descricao: str | None = None
+    ncm: str | None = Field(default=None, max_length=12, examples=["9506.62.00"])
+    quantidade: int = Field(
+        default=0, ge=0,
+        description="Quantidade que já existe em estoque — lança a Entrada inicial junto com o cadastro.",
+    )
 
 
 class ProdutoUpdateRequest(BaseModel):
     nome: str | None = Field(default=None, min_length=2, max_length=150)
     unidade_medida: str | None = Field(default=None, min_length=1, max_length=30)
     descricao: str | None = None
+    ncm: str | None = Field(default=None, max_length=12, description='Envie "" pra apagar o NCM.')
     ativo: bool | None = None
 
 
@@ -21,6 +27,7 @@ class ProdutoResponse(BaseModel):
     id: UUID
     nome: str
     unidade_medida: str
+    ncm: str | None = None
     descricao: str | None
     ativo: bool
     saldo_atual: int = 0

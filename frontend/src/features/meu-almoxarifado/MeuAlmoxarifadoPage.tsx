@@ -243,11 +243,11 @@ export function MeuAlmoxarifadoPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Meu Almoxarifado"
+        title="Meu Estoque"
         subtitle={
           usuario?.almoxarifado_nome
             ? `Você opera o estoque de "${usuario.almoxarifado_nome}" — registre a Entrada com a nota fiscal ou comprovante.`
-            : "Registre a Entrada de produtos no seu almoxarifado."
+            : "Registre a Entrada de produtos no seu estoque."
         }
       />
 
@@ -292,7 +292,7 @@ export function MeuAlmoxarifadoPage() {
 
       <Card
         title="Registrar entrega"
-        subtitle="Saída de material do seu almoxarifado pra abastecer um polo. Depois de registrar, exporte o Termo pra imprimir e levar junto com o material — o polo assina e você confirma o recebimento aqui na lista abaixo."
+        subtitle="Saída de material do seu estoque pra abastecer um polo. Depois de registrar, exporte o Termo pra imprimir e levar junto com o material — o polo assina e você confirma o recebimento aqui na lista abaixo."
         className="animate-fade-in-up"
         style={staggerStyle(1)}
       >
@@ -313,7 +313,7 @@ export function MeuAlmoxarifadoPage() {
 
           <div>
             <span className="block text-sm font-medium text-gray-700 mb-2">Itens da entrega</span>
-            <p className="text-xs text-gray-500 mb-2">Só produtos com saldo no seu almoxarifado.</p>
+            <p className="text-xs text-gray-500 mb-2">Só produtos com saldo no seu estoque.</p>
             <div className="space-y-2">
               {itensEntrega.map((item, idx) => (
                 <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_100px_auto] gap-2 items-end">
@@ -402,7 +402,7 @@ export function MeuAlmoxarifadoPage() {
         {carregandoSaldos ? (
           <Spinner label="Carregando saldos…" />
         ) : saldos.length === 0 ? (
-          <EmptyState message="Nenhuma movimentação registrada ainda neste almoxarifado." />
+          <EmptyState message="Nenhuma movimentação registrada ainda neste estoque." />
         ) : (
           <ul className="divide-y divide-gray-100">
             {saldos.map((s) => (

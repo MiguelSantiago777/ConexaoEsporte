@@ -10,7 +10,9 @@ from app.infrastructure.repositories.paginacao import paginar
 
 
 def _to_entity(m: ProdutoModel) -> Produto:
-    return Produto(id=m.id, nome=m.nome, unidade_medida=m.unidade_medida, descricao=m.descricao, ativo=m.ativo)
+    return Produto(
+        id=m.id, nome=m.nome, unidade_medida=m.unidade_medida, descricao=m.descricao, ativo=m.ativo, ncm=m.ncm,
+    )
 
 
 class ProdutoRepository:
@@ -96,7 +98,7 @@ class ProdutoRepository:
     def criar(self, produto: Produto) -> Produto:
         m = ProdutoModel(
             nome=produto.nome, unidade_medida=produto.unidade_medida,
-            descricao=produto.descricao, ativo=produto.ativo,
+            descricao=produto.descricao, ativo=produto.ativo, ncm=produto.ncm,
         )
         self.db.add(m)
         self.db.commit()
@@ -108,7 +110,9 @@ class ProdutoRepository:
         if not m:
             return None
         for k, v in campos.items():
-            if v is not None:
+            # `ncm` é a exceção: o service só o repassa quando foi enviado,
+            # e aí None significa "apagar o NCM".
+            if v is not None or k == "ncm":
                 setattr(m, k, v)
         self.db.commit()
         self.db.refresh(m)

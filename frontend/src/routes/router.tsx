@@ -21,8 +21,6 @@ import { FichasExecucaoPage } from "@/features/fichas-execucao/FichasExecucaoPag
 import { FichaExecucaoDetalhePage } from "@/features/fichas-execucao/FichaExecucaoDetalhePage";
 import { EntregasMateriaisPage } from "@/features/entregas-materiais/EntregasMateriaisPage";
 import { EstoquePage } from "@/features/estoque/EstoquePage";
-import { AlmoxarifadosPage } from "@/features/almoxarifados/AlmoxarifadosPage";
-import { MeuAlmoxarifadoPage } from "@/features/meu-almoxarifado/MeuAlmoxarifadoPage";
 import { RelatoriosGerenciaisPage } from "@/features/relatorios-gerenciais/RelatoriosGerenciaisPage";
 import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
 import { AnexosGeraisPage } from "@/features/anexos-gerais/AnexosGeraisPage";
@@ -77,26 +75,12 @@ export const router = createBrowserRouter([
               { path: "/relatorios-gerenciais/:aba", element: <RelatoriosGerenciaisPage /> },
             ],
           },
-          // MASTER + GESTOR_POLO + COORDENADOR_ALMOXARIFADO
-          {
-            element: <ProtectedRoute perfisPermitidos={["MASTER", "GESTOR_POLO", "COORDENADOR_ALMOXARIFADO"]} />,
-            children: [
-              { path: "/almoxarifados", element: <AlmoxarifadosPage /> },
-            ],
-          },
           // PROFESSOR
           {
             element: <ProtectedRoute perfisPermitidos={["PROFESSOR"]} />,
             children: [
               { path: "/frequencia", element: <FrequenciaPage /> },
               { path: "/relatorios", element: <RelatoriosPage /> },
-            ],
-          },
-          // COORDENADOR_ALMOXARIFADO
-          {
-            element: <ProtectedRoute perfisPermitidos={["COORDENADOR_ALMOXARIFADO"]} />,
-            children: [
-              { path: "/meu-almoxarifado", element: <MeuAlmoxarifadoPage /> },
             ],
           },
         ],

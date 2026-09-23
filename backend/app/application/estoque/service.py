@@ -1,7 +1,8 @@
-"""Use cases de Movimento de Estoque — ENTRADA é lançada manualmente (com
-nota fiscal/comprovante em anexo); SAÍDA nasce automaticamente de um item
-de Entrega de Materiais (ver app/application/entrega_material/service.py,
-que chama `registrar_saida` — nunca exposta como rota própria)."""
+"""Use cases de Movimento de Estoque. O estoque é único: o saldo de um
+produto é sempre o total de todos os movimentos dele. ENTRADA é lançada na
+tela de Estoque (comprovante opcional). SAÍDA vem de uma Baixa direta pra
+um polo (`dar_baixa`) ou de um item de Entrega de Materiais (ver
+app/application/entrega_material/service.py, que chama `registrar_saida`)."""
 from datetime import date
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from app.domain.estoque.entities import MovimentoEstoque
 from app.domain.shared.exceptions import ArquivoMuitoGrande, RecursoNaoEncontrado, RegraDeNegocioViolada, TipoArquivoNaoSuportado
 from app.infrastructure.repositories.almoxarifado_repository import AlmoxarifadoRepository
 from app.infrastructure.repositories.movimento_estoque_repository import MovimentoEstoqueRepository
+from app.infrastructure.repositories.polo_repository import PoloRepository
 from app.infrastructure.repositories.produto_repository import ProdutoRepository
 from app.infrastructure.storage.armazenamento_documentos import armazenamento_estoque
 
@@ -24,6 +26,7 @@ class MovimentoEstoqueService:
         self.repo = MovimentoEstoqueRepository(db)
         self.produto_repo = ProdutoRepository(db)
         self.almoxarifado_repo = AlmoxarifadoRepository(db)
+        self.polo_repo = PoloRepository(db)
 
     def listar(
         self, produto_id: UUID | None = None, tipo: str | None = None,
@@ -50,60 +53,80 @@ class MovimentoEstoqueService:
         return self.repo.buscar_por_id(movimento_id)
 
     async def registrar_entrada(
-        self, produto_id: UUID, almoxarifado_id: UUID, quantidade: int, data_ref: date, observacao: str | None,
-        arquivo: UploadFile, criado_por_id: UUID | None,
+        self, produto_id: UUID, quantidade: int, data_ref: date, observacao: str | None,
+        arquivo: UploadFile | None, criado_por_id: UUID | None,
         entregue_por: str | None = None, recebido_por: str | None = None,
+        almoxarifado_id: UUID | None = None,
     ) -> MovimentoEstoque:
+        """O comprovante é opcional. `almoxarifado_id` só é aceito por
+        compatibilidade com clientes antigos — a tela atual nunca envia
+        (estoque único)."""
         if not self.produto_repo.buscar_por_id(produto_id):
             raise RecursoNaoEncontrado("Produto não encontrado.")
-        if not self.almoxarifado_repo.buscar_por_id(almoxarifado_id):
-            raise RecursoNaoEncontrado("Almoxarifado não encontrado.")
+        if almoxarifado_id and not self.almoxarifado_repo.buscar_por_id(almoxarifado_id):
+            raise RecursoNaoEncontrado("Estoque não encontrado.")
 
-        if arquivo.content_type not in CONTENT_TYPES_ACEITOS:
-            raise TipoArquivoNaoSuportado("Tipo de arquivo não permitido. Envie PDF, JPG, PNG ou WEBP.")
+        dados_arquivo = {}
+        if arquivo is not None and arquivo.filename:
+            if arquivo.content_type not in CONTENT_TYPES_ACEITOS:
+                raise TipoArquivoNaoSuportado("Tipo de arquivo não permitido. Envie PDF, JPG, PNG ou WEBP.")
 
-        conteudo = await arquivo.read()
-        tamanho_maximo = settings.UPLOAD_MAX_SIZE_MB * 1024 * 1024
-        if len(conteudo) > tamanho_maximo:
-            raise ArquivoMuitoGrande(f"Arquivo excede o limite de {settings.UPLOAD_MAX_SIZE_MB}MB.")
+            conteudo = await arquivo.read()
+            tamanho_maximo = settings.UPLOAD_MAX_SIZE_MB * 1024 * 1024
+            if len(conteudo) > tamanho_maximo:
+                raise ArquivoMuitoGrande(f"Arquivo excede o limite de {settings.UPLOAD_MAX_SIZE_MB}MB.")
 
-        caminho = armazenamento_estoque.salvar(str(produto_id), arquivo.filename or "comprovante", conteudo)
+            caminho = armazenamento_estoque.salvar(str(produto_id), arquivo.filename, conteudo)
+            dados_arquivo = dict(
+                nome_arquivo=arquivo.filename, caminho_arquivo=caminho,
+                content_type=arquivo.content_type, tamanho_bytes=len(conteudo),
+            )
 
         movimento = MovimentoEstoque(
             id=None, produto_id=produto_id, almoxarifado_id=almoxarifado_id, tipo="ENTRADA",
             quantidade=quantidade, data=data_ref,
             observacao=observacao, entregue_por=entregue_por, recebido_por=recebido_por,
-            nome_arquivo=arquivo.filename or "comprovante", caminho_arquivo=caminho,
-            content_type=arquivo.content_type, tamanho_bytes=len(conteudo), criado_por_id=criado_por_id,
+            criado_por_id=criado_por_id, **dados_arquivo,
         )
         return self.repo.criar(movimento)
 
-    def registrar_saida(
-        self, produto_id: UUID, almoxarifado_id: UUID, quantidade: int, data_ref: date,
-        entrega_material_id: UUID, criado_por_id: UUID | None,
+    def dar_baixa(
+        self, produto_id: UUID, polo_id: UUID, quantidade: int, data_ref: date,
+        observacao: str | None, recebido_por: str | None, criado_por_id: UUID | None,
     ) -> MovimentoEstoque:
-        """Chamado só internamente pelo EntregaMaterialService ao criar uma
-        entrega com um item referenciando este produto — nunca por uma rota
-        própria (Saída não existe como ação isolada, ver decisão do
-        produto). O saldo verificado é o daquele almoxarifado específico —
-        um produto pode ter saldo num almoxarifado e não ter em outro."""
+        """Saída direta pela tela de Estoque: tira `quantidade` do estoque e
+        registra pra qual polo o material foi."""
+        if not self.polo_repo.buscar_por_id(polo_id):
+            raise RecursoNaoEncontrado("Polo não encontrado.")
+        return self.registrar_saida(
+            produto_id=produto_id, quantidade=quantidade, data_ref=data_ref, criado_por_id=criado_por_id,
+            polo_id=polo_id, observacao=observacao, recebido_por=recebido_por,
+        )
+
+    def registrar_saida(
+        self, produto_id: UUID, quantidade: int, data_ref: date, criado_por_id: UUID | None,
+        almoxarifado_id: UUID | None = None, entrega_material_id: UUID | None = None,
+        polo_id: UUID | None = None, observacao: str | None = None, recebido_por: str | None = None,
+    ) -> MovimentoEstoque:
+        """Valida o saldo e grava a SAÍDA. Sem `almoxarifado_id` (o normal
+        agora) o saldo checado é o total do produto; com ele (só clientes
+        antigos que ainda escolhem almoxarifado), é o daquele almoxarifado."""
         produto = self.produto_repo.buscar_por_id(produto_id)
         if not produto:
             raise RecursoNaoEncontrado("Produto não encontrado.")
-        almoxarifado = self.almoxarifado_repo.buscar_por_id(almoxarifado_id)
-        if not almoxarifado:
-            raise RecursoNaoEncontrado("Almoxarifado não encontrado.")
+        if almoxarifado_id and not self.almoxarifado_repo.buscar_por_id(almoxarifado_id):
+            raise RecursoNaoEncontrado("Estoque não encontrado.")
 
         saldo = self.produto_repo.saldo_atual(produto_id, almoxarifado_id)
         if quantidade > saldo:
             raise RegraDeNegocioViolada(
-                f"Estoque insuficiente de \"{produto.nome}\" no almoxarifado \"{almoxarifado.nome}\": "
+                f"Estoque insuficiente de \"{produto.nome}\": "
                 f"disponível {saldo} {produto.unidade_medida}, pedido {quantidade}."
             )
 
         movimento = MovimentoEstoque(
-            id=None, produto_id=produto_id, almoxarifado_id=almoxarifado_id, tipo="SAIDA",
-            quantidade=quantidade, data=data_ref,
+            id=None, produto_id=produto_id, almoxarifado_id=almoxarifado_id, polo_id=polo_id, tipo="SAIDA",
+            quantidade=quantidade, data=data_ref, observacao=observacao, recebido_por=recebido_por,
             entrega_material_id=entrega_material_id, criado_por_id=criado_por_id,
         )
         return self.repo.criar(movimento)
