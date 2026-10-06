@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Beneficiario, Polo } from "@/types";
+import type { Beneficiario, Modalidade, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -31,6 +31,10 @@ export function RelatorioBeneficiariosPage() {
     queryKey: ["polos"],
     queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
   });
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+  });
   const [usoExterno, setUsoExterno] = useState(false);
   const [filtroPolo, setFiltroPolo] = useState("");
   const [exportando, setExportando] = useState(false);
@@ -39,6 +43,16 @@ export function RelatorioBeneficiariosPage() {
 
   function poloNome(id: string | null) {
     return polos.find((p) => p.id === id)?.nome ?? "—";
+  }
+
+  /** "Futebol, Vôlei (interesse)" — matriculadas primeiro; interesse = ainda aguardando turma. */
+  function modalidadesTexto(b: Beneficiario) {
+    const nome = (id: string) => modalidades.find((m) => m.id === id)?.nome ?? "—";
+    const partes = [
+      ...(b.modalidades_matriculado ?? []).map(nome),
+      ...(b.modalidades_interesse ?? []).map((id) => `${nome(id)} (interesse)`),
+    ];
+    return partes.length ? partes.join(", ") : "—";
   }
 
   async function baixarPdf() {
@@ -61,6 +75,7 @@ export function RelatorioBeneficiariosPage() {
         CPF: usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento),
         Nascimento: formatarData(b.data_nascimento),
         Polo: poloNome(b.polo_id),
+        Modalidades: modalidadesTexto(b),
         Responsável: b.responsavel_legal_nome
           ? usoExterno
             ? mascararNomeLGPD(b.responsavel_legal_nome)
@@ -154,6 +169,7 @@ export function RelatorioBeneficiariosPage() {
                     {usoExterno ? mascararCPFLGPD(b.documento) : maskCPF(b.documento)} · {formatarData(b.data_nascimento)}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">{poloNome(b.polo_id)}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{modalidadesTexto(b)}</div>
                   {(b.responsavel_legal_nome || b.responsavel_legal_telefone_1) && (
                     <div className="text-xs text-gray-500 mt-0.5">
                       {b.responsavel_legal_nome
@@ -176,6 +192,7 @@ export function RelatorioBeneficiariosPage() {
                     <th className="px-3">CPF</th>
                     <th className="px-3">Nascimento</th>
                     <th className="px-3">Polo</th>
+                    <th className="px-3">Modalidades</th>
                     <th className="px-3">Responsável</th>
                     <th className="px-3 pr-8">Contato</th>
                   </tr>
@@ -191,6 +208,7 @@ export function RelatorioBeneficiariosPage() {
                       </td>
                       <td className="px-3 text-gray-600">{formatarData(b.data_nascimento)}</td>
                       <td className="px-3 text-gray-600">{poloNome(b.polo_id)}</td>
+                      <td className="px-3 text-gray-600">{modalidadesTexto(b)}</td>
                       <td className="px-3 text-gray-600">
                         {b.responsavel_legal_nome
                           ? usoExterno

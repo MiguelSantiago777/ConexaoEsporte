@@ -133,6 +133,11 @@ def test_listagem_paginada_traz_resumo_de_modalidades(client, seed_basico):
     assert item["modalidades_matriculado"] == [judo]
     assert item["modalidades_interesse"] == [volei]
 
+    # listagem completa (usada pela Ficha Cadastral) traz o mesmo resumo
+    item = client.get("/api/v1/beneficiarios", headers=_auth(token)).json()[0]
+    assert item["modalidades_matriculado"] == [judo]
+    assert item["modalidades_interesse"] == [volei]
+
 
 def test_criar_turma_sem_a_opcao_nao_matricula_ninguem(client, seed_basico):
     token = login(client, "gestor.a@test.com")

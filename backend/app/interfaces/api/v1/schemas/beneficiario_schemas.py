@@ -70,8 +70,8 @@ class BeneficiarioResponse(BaseModel):
     tamanho_camisa: str | None
     tamanho_calcado: str | None
     ativo: bool
-    # Preenchidos só na listagem paginada (tela de Beneficiários): modalidades
-    # com matrícula ativa e modalidades de interesse ainda sem matrícula.
+    # Preenchidos só na listagem (GET /beneficiarios): modalidades com
+    # matrícula ativa e modalidades de interesse ainda sem matrícula.
     modalidades_matriculado: list[UUID] = []
     modalidades_interesse: list[UUID] = []
 

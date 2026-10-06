@@ -89,20 +89,26 @@ def listar_beneficiarios(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Perfil sem permissão para executar esta ação.")
 
     if pagina is None:
-        itens = service.listar(polo_id=filtro_polo, turma_id=turma_id)
-        return [BeneficiarioResponse.model_validate(b) for b in itens]
+        return _com_modalidades(db, service.listar(polo_id=filtro_polo, turma_id=turma_id))
 
     itens, total = service.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=filtro_polo, nome=nome)
+    return PaginaResponse(
+        itens=_com_modalidades(db, itens),
+        total=total, pagina=pagina, tamanho_pagina=tamanho_pagina,
+    )
+
+
+def _com_modalidades(db: DbSession, itens: list) -> list[BeneficiarioResponse]:
+    """Anexa a cada beneficiário as modalidades com matrícula ativa e as de
+    interesse (aguardando turma) — usado pela tela de Beneficiários e pela
+    Ficha Cadastral."""
     resumo = BeneficiarioInteresseService(db).resumo_modalidades([b.id for b in itens if b.id])
     respostas = []
     for b in itens:
         resposta = BeneficiarioResponse.model_validate(b)
         resposta.modalidades_matriculado, resposta.modalidades_interesse = resumo.get(b.id, ([], []))
         respostas.append(resposta)
-    return PaginaResponse(
-        itens=respostas,
-        total=total, pagina=pagina, tamanho_pagina=tamanho_pagina,
-    )
+    return respostas
 
 
 @router.post(
