@@ -48,6 +48,8 @@ export type Beneficiario = components["schemas"]["BeneficiarioResponse"];
 // Vínculo N:N entre beneficiário e turma — um beneficiário pode ter várias
 // matrículas ativas ao mesmo tempo (ex.: judô e natação).
 export type Matricula = components["schemas"]["MatriculaResponse"];
+export type InteressesModalidade = components["schemas"]["InteressesModalidadeResponse"];
+export type Interessados = components["schemas"]["InteressadosResponse"];
 
 // Foto de evidência anexada a uma chamada (turma + data), comprovando que a
 // aula realmente aconteceu.

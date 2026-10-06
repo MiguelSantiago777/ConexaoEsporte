@@ -3,6 +3,8 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.application.beneficiario.interesse_service import BeneficiarioInteresseService
+from app.application.matricula.service import MatriculaService
 from app.domain.enums import PerfilUsuario
 from app.domain.shared.exceptions import RegraDeNegocioViolada
 from app.domain.turma.entities import Turma
@@ -12,6 +14,7 @@ from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
 class TurmaService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = TurmaRepository(db)
         self.usuario_repo = UsuarioRepository(db)
 
@@ -62,6 +65,7 @@ class TurmaService:
         self, polo_id: UUID, modalidade_id: UUID, professor_id: UUID | None,
         horario_inicio: str, horario_fim: str, dias_semana: list[str], limite_vagas: int,
         coordenador_nome: str | None = None, monitor_nome: str | None = None, periodicidade: str | None = None,
+        matricular_interessados: bool = False,
     ) -> dict:
         turma = self.validar(
             polo_id=polo_id, modalidade_id=modalidade_id, professor_id=professor_id,
@@ -70,7 +74,23 @@ class TurmaService:
             coordenador_nome=coordenador_nome, monitor_nome=monitor_nome, periodicidade=periodicidade,
         )
         criada = self.repo.criar(turma)
+        if matricular_interessados:
+            self._matricular_interessados(criada)
         return self._com_vagas(criada)
+
+    def contar_interessados(self, polo_id: UUID, modalidade_id: UUID) -> int:
+        return len(BeneficiarioInteresseService(self.db).listar_interessados_sem_turma(polo_id, modalidade_id))
+
+    def _matricular_interessados(self, turma: Turma) -> None:
+        """Preenche a turma recém-criada com os interessados do polo naquela
+        modalidade, por ordem de registro do interesse, até o limite de vagas."""
+        assert turma.id is not None
+        interessados = BeneficiarioInteresseService(self.db).listar_interessados_sem_turma(
+            turma.polo_id, turma.modalidade_id
+        )
+        matricula_service = MatriculaService(self.db)
+        for beneficiario_id in interessados[: turma.limite_vagas]:
+            matricula_service.matricular(beneficiario_id, turma.id)
 
     def atualizar(self, turma_id: UUID, **campos) -> dict | None:
         if campos.get("professor_id") is not None:

@@ -11,6 +11,7 @@ from fastapi.responses import Response
 
 from app.application.beneficiario.documento_service import BeneficiarioDocumentoService
 from app.application.beneficiario.importacao_service import BeneficiarioImportacaoService
+from app.application.beneficiario.interesse_service import BeneficiarioInteresseService
 from app.application.beneficiario.service import BeneficiarioService
 from app.application.importacao.planilha import ler_planilha
 from app.application.matricula.service import MatriculaService
@@ -30,6 +31,8 @@ from app.interfaces.api.v1.schemas.beneficiario_schemas import (
     BeneficiarioDocumentoResponse,
     BeneficiarioResponse,
     BeneficiarioUpdateRequest,
+    InteressesModalidadeRequest,
+    InteressesModalidadeResponse,
 )
 from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.matricula_schemas import MatriculaCreateRequest, MatriculaResponse
@@ -90,8 +93,14 @@ def listar_beneficiarios(
         return [BeneficiarioResponse.model_validate(b) for b in itens]
 
     itens, total = service.listar_pagina(pagina=pagina, tamanho_pagina=tamanho_pagina, polo_id=filtro_polo, nome=nome)
+    resumo = BeneficiarioInteresseService(db).resumo_modalidades([b.id for b in itens if b.id])
+    respostas = []
+    for b in itens:
+        resposta = BeneficiarioResponse.model_validate(b)
+        resposta.modalidades_matriculado, resposta.modalidades_interesse = resumo.get(b.id, ([], []))
+        respostas.append(resposta)
     return PaginaResponse(
-        itens=[BeneficiarioResponse.model_validate(b) for b in itens],
+        itens=respostas,
         total=total, pagina=pagina, tamanho_pagina=tamanho_pagina,
     )
 
@@ -228,6 +237,32 @@ def desmatricular_beneficiario(
     service = MatriculaService(db)
     matricula = service.desmatricular(beneficiario_id, matricula_id)
     return MatriculaResponse.model_validate(matricula)
+
+
+@router.get(
+    "/{beneficiario_id}/interesses",
+    response_model=InteressesModalidadeResponse,
+    summary="Listar modalidades de interesse do beneficiário",
+    description="Modalidades em que o beneficiário quer participar mas ainda não está matriculado "
+    "(ex.: o polo ainda não tem turma formada).",
+)
+def listar_interesses(beneficiario_id: UUID, usuario: MasterOuGestor, db: DbSession) -> InteressesModalidadeResponse:
+    _assert_acesso_ao_beneficiario(usuario, db, beneficiario_id)
+    return InteressesModalidadeResponse(modalidade_ids=BeneficiarioInteresseService(db).listar(beneficiario_id))
+
+
+@router.put(
+    "/{beneficiario_id}/interesses",
+    response_model=InteressesModalidadeResponse,
+    summary="Definir modalidades de interesse do beneficiário",
+    description="Substitui a lista inteira de modalidades de interesse.",
+)
+def definir_interesses(
+    beneficiario_id: UUID, body: InteressesModalidadeRequest, usuario: MasterOuGestor, db: DbSession
+) -> InteressesModalidadeResponse:
+    _assert_acesso_ao_beneficiario(usuario, db, beneficiario_id)
+    modalidade_ids = BeneficiarioInteresseService(db).definir(beneficiario_id, body.modalidade_ids)
+    return InteressesModalidadeResponse(modalidade_ids=modalidade_ids)
 
 
 # ---------------------------------------------------------------------

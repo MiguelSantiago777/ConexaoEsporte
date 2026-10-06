@@ -70,6 +70,10 @@ class BeneficiarioResponse(BaseModel):
     tamanho_camisa: str | None
     tamanho_calcado: str | None
     ativo: bool
+    # Preenchidos só na listagem paginada (tela de Beneficiários): modalidades
+    # com matrícula ativa e modalidades de interesse ainda sem matrícula.
+    modalidades_matriculado: list[UUID] = []
+    modalidades_interesse: list[UUID] = []
 
     model_config = {"from_attributes": True}
 
@@ -84,3 +88,11 @@ class BeneficiarioDocumentoResponse(BaseModel):
     criado_em: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class InteressesModalidadeRequest(BaseModel):
+    modalidade_ids: list[UUID]
+
+
+class InteressesModalidadeResponse(BaseModel):
+    modalidade_ids: list[UUID]

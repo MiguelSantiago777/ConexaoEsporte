@@ -182,13 +182,13 @@ export function BeneficiariosPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.modalidade_id || !form.turma_id) {
-      toast.error("Selecione a modalidade e a turma do beneficiário.");
+    if (!form.modalidade_id) {
+      toast.error("Selecione a modalidade do beneficiário.");
       return;
     }
     setEnviando(true);
     try {
-      const { responsavel_legal_tipo_relacao_outro, modalidade_id: _modalidade_id, turma_id, ...dadosForm } = form;
+      const { responsavel_legal_tipo_relacao_outro, modalidade_id, turma_id, ...dadosForm } = form;
       const tipoRelacaoFinal =
         form.responsavel_legal_tipo_relacao === "Outro"
           ? responsavel_legal_tipo_relacao_outro
@@ -209,15 +209,30 @@ export function BeneficiariosPage() {
         tamanho_calcado: form.tamanho_calcado || null,
       });
       await enviarDocumentos(criado.id);
-      try {
-        await api.post(`/beneficiarios/${criado.id}/matriculas`, { turma_id });
-        toast.success("Beneficiário cadastrado e matriculado com sucesso.");
-      } catch (err: unknown) {
-        toast.error(
-          `Beneficiário cadastrado, mas houve um problema ao matricular na turma: ${
-            mensagemErroApi(err, "erro desconhecido")
-          }. Você pode tentar novamente pelo ícone de troféu na lista.`
-        );
+      if (turma_id) {
+        try {
+          await api.post(`/beneficiarios/${criado.id}/matriculas`, { turma_id });
+          toast.success("Beneficiário cadastrado e matriculado com sucesso.");
+        } catch (err: unknown) {
+          toast.error(
+            `Beneficiário cadastrado, mas houve um problema ao matricular na turma: ${
+              mensagemErroApi(err, "erro desconhecido")
+            }. Você pode tentar novamente pelo ícone de troféu na lista.`
+          );
+        }
+      } else {
+        // Sem turma formada: fica registrado o interesse na modalidade, pra ser
+        // matriculado quando a turma do polo for criada.
+        try {
+          await api.put(`/beneficiarios/${criado.id}/interesses`, { modalidade_ids: [modalidade_id] });
+          toast.success("Beneficiário cadastrado como interessado — aguardando turma.");
+        } catch (err: unknown) {
+          toast.error(
+            `Beneficiário cadastrado, mas não foi possível registrar a modalidade de interesse: ${
+              mensagemErroApi(err, "erro desconhecido")
+            }. Você pode registrar pelo ícone de troféu na lista.`
+          );
+        }
       }
       setForm(FORM_INICIAL);
       setArquivos(ARQUIVOS_INICIAL);
@@ -296,9 +311,8 @@ export function BeneficiariosPage() {
                 value={form.turma_id}
                 onChange={(e) => setForm({ ...form, turma_id: e.target.value })}
                 disabled={!form.modalidade_id}
-                required
               >
-                <option value="">— Selecione —</option>
+                <option value="">Sem turma — só interesse</option>
                 {turmasDoFormulario.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.horario_inicio}–{t.horario_fim} ({t.dias_semana.join(", ")}) — {t.vagas_ocupadas}/{t.limite_vagas} vagas
@@ -307,8 +321,9 @@ export function BeneficiariosPage() {
               </Select>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              Essa é a matrícula inicial do beneficiário. Para matricular em outras modalidades/turmas ao mesmo
-              tempo, use o ícone de troféu na lista depois do cadastro.
+              {form.modalidade_id && !form.turma_id
+                ? "Sem turma escolhida, o beneficiário fica como interessado nessa modalidade e pode ser matriculado de uma vez quando a turma do polo for criada."
+                : "Essa é a matrícula inicial do beneficiário. Para matricular em outras modalidades/turmas ao mesmo tempo, use o ícone de troféu na lista depois do cadastro."}
             </p>
           </section>
 
@@ -511,6 +526,12 @@ export function BeneficiariosPage() {
                         {maskCPF(b.documento)} · {formatarData(b.data_nascimento)}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5 truncate">{poloNome(b.polo_id)}</div>
+                      <ResumoModalidades
+                        beneficiario={b}
+                        modalidades={modalidades}
+                        onClick={() => setBeneficiarioMatriculas(b)}
+                        className="mt-1.5"
+                      />
                       {(b.responsavel_legal_nome || b.responsavel_legal_telefone_1) && (
                         <div className="text-xs text-gray-500 mt-0.5 truncate">
                           {b.responsavel_legal_nome ?? "—"}
@@ -528,7 +549,7 @@ export function BeneficiariosPage() {
                     </Link>
                     <button
                       type="button"
-                      title="Matrículas (modalidades/turmas)"
+                      title="Modalidades e matrículas"
                       onClick={() => setBeneficiarioMatriculas(b)}
                       className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
                     >
@@ -563,6 +584,7 @@ export function BeneficiariosPage() {
                     <th className="px-3">CPF</th>
                     <th className="px-3">Nascimento</th>
                     <th className="px-3">Polo</th>
+                    <th className="px-3">Modalidades</th>
                     <th className="px-3">Responsável</th>
                     <th className="px-3">Contato</th>
                     <th className="px-3 text-right pr-8">Ações</th>
@@ -596,6 +618,13 @@ export function BeneficiariosPage() {
                           {poloNome(b.polo_id)}
                         </span>
                       </td>
+                      <td className="px-3">
+                        <ResumoModalidades
+                          beneficiario={b}
+                          modalidades={modalidades}
+                          onClick={() => setBeneficiarioMatriculas(b)}
+                        />
+                      </td>
                       <td className="px-3 text-gray-600">{b.responsavel_legal_nome ?? "—"}</td>
                       <td className="px-3 text-gray-600">
                         {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
@@ -610,7 +639,7 @@ export function BeneficiariosPage() {
                           </Link>
                           <button
                             type="button"
-                            title="Matrículas (modalidades/turmas)"
+                            title="Modalidades e matrículas"
                             onClick={() => setBeneficiarioMatriculas(b)}
                             className="text-gray-400 hover:text-brand transition-colors"
                           >
@@ -667,5 +696,49 @@ export function BeneficiariosPage() {
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Modalidades do beneficiário direto na listagem: verde = matriculado numa
+ * turma; dourado = só interesse, aguardando turma ser formada no polo.
+ * Clicar abre o MatriculasModal pra matricular ou ajustar os interesses.
+ */
+function ResumoModalidades({
+  beneficiario,
+  modalidades,
+  onClick,
+  className = "",
+}: {
+  beneficiario: Beneficiario;
+  modalidades: Modalidade[];
+  onClick: () => void;
+  className?: string;
+}) {
+  const nome = (id: string) => modalidades.find((m) => m.id === id)?.nome ?? "—";
+  const matriculado = beneficiario.modalidades_matriculado ?? [];
+  const interesse = beneficiario.modalidades_interesse ?? [];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Ver modalidades e matrículas"
+      className={`flex flex-wrap gap-1 text-left rounded-lg -m-1 p-1 hover:bg-brand-light transition-colors ${className}`}
+    >
+      {matriculado.length === 0 && interesse.length === 0 ? (
+        <span className="text-xs text-gray-400">Nenhuma</span>
+      ) : (
+        <>
+          {matriculado.map((id) => (
+            <Badge key={id} variant="court">{nome(id)}</Badge>
+          ))}
+          {interesse.map((id) => (
+            <span key={id} title="Interesse — aguardando turma">
+              <Badge variant="accent">{nome(id)}</Badge>
+            </span>
+          ))}
+        </>
+      )}
+    </button>
   );
 }

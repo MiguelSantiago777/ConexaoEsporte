@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Modalidade, Pagina, Polo, Turma, Usuario } from "@/types";
+import type { Interessados, Modalidade, Pagina, Polo, Turma, Usuario } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -67,6 +67,21 @@ export function TurmasPage() {
     coordenador_nome: "", monitor_nome: "", periodicidade: "",
   });
   const [exportForm, setExportForm] = useState({ turma_id: "", mes: MES_ATUAL, ano: ANO_ATUAL });
+  const [matricularInteressados, setMatricularInteressados] = useState(true);
+
+  // Beneficiários do polo com interesse na modalidade e ainda sem turma —
+  // ajuda a dimensionar as vagas e permite matriculá-los ao criar a turma.
+  const { data: interessados } = useQuery({
+    queryKey: ["turmas", "interessados", form.polo_id, form.modalidade_id],
+    queryFn: () =>
+      api
+        .get<Interessados>("/turmas/interessados", {
+          params: { polo_id: form.polo_id, modalidade_id: form.modalidade_id },
+        })
+        .then((r) => r.data),
+    enabled: !!form.polo_id && !!form.modalidade_id,
+  });
+  const totalInteressados = form.polo_id && form.modalidade_id ? interessados?.total ?? 0 : 0;
 
   // Gestor de polo já vem com o polo pré-selecionado.
   const [usuarioAnterior, setUsuarioAnterior] = useState(usuario);
@@ -133,19 +148,25 @@ export function TurmasPage() {
     e.preventDefault();
     setSalvando(true);
     try {
-      await api.post("/turmas", {
+      const { data: criada } = await api.post<Turma>("/turmas", {
         ...form,
         limite_vagas: Number(form.limite_vagas),
         coordenador_nome: form.coordenador_nome || null,
         monitor_nome: form.monitor_nome || null,
         periodicidade: form.periodicidade || null,
+        matricular_interessados: totalInteressados > 0 && matricularInteressados,
       });
       setForm({
         polo_id: usuario?.polo_id ?? "", modalidade_id: "", horario_inicio: "", horario_fim: "",
         dias_semana: [], limite_vagas: 20, coordenador_nome: "", monitor_nome: "", periodicidade: "",
       });
-      toast.success("Turma cadastrada com sucesso.");
+      toast.success(
+        criada.vagas_ocupadas > 0
+          ? `Turma cadastrada com ${criada.vagas_ocupadas} beneficiário(s) interessado(s) já matriculado(s).`
+          : "Turma cadastrada com sucesso."
+      );
       queryClient.invalidateQueries({ queryKey: ["turmas"] });
+      queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
     } catch (err: unknown) {
       toast.error(mensagemErroApi(err, "Erro ao cadastrar turma."));
     } finally {
@@ -210,6 +231,31 @@ export function TurmasPage() {
           </div>
           <Input label="Limite de vagas" type="number" min={1} value={form.limite_vagas}
             onChange={(e) => setForm({ ...form, limite_vagas: Number(e.target.value) })} required />
+          {totalInteressados > 0 && (
+            <div className="sm:col-span-2 rounded-lg border border-brand/15 bg-brand-light px-4 py-3 text-sm text-brand-dark">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <strong className="font-semibold tabular-nums">{totalInteressados}</strong>{" "}
+                  beneficiário(s) deste polo com interesse em {modalidadeNome(form.modalidade_id)}, aguardando turma.
+                </span>
+                {form.limite_vagas !== totalInteressados && (
+                  <Button type="button" variant="secondary"
+                    onClick={() => setForm({ ...form, limite_vagas: totalInteressados })}>
+                    Usar {totalInteressados} como limite de vagas
+                  </Button>
+                )}
+              </div>
+              <label className="mt-2 flex items-center gap-2 text-gray-700">
+                <input type="checkbox" checked={matricularInteressados}
+                  onChange={(e) => setMatricularInteressados(e.target.checked)}
+                  className="rounded border-gray-300 text-brand focus:ring-brand/40" />
+                Matricular os interessados ao cadastrar a turma
+                {totalInteressados > form.limite_vagas
+                  ? ` (os ${form.limite_vagas} primeiros, por ordem de inscrição)`
+                  : ""}
+              </label>
+            </div>
+          )}
           <Input label="Coordenador" placeholder="Nome do coordenador do núcleo" value={form.coordenador_nome}
             onChange={(e) => setForm({ ...form, coordenador_nome: e.target.value })} />
           <Input label="Monitor" placeholder="Nome do monitor/instrutor" value={form.monitor_nome}

@@ -2,7 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { Beneficiario, Matricula, Modalidade, Polo, Turma } from "@/types";
+import type { Beneficiario, InteressesModalidade, Matricula, Modalidade, Polo, Turma } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -75,6 +75,42 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
     },
   });
 
+  const interessesQueryKey = ["beneficiarios", beneficiario?.id, "interesses"];
+  const { data: interesses } = useQuery({
+    queryKey: interessesQueryKey,
+    queryFn: () =>
+      api.get<InteressesModalidade>(`/beneficiarios/${beneficiario!.id}/interesses`).then((r) => r.data),
+    enabled: !!beneficiario,
+  });
+  const idsInteresse = interesses?.modalidade_ids ?? [];
+
+  const idsMatriculado = new Set(
+    matriculasAtivas
+      .map((m) => turmas.find((t) => t.id === m.turma_id)?.modalidade_id)
+      .filter((id): id is string => !!id)
+  );
+  const aguardandoTurma = modalidades.filter((m) => idsInteresse.includes(m.id) && !idsMatriculado.has(m.id));
+
+  const interessesMutation = useMutation({
+    mutationFn: (modalidade_ids: string[]) =>
+      api.put<InteressesModalidade>(`/beneficiarios/${beneficiario!.id}/interesses`, { modalidade_ids }),
+    onSuccess: ({ data }) => {
+      queryClient.setQueryData(interessesQueryKey, data);
+      onAlterado();
+    },
+    onError: (err: unknown) => {
+      toast.error(mensagemErroApi(err, "Erro ao salvar as modalidades de interesse."));
+    },
+  });
+
+  function alternarInteresse(modalidadeId: string) {
+    interessesMutation.mutate(
+      idsInteresse.includes(modalidadeId)
+        ? idsInteresse.filter((id) => id !== modalidadeId)
+        : [...idsInteresse, modalidadeId]
+    );
+  }
+
   if (!beneficiario) return null;
 
   function matricular(e: FormEvent) {
@@ -88,7 +124,53 @@ export function MatriculasModal({ beneficiario, turmas, modalidades, polos, onCl
   }
 
   return (
-    <Modal open={!!beneficiario} onClose={onClose} title={`Matrículas — ${beneficiario.nome_completo}`}>
+    <Modal open={!!beneficiario} onClose={onClose} title={`Modalidades — ${beneficiario.nome_completo}`}>
+      <section className="mb-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-dark/70 mb-2">Situação</h3>
+        {idsMatriculado.size === 0 && aguardandoTurma.length === 0 ? (
+          <p className="text-sm text-gray-500">Sem matrícula nem modalidade de interesse registrada.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {modalidades
+              .filter((m) => idsMatriculado.has(m.id))
+              .map((m) => (
+                <Badge key={m.id} variant="court">
+                  {m.nome} · matriculado
+                </Badge>
+              ))}
+            {aguardandoTurma.map((m) => (
+              <Badge key={m.id} variant="accent">
+                {m.nome} · interesse, aguardando turma
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-dark/70 mt-5 mb-2">
+          Modalidades de interesse
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {modalidades.map((m) => {
+            const marcada = idsInteresse.includes(m.id);
+            return (
+              <button
+                type="button"
+                key={m.id}
+                aria-pressed={marcada}
+                onClick={() => alternarInteresse(m.id)}
+                disabled={interessesMutation.isPending}
+                className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors disabled:opacity-60 ${marcada ? "bg-brand text-white border-brand" : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+              >
+                {m.nome}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          Quando uma turma dessa modalidade for criada no polo, os interessados podem ser matriculados de uma vez.
+        </p>
+      </section>
+
       <form onSubmit={matricular} className="flex flex-col sm:flex-row sm:items-end gap-3 mb-5">
         <div className="flex-1">
           <Select label="Matricular em nova turma" value={turmaId} onChange={(e) => setTurmaId(e.target.value)}>

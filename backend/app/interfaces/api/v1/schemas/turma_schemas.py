@@ -17,6 +17,9 @@ class TurmaCreateRequest(BaseModel):
     coordenador_nome: str | None = Field(default=None, max_length=150)
     monitor_nome: str | None = Field(default=None, max_length=150)
     periodicidade: str | None = Field(default=None, max_length=50, examples=["Semanal"])
+    # Matricula na hora os beneficiários do polo com interesse nesta modalidade
+    # (ver GET /turmas/interessados), até o limite de vagas.
+    matricular_interessados: bool = False
 
     @field_validator("dias_semana")
     @classmethod
@@ -37,6 +40,10 @@ class TurmaUpdateRequest(BaseModel):
     monitor_nome: str | None = Field(default=None, max_length=150)
     periodicidade: str | None = Field(default=None, max_length=50)
     ativo: bool | None = None
+
+
+class InteressadosResponse(BaseModel):
+    total: int
 
 
 class TurmaResponse(BaseModel):

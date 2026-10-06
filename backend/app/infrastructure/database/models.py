@@ -188,6 +188,27 @@ class MatriculaModel(Base):
     turma: Mapped["TurmaModel"] = relationship(back_populates="matriculas")
 
 
+class BeneficiarioInteresseModel(Base):
+    """Modalidade em que o beneficiário tem interesse mas ainda não está
+    matriculado (ex.: polo sem turma formada). Ao criar uma turma, os
+    interessados daquele polo+modalidade podem ser matriculados de uma vez
+    (ver TurmaService.criar)."""
+
+    __tablename__ = "beneficiario_interesses"
+    __table_args__ = (
+        UniqueConstraint("beneficiario_id", "modalidade_id", name="uq_interesse_beneficiario_modalidade"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    beneficiario_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="CASCADE"), nullable=False
+    )
+    modalidade_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("modalidades.id", ondelete="CASCADE"), nullable=False
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class BeneficiarioDocumentoModel(Base):
     __tablename__ = "beneficiario_documentos"
 

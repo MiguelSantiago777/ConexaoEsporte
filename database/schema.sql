@@ -260,6 +260,19 @@ CREATE TABLE IF NOT EXISTS matriculas (
 CREATE INDEX IF NOT EXISTS idx_matriculas_beneficiario ON matriculas(beneficiario_id);
 CREATE INDEX IF NOT EXISTS idx_matriculas_turma        ON matriculas(turma_id);
 
+-- Modalidades de interesse do beneficiário que ainda não viraram matrícula
+-- (ex.: polo sem turma formada). Ao criar a turma, os interessados daquele
+-- polo+modalidade podem ser matriculados de uma vez.
+CREATE TABLE IF NOT EXISTS beneficiario_interesses (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    beneficiario_id UUID NOT NULL REFERENCES beneficiarios(id) ON DELETE CASCADE,
+    modalidade_id   UUID NOT NULL REFERENCES modalidades(id) ON DELETE CASCADE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_interesse_beneficiario_modalidade UNIQUE (beneficiario_id, modalidade_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_beneficiario_interesses_modalidade ON beneficiario_interesses(modalidade_id);
+
 -- Upgrade idempotente: bancos que já rodaram a versão anterior deste schema
 -- tinham beneficiarios.turma_id/modalidade_id (relação 1:1). Migra os
 -- vínculos existentes para a nova tabela de matrículas antes de remover as

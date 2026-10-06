@@ -20,7 +20,12 @@ from app.domain.enums import PerfilUsuario
 from app.interfaces.api.v1.routers._arquivo_helper import resposta_download, resposta_relatorio
 from app.interfaces.api.v1.schemas.importacao_schemas import ResultadoImportacaoResponse
 from app.interfaces.api.v1.schemas.paginacao_schemas import PaginaResponse
-from app.interfaces.api.v1.schemas.turma_schemas import TurmaCreateRequest, TurmaResponse, TurmaUpdateRequest
+from app.interfaces.api.v1.schemas.turma_schemas import (
+    InteressadosResponse,
+    TurmaCreateRequest,
+    TurmaResponse,
+    TurmaUpdateRequest,
+)
 
 router = APIRouter(prefix="/turmas", tags=["Turmas"])
 
@@ -79,7 +84,9 @@ def listar_turmas(
     response_model=TurmaResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Cadastrar turma",
-    description="MASTER cria em qualquer polo. GESTOR_POLO só cria turmas no seu próprio polo.",
+    description="MASTER cria em qualquer polo. GESTOR_POLO só cria turmas no seu próprio polo. Com "
+    "`matricular_interessados=true`, já matricula os interessados do polo nessa modalidade "
+    "(por ordem de registro do interesse) até o limite de vagas.",
 )
 def criar_turma(body: TurmaCreateRequest, usuario: MasterOuGestor, db: DbSession) -> TurmaResponse:
     assert_acesso_ao_polo(usuario, body.polo_id, "turmas")  # bloqueia gestor de outro polo
@@ -89,9 +96,23 @@ def criar_turma(body: TurmaCreateRequest, usuario: MasterOuGestor, db: DbSession
         horario_inicio=body.horario_inicio, horario_fim=body.horario_fim,
         dias_semana=body.dias_semana, limite_vagas=body.limite_vagas,
         coordenador_nome=body.coordenador_nome, monitor_nome=body.monitor_nome,
-        periodicidade=body.periodicidade,
+        periodicidade=body.periodicidade, matricular_interessados=body.matricular_interessados,
     )
     return TurmaResponse(**criada)
+
+
+@router.get(
+    "/interessados",
+    response_model=InteressadosResponse,
+    summary="Contar beneficiários interessados numa modalidade do polo",
+    description="Quantos beneficiários ativos do polo registraram interesse na modalidade e ainda não "
+    "estão matriculados em nenhuma turma dela — usado no cadastro de turma pra dimensionar as vagas.",
+)
+def contar_interessados(
+    polo_id: UUID, modalidade_id: UUID, usuario: MasterOuGestor, db: DbSession
+) -> InteressadosResponse:
+    assert_acesso_ao_polo(usuario, polo_id, "turmas")
+    return InteressadosResponse(total=TurmaService(db).contar_interessados(polo_id, modalidade_id))
 
 
 @router.get(

@@ -488,9 +488,29 @@ export interface paths {
         put?: never;
         /**
          * Cadastrar turma
-         * @description MASTER cria em qualquer polo. GESTOR_POLO só cria turmas no seu próprio polo.
+         * @description MASTER cria em qualquer polo. GESTOR_POLO só cria turmas no seu próprio polo. Com `matricular_interessados=true`, já matricula os interessados do polo nessa modalidade (por ordem de registro do interesse) até o limite de vagas.
          */
         post: operations["criar_turma_api_v1_turmas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/turmas/interessados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contar beneficiários interessados numa modalidade do polo
+         * @description Quantos beneficiários ativos do polo registraram interesse na modalidade e ainda não estão matriculados em nenhuma turma dela — usado no cadastro de turma pra dimensionar as vagas.
+         */
+        get: operations["contar_interessados_api_v1_turmas_interessados_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -691,6 +711,30 @@ export interface paths {
          * @description Desativa o vínculo do beneficiário com aquela turma (libera a vaga), sem afetar as demais matrículas dele nem o histórico de frequência/relatórios já lançado.
          */
         patch: operations["desmatricular_beneficiario_api_v1_beneficiarios__beneficiario_id__matriculas__matricula_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/beneficiarios/{beneficiario_id}/interesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar modalidades de interesse do beneficiário
+         * @description Modalidades em que o beneficiário quer participar mas ainda não está matriculado (ex.: o polo ainda não tem turma formada).
+         */
+        get: operations["listar_interesses_api_v1_beneficiarios__beneficiario_id__interesses_get"];
+        /**
+         * Definir modalidades de interesse do beneficiário
+         * @description Substitui a lista inteira de modalidades de interesse.
+         */
+        put: operations["definir_interesses_api_v1_beneficiarios__beneficiario_id__interesses_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/beneficiarios/{beneficiario_id}/documentos": {
@@ -2010,6 +2054,16 @@ export interface components {
             tamanho_calcado: string | null;
             /** Ativo */
             ativo: boolean;
+            /**
+             * Modalidades Matriculado
+             * @default []
+             */
+            modalidades_matriculado: string[];
+            /**
+             * Modalidades Interesse
+             * @default []
+             */
+            modalidades_interesse: string[];
         };
         /** BeneficiarioUpdateRequest */
         BeneficiarioUpdateRequest: {
@@ -2842,6 +2896,21 @@ export interface components {
             data_inicio_projeto: string | null;
             /** Data Fim Projeto */
             data_fim_projeto: string | null;
+        };
+        /** InteressadosResponse */
+        InteressadosResponse: {
+            /** Total */
+            total: number;
+        };
+        /** InteressesModalidadeRequest */
+        InteressesModalidadeRequest: {
+            /** Modalidade Ids */
+            modalidade_ids: string[];
+        };
+        /** InteressesModalidadeResponse */
+        InteressesModalidadeResponse: {
+            /** Modalidade Ids */
+            modalidade_ids: string[];
         };
         /** ItemEntregaRequest */
         ItemEntregaRequest: {
@@ -3838,6 +3907,11 @@ export interface components {
              * @example Semanal
              */
             periodicidade?: string | null;
+            /**
+             * Matricular Interessados
+             * @default false
+             */
+            matricular_interessados: boolean;
         };
         /** TurmaResponse */
         TurmaResponse: {
@@ -5061,6 +5135,38 @@ export interface operations {
             };
         };
     };
+    contar_interessados_api_v1_turmas_interessados_get: {
+        parameters: {
+            query: {
+                polo_id: string;
+                modalidade_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteressadosResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     baixar_modelo_importacao_turmas_api_v1_turmas_importar_modelo_get: {
         parameters: {
             query?: never;
@@ -5429,6 +5535,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatriculaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listar_interesses_api_v1_beneficiarios__beneficiario_id__interesses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                beneficiario_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteressesModalidadeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    definir_interesses_api_v1_beneficiarios__beneficiario_id__interesses_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                beneficiario_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InteressesModalidadeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteressesModalidadeResponse"];
                 };
             };
             /** @description Validation Error */
