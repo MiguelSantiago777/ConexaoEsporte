@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import type { Beneficiario, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,7 +16,8 @@ import { exportarXlsx } from "@/lib/exportarXlsx";
 import { useToast } from "@/components/ui/toast/ToastContext";
 
 /**
- * Ficha cadastral geral de todos os beneficiários ativos. Uso externo
+ * Ficha cadastral geral de todos os beneficiários ativos, opcionalmente
+ * filtrada por polo (o filtro também vale pro PDF e o Excel). Uso externo
  * mascara nome e CPF (LGPD) — do beneficiário e também do responsável —
  * uso interno mostra os dados completos.
  */
@@ -30,6 +32,7 @@ export function RelatorioBeneficiariosPage() {
     queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data),
   });
   const [usoExterno, setUsoExterno] = useState(false);
+  const [filtroPolo, setFiltroPolo] = useState("");
   const [exportando, setExportando] = useState(false);
   const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -42,7 +45,7 @@ export function RelatorioBeneficiariosPage() {
     if (!conteudoRef.current) return;
     setExportando(true);
     try {
-      await exportarPdf(conteudoRef.current, "ficha-cadastral-beneficiarios.pdf");
+      await exportarPdf(conteudoRef.current, `ficha-cadastral-beneficiarios${sufixoArquivo}.pdf`);
     } catch {
       toast.error("Não foi possível gerar o PDF. Tente novamente.");
     } finally {
@@ -65,7 +68,7 @@ export function RelatorioBeneficiariosPage() {
           : "—",
         Contato: b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—",
       }));
-      await exportarXlsx(linhas, "ficha-cadastral-beneficiarios.xlsx", "Beneficiários");
+      await exportarXlsx(linhas, `ficha-cadastral-beneficiarios${sufixoArquivo}.xlsx`, "Beneficiários");
     } catch {
       toast.error("Não foi possível gerar o Excel. Tente novamente.");
     } finally {
@@ -73,23 +76,39 @@ export function RelatorioBeneficiariosPage() {
     }
   }
 
-  const ativos = beneficiarios.filter((b) => b.ativo);
+  const ativos = beneficiarios.filter((b) => b.ativo && (!filtroPolo || b.polo_id === filtroPolo));
+  const poloFiltrado = filtroPolo ? poloNome(filtroPolo) : null;
+  const sufixoArquivo = poloFiltrado
+    ? `-${poloFiltrado.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`
+    : "";
 
   return (
     <div className="space-y-6">
       <Card className="animate-fade-in-up" style={staggerStyle(0)}>
         <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="w-5 h-5 accent-[#fcba27] rounded"
-              checked={usoExterno}
-              onChange={(e) => setUsoExterno(e.target.checked)}
-            />
-            <span className="text-sm text-gray-700">
-              Uso externo <span className="text-gray-400">— mascara nome e CPF (LGPD)</span>
-            </span>
-          </label>
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            <div className="sm:w-72">
+              <Select aria-label="Filtrar por polo" value={filtroPolo} onChange={(e) => setFiltroPolo(e.target.value)}>
+                <option value="">Todos os polos</option>
+                {polos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-5 h-5 accent-[#fcba27] rounded"
+                checked={usoExterno}
+                onChange={(e) => setUsoExterno(e.target.checked)}
+              />
+              <span className="text-sm text-gray-700">
+                Uso externo <span className="text-gray-400">— mascara nome e CPF (LGPD)</span>
+              </span>
+            </label>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={baixarXlsx} disabled={ativos.length === 0 || exportandoXlsx}>
               {exportandoXlsx ? "Gerando…" : "Baixar Excel"}
@@ -104,7 +123,10 @@ export function RelatorioBeneficiariosPage() {
       <div ref={conteudoRef} className="bg-white">
       <div className="flex items-center gap-3 mb-4 p-2">
         <img src="/logo.png" alt="Conexão Esporte" className="w-10 h-10 object-contain" />
-        <div className="font-bold text-brand-dark">Ficha Cadastral Geral de Beneficiários</div>
+        <div>
+          <div className="font-bold text-brand-dark">Ficha Cadastral Geral de Beneficiários</div>
+          {poloFiltrado && <div className="text-sm text-gray-600">Polo: {poloFiltrado}</div>}
+        </div>
       </div>
 
       <Card
@@ -116,7 +138,9 @@ export function RelatorioBeneficiariosPage() {
         {carregando ? (
           <Spinner label="Carregando beneficiários…" />
         ) : ativos.length === 0 ? (
-          <EmptyState message="Nenhum beneficiário ativo cadastrado." />
+          <EmptyState
+            message={poloFiltrado ? "Nenhum beneficiário ativo neste polo." : "Nenhum beneficiário ativo cadastrado."}
+          />
         ) : (
           <>
             {/* Celular: lista de cards. Telas sm+ (e a captura de PDF/Excel): tabela. */}
