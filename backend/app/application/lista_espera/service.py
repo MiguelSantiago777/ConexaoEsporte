@@ -78,6 +78,16 @@ class ListaEsperaService:
     def listar_pendentes(self, polo_id: UUID | None = None) -> list[InscricaoListaEspera]:
         return self.repo.listar_pendentes(polo_id=polo_id)
 
+    def remover(self, inscricao_id: UUID) -> None:
+        """Só inscrições ainda pendentes — uma aceita já virou Beneficiário +
+        Matrícula e fica como histórico de onde aquele cadastro veio."""
+        inscricao = self.repo.buscar_por_id(inscricao_id)
+        if not inscricao:
+            raise RecursoNaoEncontrado("Inscrição não encontrada.")
+        if not inscricao.pendente:
+            raise RegraDeNegocioViolada("Esta inscrição já foi aceita e não pode ser excluída.")
+        self.repo.remover(inscricao_id)
+
     def aceitar(self, inscricao_id: UUID, turma_id: UUID, usuario_id: UUID) -> Matricula:
         inscricao = self.repo.buscar_por_id(inscricao_id)
         if not inscricao:

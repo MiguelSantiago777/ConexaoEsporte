@@ -65,3 +65,9 @@ class InscricaoListaEsperaRepository:
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)
+
+    def remover(self, inscricao_id: UUID) -> None:
+        m = self.db.get(InscricaoListaEsperaModel, inscricao_id)
+        if m:
+            self.db.delete(m)
+            self.db.commit()

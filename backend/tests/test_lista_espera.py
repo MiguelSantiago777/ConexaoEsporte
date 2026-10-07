@@ -300,3 +300,45 @@ def test_aceitar_copia_tamanhos_da_inscricao_pro_beneficiario(client, seed_basic
     )
     assert editado.status_code == 200, editado.text
     assert (editado.json()["tamanho_camisa"], editado.json()["tamanho_calcado"]) == ("P", "36")
+
+
+def test_master_exclui_inscricao_pendente(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    headers = {"Authorization": f"Bearer {login(client, 'master@test.com')}"}
+
+    inscricao = _inscrever(client, polo_a_id, modalidade_id, documento="88888").json()
+    resp = client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers=headers)
+    assert resp.status_code == 204, resp.text
+
+    pendentes = client.get("/api/v1/lista-espera", headers=headers).json()
+    assert all(i["id"] != inscricao["id"] for i in pendentes)
+    assert client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers=headers).status_code == 404
+
+
+def test_gestor_exclui_so_inscricao_do_proprio_polo(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    inscricao = _inscrever(client, polo_a_id, modalidade_id, documento="99999").json()
+
+    token_b = login(client, "gestor.b@test.com")
+    resp = client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers={"Authorization": f"Bearer {token_b}"})
+    assert resp.status_code == 403
+
+    token_a = login(client, "gestor.a@test.com")
+    resp = client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers={"Authorization": f"Bearer {token_a}"})
+    assert resp.status_code == 204, resp.text
+
+
+def test_excluir_inscricao_ja_aceita_falha(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+
+    turma = _criar_turma(client, token_master, polo_a_id, modalidade_id)
+    inscricao = _inscrever(client, polo_a_id, modalidade_id, documento="12121").json()
+    client.post(f"/api/v1/lista-espera/{inscricao['id']}/aceitar", json={"turma_id": turma["id"]}, headers=headers)
+
+    resp = client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers=headers)
+    assert resp.status_code == 400

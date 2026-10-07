@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
 import type { InscricaoListaEspera, Modalidade, Polo, Turma } from "@/types";
-import { aceitarInscricao, listarInscricoesPendentes } from "./listaEsperaService";
+import { aceitarInscricao, excluirInscricao, listarInscricoesPendentes } from "./listaEsperaService";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
+import { TrashIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 
@@ -99,7 +100,25 @@ function AceitarModal({
 }
 
 export function ListaEsperaPage() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const [inscricaoSelecionada, setInscricaoSelecionada] = useState<InscricaoListaEspera | null>(null);
+
+  const excluirMutation = useMutation({
+    mutationFn: (i: InscricaoListaEspera) => excluirInscricao(i.id),
+    onSuccess: () => {
+      toast.success("Inscrição excluída.");
+      queryClient.invalidateQueries({ queryKey: ["lista-espera-pendentes"] });
+    },
+    onError: (err) => toast.error(mensagemErroApi(err, "Erro ao excluir a inscrição.")),
+  });
+
+  function excluir(i: InscricaoListaEspera) {
+    if (!window.confirm(`Excluir a inscrição de ${i.nome_completo} definitivamente? Essa ação não pode ser desfeita.`)) {
+      return;
+    }
+    excluirMutation.mutate(i);
+  }
 
   const { data: inscricoes = [], isLoading } = useQuery({
     queryKey: ["lista-espera-pendentes"],
@@ -152,7 +171,18 @@ export function ListaEsperaPage() {
                       <div className="text-xs text-gray-400">{i.email}</div>
                     </td>
                     <td className="py-3 pr-4 text-right">
-                      <Button onClick={() => setInscricaoSelecionada(i)}>Aceitar</Button>
+                      <div className="flex items-center justify-end gap-3">
+                        <Button onClick={() => setInscricaoSelecionada(i)}>Aceitar</Button>
+                        <button
+                          type="button"
+                          title="Excluir"
+                          onClick={() => excluir(i)}
+                          disabled={excluirMutation.isPending}
+                          className="text-slate-400 hover:text-danger transition-colors -m-1.5 p-1.5 disabled:opacity-50"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

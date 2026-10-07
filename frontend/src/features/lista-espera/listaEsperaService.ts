@@ -36,3 +36,7 @@ export async function listarInscricoesPendentes(poloId?: string): Promise<Inscri
 export async function aceitarInscricao(inscricaoId: string, turmaId: string): Promise<void> {
   await api.post(`/lista-espera/${inscricaoId}/aceitar`, { turma_id: turmaId });
 }
+
+export async function excluirInscricao(inscricaoId: string): Promise<void> {
+  await api.delete(`/lista-espera/${inscricaoId}`);
+}

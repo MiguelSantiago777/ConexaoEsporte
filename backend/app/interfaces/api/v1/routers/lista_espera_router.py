@@ -3,7 +3,7 @@ Rotas da LISTA DE ESPERA. Tag Swagger: 'Lista de Espera'.
 
 `POST /lista-espera` e `GET /lista-espera/opcoes` são **públicas** (sem
 autenticação) — pensadas pra rodar embutidas via iframe numa landing page
-externa ao sistema. As demais rotas (listar pendentes, aceitar) exigem
+externa ao sistema. As demais rotas (listar pendentes, aceitar, excluir) exigem
 login de MASTER ou GESTOR_POLO, igual ao resto da API.
 """
 from typing import Annotated
@@ -104,3 +104,22 @@ def aceitar(
         assert_acesso_ao_polo(usuario, inscricao.polo_id)
 
     service.aceitar(inscricao_id, turma_id=body.turma_id, usuario_id=usuario.id)
+
+
+@router.delete(
+    "/{inscricao_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir inscrição pendente",
+    description="Remove definitivamente uma inscrição ainda não aceita (ex.: duplicada, desistência). "
+    "MASTER exclui de qualquer polo; GESTOR_POLO só do próprio polo. Inscrições já aceitas não podem "
+    "ser excluídas.",
+)
+def excluir(usuario: CurrentUser, db: DbSession, inscricao_id: UUID) -> None:
+    service = ListaEsperaService(db)
+    inscricao = service.repo.buscar_por_id(inscricao_id)
+    if not inscricao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
+    if usuario.perfil != PerfilUsuario.MASTER:
+        assert_acesso_ao_polo(usuario, inscricao.polo_id)
+
+    service.remover(inscricao_id)
