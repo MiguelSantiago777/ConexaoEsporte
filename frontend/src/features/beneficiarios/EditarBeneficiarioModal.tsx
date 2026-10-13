@@ -7,10 +7,17 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone, onlyDigits } from "@/lib/masks";
 import { formatarData } from "@/lib/format";
 import { TAMANHOS_CALCADO, TAMANHOS_CAMISA, TIPOS_RELACAO } from "./constants";
+import { DocumentosBeneficiarioTab } from "./DocumentosModal";
+
+const ABAS = [
+  { id: "dados", label: "Dados" },
+  { id: "documentos", label: "Documentos" },
+];
 
 interface Props {
   beneficiario: Beneficiario | null;
@@ -43,11 +50,13 @@ function formInicialDe(b: Beneficiario) {
 export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [form, setForm] = useState(beneficiario ? formInicialDe(beneficiario) : null);
+  const [aba, setAba] = useState("dados");
   const [beneficiarioAnterior, setBeneficiarioAnterior] = useState(beneficiario);
 
   if (beneficiario !== beneficiarioAnterior) {
     setBeneficiarioAnterior(beneficiario);
     setForm(beneficiario ? formInicialDe(beneficiario) : null);
+    setAba("dados");
   }
 
   const salvarMutation = useMutation({
@@ -91,150 +100,155 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
 
   return (
     <Modal open={!!beneficiario} onClose={onClose} title={`Editar — ${beneficiario.nome_completo}`} maxWidth="max-w-2xl">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-3">
-          <div>
-            <span className="block text-xs text-gray-400">CPF (não editável)</span>
-            <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
-          </div>
-          <div>
-            <span className="block text-xs text-gray-400">Nascimento (não editável)</span>
-            <span className="font-medium text-gray-700">{formatarData(beneficiario.data_nascimento)}</span>
-          </div>
-        </div>
+      <Tabs abas={ABAS} ativa={aba} onChange={setAba}>
+        {aba === "documentos" && <DocumentosBeneficiarioTab beneficiarioId={beneficiario.id} />}
+        {aba === "dados" && (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-3">
+              <div>
+                <span className="block text-xs text-gray-400">CPF (não editável)</span>
+                <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-gray-400">Nascimento (não editável)</span>
+                <span className="font-medium text-gray-700">{formatarData(beneficiario.data_nascimento)}</span>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Nome completo"
-            value={form.nome_completo}
-            onChange={(e) => setForm({ ...form, nome_completo: e.target.value })}
-            required
-          />
-          <Select label="Polo" value={form.polo_id} onChange={(e) => setForm({ ...form, polo_id: e.target.value })} required>
-            {polos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <p className="text-xs text-gray-400 -mt-3">
-          Modalidades e turmas são gerenciadas em "Matrículas", na listagem de beneficiários.
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Nome do responsável"
-            value={form.responsavel_legal_nome}
-            onChange={(e) => setForm({ ...form, responsavel_legal_nome: e.target.value })}
-          />
-          <Input
-            label="Nascimento do responsável"
-            type="date"
-            value={form.responsavel_legal_data_nascimento}
-            onChange={(e) => setForm({ ...form, responsavel_legal_data_nascimento: e.target.value })}
-          />
-          <Select
-            label="Tipo de relação"
-            value={form.responsavel_legal_tipo_relacao}
-            onChange={(e) => setForm({ ...form, responsavel_legal_tipo_relacao: e.target.value })}
-          >
-            <option value="">— Selecione —</option>
-            {TIPOS_RELACAO.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </Select>
-          {form.responsavel_legal_tipo_relacao === "Outro" && (
-            <Input
-              label="Especifique o grau de parentesco"
-              value={form.responsavel_legal_tipo_relacao_outro}
-              onChange={(e) => setForm({ ...form, responsavel_legal_tipo_relacao_outro: e.target.value })}
-              required
-            />
-          )}
-          <Input
-            label="Telefone de contato 1"
-            placeholder="(00) 00000-0000"
-            inputMode="numeric"
-            value={form.responsavel_legal_telefone_1}
-            onChange={(e) => setForm({ ...form, responsavel_legal_telefone_1: maskTelefone(e.target.value) })}
-            maxLength={15}
-          />
-          <Input
-            label="Telefone de contato 2"
-            placeholder="(00) 00000-0000"
-            inputMode="numeric"
-            value={form.responsavel_legal_telefone_2}
-            onChange={(e) => setForm({ ...form, responsavel_legal_telefone_2: maskTelefone(e.target.value) })}
-            maxLength={15}
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={form.responsavel_legal_email}
-            onChange={(e) => setForm({ ...form, responsavel_legal_email: e.target.value })}
-          />
-          <Input
-            label="Rede social"
-            value={form.responsavel_legal_rede_social}
-            onChange={(e) => setForm({ ...form, responsavel_legal_rede_social: e.target.value })}
-          />
-          <div className="sm:col-span-2">
-            <Input label="Endereço" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-5 h-5 accent-[#fcba27] rounded"
-                checked={form.autoriza_whatsapp}
-                onChange={(e) => setForm({ ...form, autoriza_whatsapp: e.target.checked })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Nome completo"
+                value={form.nome_completo}
+                onChange={(e) => setForm({ ...form, nome_completo: e.target.value })}
+                required
               />
-              <span className="text-sm text-gray-700">Autorizo o envio de mensagens via WhatsApp</span>
-            </label>
-          </div>
-        </div>
+              <Select label="Polo" value={form.polo_id} onChange={(e) => setForm({ ...form, polo_id: e.target.value })} required>
+                {polos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <p className="text-xs text-gray-400 -mt-3">
+              Modalidades e turmas são gerenciadas em "Matrículas", na listagem de beneficiários.
+            </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Select
-            label="Tamanho da camisa"
-            value={form.tamanho_camisa}
-            onChange={(e) => setForm({ ...form, tamanho_camisa: e.target.value })}
-          >
-            <option value="">Selecione</option>
-            {TAMANHOS_CAMISA.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </Select>
-          <Select
-            label="Tamanho do calçado"
-            value={form.tamanho_calcado}
-            onChange={(e) => setForm({ ...form, tamanho_calcado: e.target.value })}
-          >
-            <option value="">Selecione</option>
-            {TAMANHOS_CALCADO.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </Select>
-        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Nome do responsável"
+                value={form.responsavel_legal_nome}
+                onChange={(e) => setForm({ ...form, responsavel_legal_nome: e.target.value })}
+              />
+              <Input
+                label="Nascimento do responsável"
+                type="date"
+                value={form.responsavel_legal_data_nascimento}
+                onChange={(e) => setForm({ ...form, responsavel_legal_data_nascimento: e.target.value })}
+              />
+              <Select
+                label="Tipo de relação"
+                value={form.responsavel_legal_tipo_relacao}
+                onChange={(e) => setForm({ ...form, responsavel_legal_tipo_relacao: e.target.value })}
+              >
+                <option value="">— Selecione —</option>
+                {TIPOS_RELACAO.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+              {form.responsavel_legal_tipo_relacao === "Outro" && (
+                <Input
+                  label="Especifique o grau de parentesco"
+                  value={form.responsavel_legal_tipo_relacao_outro}
+                  onChange={(e) => setForm({ ...form, responsavel_legal_tipo_relacao_outro: e.target.value })}
+                  required
+                />
+              )}
+              <Input
+                label="Telefone de contato 1"
+                placeholder="(00) 00000-0000"
+                inputMode="numeric"
+                value={form.responsavel_legal_telefone_1}
+                onChange={(e) => setForm({ ...form, responsavel_legal_telefone_1: maskTelefone(e.target.value) })}
+                maxLength={15}
+              />
+              <Input
+                label="Telefone de contato 2"
+                placeholder="(00) 00000-0000"
+                inputMode="numeric"
+                value={form.responsavel_legal_telefone_2}
+                onChange={(e) => setForm({ ...form, responsavel_legal_telefone_2: maskTelefone(e.target.value) })}
+                maxLength={15}
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={form.responsavel_legal_email}
+                onChange={(e) => setForm({ ...form, responsavel_legal_email: e.target.value })}
+              />
+              <Input
+                label="Rede social"
+                value={form.responsavel_legal_rede_social}
+                onChange={(e) => setForm({ ...form, responsavel_legal_rede_social: e.target.value })}
+              />
+              <div className="sm:col-span-2">
+                <Input label="Endereço" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 accent-[#fcba27] rounded"
+                    checked={form.autoriza_whatsapp}
+                    onChange={(e) => setForm({ ...form, autoriza_whatsapp: e.target.checked })}
+                  />
+                  <span className="text-sm text-gray-700">Autorizo o envio de mensagens via WhatsApp</span>
+                </label>
+              </div>
+            </div>
 
-        <Input
-          label="Observações médicas"
-          value={form.observacoes_medicas}
-          onChange={(e) => setForm({ ...form, observacoes_medicas: e.target.value })}
-        />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Tamanho da camisa"
+                value={form.tamanho_camisa}
+                onChange={(e) => setForm({ ...form, tamanho_camisa: e.target.value })}
+              >
+                <option value="">Selecione</option>
+                {TAMANHOS_CAMISA.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+              <Select
+                label="Tamanho do calçado"
+                value={form.tamanho_calcado}
+                onChange={(e) => setForm({ ...form, tamanho_calcado: e.target.value })}
+              >
+                <option value="">Selecione</option>
+                {TAMANHOS_CALCADO.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+            </div>
 
-        <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={salvarMutation.isPending}>
-            {salvarMutation.isPending ? "Salvando…" : "Salvar alterações"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
+            <Input
+              label="Observações médicas"
+              value={form.observacoes_medicas}
+              onChange={(e) => setForm({ ...form, observacoes_medicas: e.target.value })}
+            />
+
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" disabled={salvarMutation.isPending}>
+                {salvarMutation.isPending ? "Salvando…" : "Salvar alterações"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+      </Tabs>
     </Modal>
   );
 }

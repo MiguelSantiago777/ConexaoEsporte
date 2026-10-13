@@ -58,3 +58,10 @@ class BeneficiarioDocumentoService:
             enviado_por_id=enviado_por_id,
         )
         return self.repo.criar(documento)
+
+    def remover(self, documento_id: UUID) -> None:
+        documento = self.repo.buscar_por_id(documento_id)
+        if not documento:
+            raise RecursoNaoEncontrado("Documento não encontrado.")
+        armazenamento_documentos.remover(documento.caminho_arquivo)
+        self.repo.remover(documento_id)

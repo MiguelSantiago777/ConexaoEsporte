@@ -52,3 +52,9 @@ class BeneficiarioDocumentoRepository:
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)
+
+    def remover(self, documento_id: UUID) -> None:
+        m = self.db.get(BeneficiarioDocumentoModel, documento_id)
+        if m:
+            self.db.delete(m)
+            self.db.commit()

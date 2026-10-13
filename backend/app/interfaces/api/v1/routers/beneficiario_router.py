@@ -22,6 +22,7 @@ from app.core.dependencies import (
     assert_acesso_a_turma,
     assert_acesso_ao_polo,
     require_modulo_ou_perfis,
+    require_perfis,
 )
 from app.domain.enums import PerfilUsuario
 from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
@@ -43,6 +44,8 @@ router = APIRouter(prefix="/beneficiarios", tags=["Beneficiários"])
 MasterOuGestor = Annotated[
     UsuarioAutenticado, Depends(require_modulo_ou_perfis("beneficiarios", PerfilUsuario.MASTER, PerfilUsuario.GESTOR_POLO))
 ]
+# Exclusão de anexos (pra substituir um documento enviado errado) é só do MASTER.
+SomenteMaster = Annotated[UsuarioAutenticado, Depends(require_perfis(PerfilUsuario.MASTER))]
 
 
 def _assert_acesso_ao_beneficiario(usuario: UsuarioAutenticado, db: DbSession, beneficiario_id: UUID) -> None:
@@ -355,3 +358,13 @@ def baixar_documento(documento_id: UUID, usuario: MasterOuGestor, db: DbSession)
         media_type=documento.content_type or "application/octet-stream",
         headers={"Content-Disposition": content_disposition},
     )
+
+
+@router.delete(
+    "/documentos/{documento_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remover um documento anexado",
+    description="Somente MASTER. Remove o registro e o arquivo — usado para substituir um documento.",
+)
+def remover_documento(documento_id: UUID, usuario: SomenteMaster, db: DbSession) -> None:
+    BeneficiarioDocumentoService(db).remover(documento_id)

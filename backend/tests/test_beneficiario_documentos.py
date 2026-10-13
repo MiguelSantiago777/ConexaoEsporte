@@ -115,3 +115,41 @@ def test_gestor_de_outro_polo_nao_acessa_documento(client, seed_basico):
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert resp.status_code == 403
+
+
+def test_master_remove_documento_para_substituir(client, seed_basico):
+    token_gestor = login(client, "gestor.a@test.com")
+    token_master = login(client, "master@test.com")
+    polo_a_id = str(seed_basico["polo_a"].id)
+    beneficiario = _criar_beneficiario(client, token_gestor, polo_a_id)
+
+    documento = client.post(
+        f"/api/v1/beneficiarios/{beneficiario['id']}/documentos",
+        files={"comprovante_escolar": ("errado.pdf", b"conteudo", "application/pdf")},
+        headers={"Authorization": f"Bearer {token_gestor}"},
+    ).json()[0]
+
+    # Gestor de polo não exclui anexos — só o MASTER.
+    resp_gestor = client.delete(
+        f"/api/v1/beneficiarios/documentos/{documento['id']}",
+        headers={"Authorization": f"Bearer {token_gestor}"},
+    )
+    assert resp_gestor.status_code == 403
+
+    resp_del = client.delete(
+        f"/api/v1/beneficiarios/documentos/{documento['id']}",
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp_del.status_code == 204
+
+    resp_lista = client.get(
+        f"/api/v1/beneficiarios/{beneficiario['id']}/documentos",
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp_lista.json() == []
+
+    resp_novamente = client.delete(
+        f"/api/v1/beneficiarios/documentos/{documento['id']}",
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert resp_novamente.status_code == 404
