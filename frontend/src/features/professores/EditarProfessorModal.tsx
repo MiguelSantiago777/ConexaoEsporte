@@ -29,7 +29,7 @@ const ABAS = [
 export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSalvo }: Props) {
   const toast = useToast();
   const [aba, setAba] = useState("dados");
-  const [form, setForm] = useState({ nome: "", telefone: "", carga_horaria_semanal: "", polo_id: "", ativo: true });
+  const [form, setForm] = useState({ nome: "", email: "", telefone: "", carga_horaria_semanal: "", polo_id: "", ativo: true });
   const [professorAnterior, setProfessorAnterior] = useState(professor);
 
   if (professor !== professorAnterior) {
@@ -37,6 +37,7 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
     if (professor) {
       setForm({
         nome: professor.nome,
+        email: professor.email,
         telefone: professor.telefone ?? "",
         carga_horaria_semanal: professor.carga_horaria_semanal ?? "",
         polo_id: professor.polo_id ?? "",
@@ -50,6 +51,7 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
     mutationFn: (payload: {
       id: string;
       nome: string;
+      email: string;
       telefone: string;
       carga_horaria_semanal: string;
       polo_id: string;
@@ -57,6 +59,7 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
     }) =>
       api.patch(`/usuarios/${payload.id}`, {
         nome: payload.nome,
+        email: payload.email,
         telefone: payload.telefone || null,
         carga_horaria_semanal: payload.carga_horaria_semanal || null,
         // Gestor de polo não pode alterar polo/situação do professor — envia
@@ -84,6 +87,14 @@ export function EditarProfessorModal({ professor, polos, ehMaster, onClose, onSa
         {aba === "dados" && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
+            <Input
+              label="Email"
+              type="email"
+              hint="É o login do professor — ao trocar, ele passa a entrar com o novo email (a senha continua a mesma)."
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
             <Input
               label="Telefone"
               value={form.telefone}

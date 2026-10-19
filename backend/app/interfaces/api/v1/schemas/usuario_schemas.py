@@ -32,6 +32,9 @@ class UsuarioCreateRequest(BaseModel):
 
 class UsuarioUpdateRequest(BaseModel):
     nome: str | None = Field(default=None, min_length=2, max_length=150)
+    email: EmailStr | None = Field(
+        default=None, description="Novo email de login do usuário — precisa ser único no sistema."
+    )
     ativo: bool | None = None
     polo_id: UUID | None = None
     almoxarifado_id: UUID | None = None

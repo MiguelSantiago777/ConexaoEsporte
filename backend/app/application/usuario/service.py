@@ -78,6 +78,13 @@ class UsuarioService:
         return self.repo.buscar_por_id(usuario_id)
 
     def atualizar_usuario(self, usuario_id: UUID, **campos) -> Usuario | None:
+        # O email é o login — trocar pra um que já pertence a outro usuário
+        # deixaria dois cadastros disputando o mesmo login.
+        email = campos.get("email")
+        if email:
+            existente = self.repo.buscar_por_email(email)
+            if existente and existente.id != usuario_id:
+                raise RecursoJaExiste("Já existe um usuário com este email.")
         return self.repo.atualizar(usuario_id, **campos)
 
     def remover_usuario(self, usuario_id: UUID) -> None:

@@ -19,6 +19,12 @@ def _to_entity(m: UsuarioModel) -> Usuario:
     )
 
 
+# Campos opcionais de texto que podem ser apagados na edição: `None` aqui
+# significa "limpar o campo", não "não mexer" (o router já descarta o que
+# não veio no corpo, via `exclude_unset`).
+CAMPOS_LIMPAVEIS = {"telefone", "cpf", "carga_horaria_semanal"}
+
+
 class UsuarioRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -77,7 +83,7 @@ class UsuarioRepository:
         if not m:
             return None
         for k, v in campos.items():
-            if v is not None:
+            if v is not None or k in CAMPOS_LIMPAVEIS:
                 setattr(m, k, v)
         self.db.commit()
         self.db.refresh(m)
