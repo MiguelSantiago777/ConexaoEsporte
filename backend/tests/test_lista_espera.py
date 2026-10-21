@@ -422,3 +422,35 @@ def test_aceitar_copia_documento_identidade_pro_beneficiario(client, seed_basico
     assert [d["tipo"] for d in documentos] == ["certidao_nascimento_ou_identidade"]
     arquivo = client.get(f"/api/v1/beneficiarios/documentos/{documentos[0]['id']}/arquivo", headers=headers)
     assert arquivo.content == b"png-fake"
+
+
+def _gmail_fora_do_ar(monkeypatch):
+    from app.infrastructure.email import enviador as enviador_module
+
+    class _EnviadorQueFalha:
+        def enviar(self, destinatario, assunto, html, texto_alternativo=None):
+            raise OSError("SMTP indisponível")
+
+    monkeypatch.setattr(enviador_module, "enviador_email", _EnviadorQueFalha())
+
+
+def test_falha_no_email_nao_derruba_inscricao_nem_aceite(client, seed_basico, monkeypatch):
+    """Inscrição e matrícula já estão salvas quando o email sai — falha no
+    Gmail só vai pro log, a tela recebe sucesso (senão a família reenvia e
+    duplica a inscrição)."""
+    _gmail_fora_do_ar(monkeypatch)
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+
+    resp = _inscrever(client, polo_a_id, modalidade_id, documento="88888")
+    assert resp.status_code == 201, resp.text
+
+    turma = _criar_turma(client, token_master, polo_a_id, modalidade_id)
+    aceite = client.post(
+        f"/api/v1/lista-espera/{resp.json()['id']}/aceitar", json={"turma_id": turma["id"]}, headers=headers,
+    )
+    assert aceite.status_code == 204, aceite.text
+    pendentes = client.get("/api/v1/lista-espera", headers=headers).json()
+    assert all(p["id"] != resp.json()["id"] for p in pendentes)

@@ -3,6 +3,7 @@ Use cases da LISTA DE ESPERA: inscrição pública (formulário embutido na
 landing page do projeto) e o aceite por um GESTOR_POLO/MASTER, que vira
 Beneficiário + Matrícula na turma escolhida.
 """
+import logging
 from datetime import date
 from uuid import UUID
 
@@ -30,6 +31,8 @@ from app.infrastructure.repositories.modalidade_repository import ModalidadeRepo
 from app.infrastructure.repositories.polo_repository import PoloRepository
 from app.infrastructure.repositories.turma_repository import TurmaRepository
 from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
+
+logger = logging.getLogger(__name__)
 
 DIAS_SEMANA_LEGIVEL = {
     "SEG": "seg", "TER": "ter", "QUA": "qua", "QUI": "qui", "SEX": "sex", "SAB": "sáb", "DOM": "dom",
@@ -107,11 +110,17 @@ class ListaEsperaService:
 
         criada = self.repo.criar(inscricao)
 
-        self.email_service.enviar_confirmacao_inscricao_lista_espera(
-            destinatario=email,
-            nome_responsavel_ou_participante=nome_responsavel or nome_completo,
-            nome_participante=nome_completo, modalidade_nome=modalidade.nome, polo_nome=polo.nome,
-        )
+        # Email é só aviso: a inscrição já está salva. Falha no Gmail (token
+        # expirado, fora do ar) não pode virar erro na tela — a família
+        # reenviaria o formulário e duplicaria a inscrição.
+        try:
+            self.email_service.enviar_confirmacao_inscricao_lista_espera(
+                destinatario=email,
+                nome_responsavel_ou_participante=nome_responsavel or nome_completo,
+                nome_participante=nome_completo, modalidade_nome=modalidade.nome, polo_nome=polo.nome,
+            )
+        except Exception:
+            logger.exception("Falha ao enviar email de confirmação da inscrição %s para %s", criada.id, email)
         return criada
 
     def listar_pendentes(self, polo_id: UUID | None = None) -> list[InscricaoListaEspera]:
@@ -170,13 +179,18 @@ class ListaEsperaService:
         modalidade = self.modalidade_repo.buscar_por_id(inscricao.modalidade_id)
         polo = self.polo_repo.buscar_por_id(inscricao.polo_id)
         dias = ", ".join(DIAS_SEMANA_LEGIVEL.get(d, d) for d in turma.dias_semana)
-        self.email_service.enviar_aceite_lista_espera(
-            destinatario=inscricao.email,
-            nome_responsavel_ou_participante=inscricao.nome_responsavel or inscricao.nome_completo,
-            nome_participante=inscricao.nome_completo,
-            modalidade_nome=modalidade.nome if modalidade else "—", polo_nome=polo.nome if polo else "—",
-            dias_semana=dias, horario_inicio=turma.horario_inicio, horario_fim=turma.horario_fim,
-        )
+        # Mesmo motivo da inscrição: a matrícula já foi feita, falha no email
+        # só fica registrada no log.
+        try:
+            self.email_service.enviar_aceite_lista_espera(
+                destinatario=inscricao.email,
+                nome_responsavel_ou_participante=inscricao.nome_responsavel or inscricao.nome_completo,
+                nome_participante=inscricao.nome_completo,
+                modalidade_nome=modalidade.nome if modalidade else "—", polo_nome=polo.nome if polo else "—",
+                dias_semana=dias, horario_inicio=turma.horario_inicio, horario_fim=turma.horario_fim,
+            )
+        except Exception:
+            logger.exception("Falha ao enviar email de aceite da inscrição %s para %s", inscricao_id, inscricao.email)
         return matricula
 
     def _anexar_identidade_ao_beneficiario(
