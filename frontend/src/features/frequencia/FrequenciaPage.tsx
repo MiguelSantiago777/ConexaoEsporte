@@ -27,15 +27,12 @@ const ANO_ATUAL = new Date().getFullYear();
 const TURNOS = [
   { valor: "MANHA", label: "Manhã" },
   { valor: "TARDE", label: "Tarde" },
-  { valor: "NOITE", label: "Noite" },
 ] as const;
 
-/** Turno pelo horário de início da turma: antes das 12h manhã, até 18h tarde. */
+/** Turno pelo horário de início da turma: antes das 12h manhã, senão tarde
+ * (o projeto só tem esses dois turnos). */
 function turnoDaTurma(t: Turma): string {
-  const hora = Number(t.horario_inicio.slice(0, 2));
-  if (hora < 12) return "MANHA";
-  if (hora < 18) return "TARDE";
-  return "NOITE";
+  return Number(t.horario_inicio.slice(0, 2)) < 12 ? "MANHA" : "TARDE";
 }
 
 function EvidenciaThumb({ evidencia }: { evidencia: ChamadaEvidencia }) {
