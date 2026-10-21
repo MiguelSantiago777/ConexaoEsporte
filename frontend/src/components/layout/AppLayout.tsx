@@ -85,6 +85,7 @@ const MENU: ItemMenu[] = [
   { label: "Anexos Gerais", to: "/anexos-gerais", perfis: ["MASTER"], modulo: "anexos_gerais", icon: PaperclipIcon },
   { label: "Portal Transparência", to: "/transparencia-admin", perfis: ["MASTER"], modulo: "transparencia", icon: ScaleIcon },
   { label: "Configurações", to: "/configuracoes", perfis: ["MASTER"], modulo: "configuracoes", icon: SettingsIcon },
+  { label: "Lançar Presença", to: "/lancar-presenca", perfis: ["MASTER"], icon: CalendarCheckIcon },
   { label: "Frequência", to: "/frequencia", perfis: ["PROFESSOR"], icon: CalendarCheckIcon },
   { label: "Relatórios de Aula", to: "/relatorios", perfis: ["PROFESSOR"], icon: DocumentTextIcon },
   { label: "Central de Acessos", to: "/central-acessos", perfis: ["MASTER"], icon: ShieldIcon },

@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
-import type { ChamadaEvidencia, FichaChamada, StatusDia, Turma } from "@/types";
+import type { ChamadaEvidencia, FichaChamada, Modalidade, Polo, StatusDia, Turma } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -23,6 +23,20 @@ import { DetalhesFichaPresenca } from "./DetalhesFichaPresenca";
 
 const MES_ATUAL = new Date().getMonth() + 1;
 const ANO_ATUAL = new Date().getFullYear();
+
+const TURNOS = [
+  { valor: "MANHA", label: "Manhã" },
+  { valor: "TARDE", label: "Tarde" },
+  { valor: "NOITE", label: "Noite" },
+] as const;
+
+/** Turno pelo horário de início da turma: antes das 12h manhã, até 18h tarde. */
+function turnoDaTurma(t: Turma): string {
+  const hora = Number(t.horario_inicio.slice(0, 2));
+  if (hora < 12) return "MANHA";
+  if (hora < 18) return "TARDE";
+  return "NOITE";
+}
 
 function EvidenciaThumb({ evidencia }: { evidencia: ChamadaEvidencia }) {
   const [src, setSrc] = useState<string | null>(null);
@@ -57,7 +71,10 @@ function EvidenciaThumb({ evidencia }: { evidencia: ChamadaEvidencia }) {
  * aula (turma inteira) e falta justificada (por beneficiário) além da
  * presença/falta simples.
  */
-export function FrequenciaPage() {
+/** `todosOsPolos`: aba "Lançar Presença" do MASTER — mesma chamada do
+ * professor, mas sobre as turmas de todos os polos, com filtros de polo,
+ * turno e modalidade pra achar a turma. */
+export function FrequenciaPage({ todosOsPolos = false }: { todosOsPolos?: boolean }) {
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -65,8 +82,39 @@ export function FrequenciaPage() {
     queryKey: ["turmas"],
     queryFn: () => api.get<Turma[]>("/turmas").then((r) => r.data),
   });
+  const { data: polos = [] } = useQuery({
+    queryKey: ["polos"], queryFn: () => api.get<Polo[]>("/polos").then((r) => r.data), enabled: todosOsPolos,
+  });
+  const { data: modalidades = [] } = useQuery({
+    queryKey: ["modalidades"],
+    queryFn: () => api.get<Modalidade[]>("/modalidades").then((r) => r.data),
+    enabled: todosOsPolos,
+  });
+
+  const [filtroPolo, setFiltroPolo] = useState("");
+  const [filtroTurno, setFiltroTurno] = useState("");
+  const [filtroModalidade, setFiltroModalidade] = useState("");
+  const nomePolo = (id: string) => polos.find((p) => p.id === id)?.nome ?? "—";
+  const nomeModalidade = (id: string) => modalidades.find((m) => m.id === id)?.nome ?? "—";
+  const turmasVisiveis = todosOsPolos
+    ? turmas
+        .filter((t) => t.ativo)
+        .filter((t) => !filtroPolo || t.polo_id === filtroPolo)
+        .filter((t) => !filtroTurno || turnoDaTurma(t) === filtroTurno)
+        .filter((t) => !filtroModalidade || t.modalidade_id === filtroModalidade)
+        .sort((a, b) =>
+          nomePolo(a.polo_id).localeCompare(nomePolo(b.polo_id)) || a.horario_inicio.localeCompare(b.horario_inicio))
+    : turmas;
+  function rotuloTurma(t: Turma) {
+    const horario = `${t.horario_inicio}–${t.horario_fim} (${t.dias_semana.join(",")})`;
+    return todosOsPolos ? `${nomePolo(t.polo_id)} · ${nomeModalidade(t.modalidade_id)} · ${horario}` : horario;
+  }
 
   const [turmaId, setTurmaId] = useState("");
+  // Turma escolhida que some do filtro (trocou polo/turno/modalidade) é desmarcada.
+  if (turmaId && todosOsPolos && turmas.length > 0 && !turmasVisiveis.some((t) => t.id === turmaId)) {
+    setTurmaId("");
+  }
   const [mes, setMes] = useState(MES_ATUAL);
   const [ano, setAno] = useState(ANO_ATUAL);
   const [exportandoPdf, setExportandoPdf] = useState(false);
@@ -275,14 +323,35 @@ export function FrequenciaPage() {
   return (
     <div className="space-y-6">
       <div className="print:hidden">
-        <PageHeader title="Frequência / Chamada" subtitle="Registro mensal de presença dos beneficiários, com impeditivo de aula e falta justificada." />
+        <PageHeader
+          title={todosOsPolos ? "Lançar Presença" : "Frequência / Chamada"}
+          subtitle={todosOsPolos
+            ? "Chamada de qualquer turma, de todos os polos — filtre por polo, turno e modalidade pra achar a turma."
+            : "Registro mensal de presença dos beneficiários, com impeditivo de aula e falta justificada."}
+        />
       </div>
       <Card title="Selecione turma, mês e ano" className="animate-fade-in-up print:hidden" style={staggerStyle(0)}>
+        {todosOsPolos && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <Select label="Polo" value={filtroPolo} onChange={(e) => setFiltroPolo(e.target.value)}>
+              <option value="">Todos os polos</option>
+              {polos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </Select>
+            <Select label="Turno" value={filtroTurno} onChange={(e) => setFiltroTurno(e.target.value)}>
+              <option value="">Todos os turnos</option>
+              {TURNOS.map((t) => <option key={t.valor} value={t.valor}>{t.label}</option>)}
+            </Select>
+            <Select label="Modalidade" value={filtroModalidade} onChange={(e) => setFiltroModalidade(e.target.value)}>
+              <option value="">Todas as modalidades</option>
+              {modalidades.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </Select>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
           <div className="flex-1">
             <Select label="Turma" value={turmaId} onChange={(e) => setTurmaId(e.target.value)}>
               <option value="">— Selecione —</option>
-              {turmas.map((t) => <option key={t.id} value={t.id}>{t.horario_inicio}–{t.horario_fim} ({t.dias_semana.join(",")})</option>)}
+              {turmasVisiveis.map((t) => <option key={t.id} value={t.id}>{rotuloTurma(t)}</option>)}
             </Select>
           </div>
           <div className="sm:w-32">

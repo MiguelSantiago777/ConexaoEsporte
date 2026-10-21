@@ -261,3 +261,31 @@ def test_professor_de_outra_turma_nao_acessa_ficha_chamada(client, cenario):
         headers={"Authorization": f"Bearer {token_outro}"},
     )
     assert resp.status_code == 403
+
+
+def test_master_lanca_chamada_em_turma_de_qualquer_polo(client, cenario):
+    """Aba "Lançar Presença" do MASTER: chamada de qualquer turma, mesmo sem
+    ser o professor dela nem estar vinculado ao polo."""
+    dia = _segundas_feiras(2026, 3)[0]
+    headers = {"Authorization": f"Bearer {login(client, 'master@test.com')}"}
+
+    resp = client.post(
+        "/api/v1/frequencias/chamada",
+        json={
+            "turma_id": cenario["turma"]["id"], "data": dia,
+            "presencas": [
+                {"beneficiario_id": cenario["b1"]["id"], "presente": True},
+                {"beneficiario_id": cenario["b2"]["id"], "presente": False},
+            ],
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+    ficha = client.get(
+        "/api/v1/frequencias/ficha-chamada",
+        params={"turma_id": cenario["turma"]["id"], "mes": 3, "ano": 2026},
+        headers=headers,
+    )
+    assert ficha.status_code == 200
+    assert ficha.json()["atualizado_por_nome"] is not None

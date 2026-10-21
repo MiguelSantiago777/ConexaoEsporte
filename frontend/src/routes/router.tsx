@@ -59,6 +59,7 @@ export const router = createBrowserRouter([
               { path: "/anexos-gerais", element: <AnexosGeraisPage /> },
               { path: "/importar", element: <ImportarPage /> },
               { path: "/transparencia-admin", element: <TransparenciaAdminPage /> },
+              { path: "/lancar-presenca", element: <FrequenciaPage todosOsPolos /> },
             ],
           },
           // MASTER + GESTOR_POLO
