@@ -713,6 +713,14 @@ CREATE INDEX IF NOT EXISTS idx_inscricoes_lista_espera_polo ON inscricoes_lista_
 -- Tamanhos informados no pré-cadastro — copiados pro beneficiário no aceite.
 ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS tamanho_camisa VARCHAR(5);
 ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS tamanho_calcado VARCHAR(3);
+-- Turno de preferência (MANHA/TARDE) e documento de identidade do
+-- participante anexado no pré-cadastro — o anexo vira documento do
+-- beneficiário no aceite.
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS turno VARCHAR(10)
+    CHECK (turno IN ('MANHA', 'TARDE'));
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS documento_identidade_nome_arquivo VARCHAR(255);
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS documento_identidade_caminho VARCHAR(500);
+ALTER TABLE inscricoes_lista_espera ADD COLUMN IF NOT EXISTS documento_identidade_content_type VARCHAR(100);
 
 ALTER TABLE configuracao_geral ADD COLUMN IF NOT EXISTS nome_projeto VARCHAR(200);
 

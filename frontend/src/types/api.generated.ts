@@ -2883,6 +2883,10 @@ export interface components {
             tamanho_camisa: string | null;
             /** Tamanho Calcado */
             tamanho_calcado: string | null;
+            /** Turno */
+            turno?: string | null;
+            /** Documento Identidade Nome Arquivo */
+            documento_identidade_nome_arquivo?: string | null;
             /** Criado Em */
             criado_em: string | null;
         };

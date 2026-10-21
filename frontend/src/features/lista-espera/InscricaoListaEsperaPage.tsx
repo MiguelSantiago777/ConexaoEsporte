@@ -1,23 +1,30 @@
-import { FormEvent, ReactNode, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useRef, useState } from "react";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { buscarOpcoesPublicas, inscreverNaListaEspera } from "./listaEsperaService";
-import { CANAIS_COMO_CONHECEU } from "./constants";
+import { CANAIS_COMO_CONHECEU, TURNOS } from "./constants";
 import { TAMANHOS_CALCADO, TAMANHOS_CAMISA } from "@/features/beneficiarios/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
-import { AlertCircleIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { AlertCircleIcon, CameraIcon, CheckCircleIcon, CloseIcon, PaperclipIcon } from "@/components/ui/icons";
 import { maskCPF, maskTelefone } from "@/lib/masks";
 
 const IDADE_MINIMA_PROJETO = 6;
 const IDADE_MAXIMA_PROJETO = 17;
+// Espelha UPLOAD_MAX_SIZE_MB do backend — checado aqui pra família não
+// esperar o upload inteiro só pra receber o erro.
+const TAMANHO_MAXIMO_ANEXO_MB = 10;
+const TIPOS_ANEXO_ACEITOS = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+// Foto de celular sai com 3–12MB; reduzida a esse lado maior continua
+// legível pra conferir o documento e sobe bem mais rápido em 4G.
+const LADO_MAXIMO_FOTO_PX = 1600;
 
 const FORM_INICIAL = {
   nome_completo: "", data_nascimento: "", documento: "", nome_responsavel: "", documento_responsavel: "",
   telefone_whatsapp: "", email: "", bairro: "", cidade: "", modalidade_id: "", polo_id: "",
-  como_conheceu: "", como_conheceu_outro: "", tamanho_camisa: "", tamanho_calcado: "",
+  como_conheceu: "", como_conheceu_outro: "", tamanho_camisa: "", tamanho_calcado: "", turno: "",
 };
 
 /** Fundo navy com o brasão de linhas brancas ao fundo — mesmo painel de
@@ -64,11 +71,44 @@ function limitesDataNascimento(hoje: Date) {
   return { min: formatarISO(dataMaisAntigaPermitida), max: formatarISO(dataMaisRecentePermitida) };
 }
 
+/** Celular/tablet (tela de toque) — só neles faz sentido o botão "Tirar
+ * foto"; no computador o `capture` é ignorado e viraria um segundo "Escolher
+ * arquivo". */
+function eDispositivoDeToque(): boolean {
+  return typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+}
+
+/** Reduz fotos grandes pra JPEG de até LADO_MAXIMO_FOTO_PX no lado maior.
+ * PDF e imagens já pequenas passam como estão; se o navegador não conseguir
+ * decodificar a imagem, envia a original. */
+async function prepararAnexo(arquivo: File): Promise<File> {
+  if (!arquivo.type.startsWith("image/")) return arquivo;
+  try {
+    const bitmap = await createImageBitmap(arquivo);
+    const escala = Math.min(1, LADO_MAXIMO_FOTO_PX / Math.max(bitmap.width, bitmap.height));
+    if (escala === 1 && arquivo.size <= 1024 * 1024) return arquivo;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * escala);
+    canvas.height = Math.round(bitmap.height * escala);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    if (!blob) return arquivo;
+    const nome = arquivo.name.replace(/\.[^.]+$/, "") || "documento_identidade";
+    return new File([blob], `${nome}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return arquivo;
+  }
+}
+
 export function InscricaoListaEsperaPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [documentoIdentidade, setDocumentoIdentidade] = useState<File | null>(null);
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+  const inputCameraRef = useRef<HTMLInputElement>(null);
+  const podeUsarCamera = eDispositivoDeToque();
 
   const { data: opcoes, isLoading: carregandoOpcoes } = useQuery({
     queryKey: ["lista-espera-opcoes"],
@@ -83,6 +123,23 @@ export function InscricaoListaEsperaPage() {
     return (valor: string) => setForm((f) => ({ ...f, [chave]: valor }));
   }
 
+  async function selecionarAnexo(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!arquivo) return;
+    if (!TIPOS_ANEXO_ACEITOS.includes(arquivo.type)) {
+      setErro("Documento de identidade: envie uma foto (JPG, PNG, WEBP) ou um PDF.");
+      return;
+    }
+    const preparado = await prepararAnexo(arquivo);
+    if (preparado.size > TAMANHO_MAXIMO_ANEXO_MB * 1024 * 1024) {
+      setErro(`O documento de identidade passa de ${TAMANHO_MAXIMO_ANEXO_MB}MB. Envie um arquivo menor.`);
+      return;
+    }
+    setErro(null);
+    setDocumentoIdentidade(preparado);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setErro(null);
@@ -94,6 +151,11 @@ export function InscricaoListaEsperaPage() {
 
     if (eMenorDeIdade && (!form.nome_responsavel.trim() || !form.documento_responsavel.trim())) {
       setErro("Como o participante é menor de idade, o nome e o CPF do responsável são obrigatórios.");
+      return;
+    }
+
+    if (!documentoIdentidade) {
+      setErro("Anexe o documento de identidade do participante.");
       return;
     }
 
@@ -114,13 +176,16 @@ export function InscricaoListaEsperaPage() {
         como_conheceu: form.como_conheceu === "Outro" ? form.como_conheceu_outro || null : form.como_conheceu || null,
         tamanho_camisa: form.tamanho_camisa || null,
         tamanho_calcado: form.tamanho_calcado || null,
-      });
+        turno: form.turno as "MANHA" | "TARDE",
+      }, documentoIdentidade);
       setEnviado(true);
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       if (status === 429) {
         setErro("Muitas tentativas seguidas. Aguarde cerca de 1 minuto e tente de novo.");
-      } else if (status === 400) {
+      } else if (status === 413 || status === 415) {
+        setErro(`Documento de identidade inválido. Envie uma foto ou PDF de até ${TAMANHO_MAXIMO_ANEXO_MB}MB.`);
+      } else if (status === 400 || status === 422) {
         setErro("Não foi possível enviar a inscrição. Confira os dados e tente novamente.");
       } else {
         setErro("Não foi possível conectar ao servidor. Tente novamente em instantes.");
@@ -181,13 +246,56 @@ export function InscricaoListaEsperaPage() {
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                label="Data de nascimento" type="date" value={form.data_nascimento} min={dataMinima} max={dataMaxima}
+                label="Data de nascimento do participante" type="date" value={form.data_nascimento} min={dataMinima} max={dataMaxima}
                 hint={`Atendemos de ${IDADE_MINIMA_PROJETO} a ${IDADE_MAXIMA_PROJETO} anos.`}
                 onChange={(e) => campo("data_nascimento")(e.target.value)} required
               />
               <Input
-                label="CPF" value={form.documento} inputMode="numeric"
+                label="CPF do participante" value={form.documento} inputMode="numeric"
                 onChange={(e) => campo("documento")(maskCPF(e.target.value))} required
+              />
+            </div>
+            <div>
+              <span className="block text-sm font-medium text-gray-700 mb-1">
+                Documento de identidade do participante
+              </span>
+              {documentoIdentidade ? (
+                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm animate-fade-in">
+                  <PaperclipIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="truncate flex-1 text-ink">{documentoIdentidade.name}</span>
+                  <button
+                    type="button" title="Remover anexo" onClick={() => setDocumentoIdentidade(null)}
+                    className="text-slate-400 hover:text-danger transition-colors -m-1.5 p-1.5"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+              ) : (
+                <div className={`grid gap-3 ${podeUsarCamera ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {podeUsarCamera && (
+                    <Button type="button" variant="secondary" onClick={() => inputCameraRef.current?.click()}>
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <CameraIcon className="w-4 h-4" /> Tirar foto
+                      </span>
+                    </Button>
+                  )}
+                  <Button type="button" variant="secondary" onClick={() => inputArquivoRef.current?.click()}>
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <PaperclipIcon className="w-4 h-4" /> Escolher arquivo
+                    </span>
+                  </Button>
+                </div>
+              )}
+              <span className="block text-xs text-gray-400 mt-1">
+                RG ou certidão de nascimento — foto ou PDF, até {TAMANHO_MAXIMO_ANEXO_MB}MB.
+              </span>
+              <input
+                ref={inputCameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={selecionarAnexo}
+              />
+              <input
+                ref={inputArquivoRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden" onChange={selecionarAnexo}
               />
             </div>
             {eMenorDeIdade && (
@@ -240,6 +348,15 @@ export function InscricaoListaEsperaPage() {
                 ))}
               </Select>
             </div>
+            <Select
+              label="Turno de preferência" value={form.turno}
+              onChange={(e) => campo("turno")(e.target.value)} required
+            >
+              <option value="">Selecione</option>
+              {TURNOS.map((t) => (
+                <option key={t.valor} value={t.valor}>{t.label}</option>
+              ))}
+            </Select>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
                 label="Tamanho da camisa" value={form.tamanho_camisa}

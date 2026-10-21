@@ -4,6 +4,8 @@ de pendentes com RBAC por polo, e o aceite (cria/reaproveita Beneficiário +
 Matrícula). O envio real de email é substituído por um dublê em todos os
 testes (ver conftest.py, `_sem_envio_real_de_email`).
 """
+import json
+
 from tests.conftest import login
 
 
@@ -20,18 +22,20 @@ def _criar_turma(client, token, polo_id, modalidade_id, limite_vagas=10):
 
 
 def _inscrever(client, polo_id, modalidade_id, documento="000.111.222-33", data_nascimento="2015-01-01",
-                nome_responsavel="Responsável Teste", documento_responsavel="11122233344", **extras):
-    return client.post(
-        "/api/v1/lista-espera",
-        json={
-            "nome_completo": "Beneficiário Teste", "data_nascimento": data_nascimento, "documento": documento,
-            "nome_responsavel": nome_responsavel, "documento_responsavel": documento_responsavel,
-            "telefone_whatsapp": "(11) 91234-5678",
-            "email": "familia@test.com", "bairro": "Centro", "cidade": "São Paulo",
-            "modalidade_id": modalidade_id, "polo_id": polo_id, "como_conheceu": "Instagram",
-            **extras,
-        },
-    )
+                nome_responsavel="Responsável Teste", documento_responsavel="11122233344",
+                documento_identidade=None, **extras):
+    """POST multipart: `dados` = JSON da inscrição; `documento_identidade` =
+    tupla (nome, conteúdo, content type) opcional."""
+    dados = {
+        "nome_completo": "Beneficiário Teste", "data_nascimento": data_nascimento, "documento": documento,
+        "nome_responsavel": nome_responsavel, "documento_responsavel": documento_responsavel,
+        "telefone_whatsapp": "(11) 91234-5678",
+        "email": "familia@test.com", "bairro": "Centro", "cidade": "São Paulo",
+        "modalidade_id": modalidade_id, "polo_id": polo_id, "como_conheceu": "Instagram",
+        **extras,
+    }
+    files = {"documento_identidade": documento_identidade} if documento_identidade else None
+    return client.post("/api/v1/lista-espera", data={"dados": json.dumps(dados)}, files=files)
 
 
 def test_opcoes_publicas_sem_autenticacao(client, seed_basico):
@@ -342,3 +346,79 @@ def test_excluir_inscricao_ja_aceita_falha(client, seed_basico, _sem_envio_real_
 
     resp = client.delete(f"/api/v1/lista-espera/{inscricao['id']}", headers=headers)
     assert resp.status_code == 400
+
+
+def test_inscrever_com_turno_e_documento_identidade(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+
+    resp = _inscrever(
+        client, polo_a_id, modalidade_id, turno="TARDE",
+        documento_identidade=("rg.jpg", b"foto-fake", "image/jpeg"),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["turno"] == "TARDE"
+    assert body["documento_identidade_nome_arquivo"] == "rg.jpg"
+
+    token_master = login(client, "master@test.com")
+    arquivo = client.get(
+        f"/api/v1/lista-espera/{body['id']}/documento-identidade",
+        headers={"Authorization": f"Bearer {token_master}"},
+    )
+    assert arquivo.status_code == 200
+    assert arquivo.content == b"foto-fake"
+
+
+def test_inscrever_com_turno_invalido_falha(client, seed_basico):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+
+    resp = _inscrever(client, polo_a_id, modalidade_id, turno="NOITE")
+    assert resp.status_code == 422
+
+
+def test_inscrever_com_documento_identidade_de_tipo_invalido_falha(client, seed_basico):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+
+    resp = _inscrever(
+        client, polo_a_id, modalidade_id,
+        documento_identidade=("virus.exe", b"conteudo", "application/x-msdownload"),
+    )
+    assert resp.status_code == 415, resp.text
+
+
+def test_documento_identidade_exige_autenticacao(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+
+    inscricao = _inscrever(
+        client, polo_a_id, modalidade_id, documento_identidade=("rg.pdf", b"pdf-fake", "application/pdf"),
+    ).json()
+    resp = client.get(f"/api/v1/lista-espera/{inscricao['id']}/documento-identidade")
+    assert resp.status_code in (401, 403)
+
+
+def test_aceitar_copia_documento_identidade_pro_beneficiario(client, seed_basico, _sem_envio_real_de_email):
+    polo_a_id = str(seed_basico["polo_a"].id)
+    modalidade_id = str(seed_basico["modalidade"].id)
+    token_master = login(client, "master@test.com")
+    headers = {"Authorization": f"Bearer {token_master}"}
+
+    turma = _criar_turma(client, token_master, polo_a_id, modalidade_id)
+    inscricao = _inscrever(
+        client, polo_a_id, modalidade_id, documento="77777",
+        documento_identidade=("rg.png", b"png-fake", "image/png"),
+    ).json()
+    resp = client.post(
+        f"/api/v1/lista-espera/{inscricao['id']}/aceitar", json={"turma_id": turma["id"]}, headers=headers,
+    )
+    assert resp.status_code == 204, resp.text
+
+    beneficiarios = client.get("/api/v1/beneficiarios", headers=headers).json()
+    criado = next(b for b in beneficiarios if b["documento"] == "77777")
+    documentos = client.get(f"/api/v1/beneficiarios/{criado['id']}/documentos", headers=headers).json()
+    assert [d["tipo"] for d in documentos] == ["certidao_nascimento_ou_identidade"]
+    arquivo = client.get(f"/api/v1/beneficiarios/documentos/{documentos[0]['id']}/arquivo", headers=headers)
+    assert arquivo.content == b"png-fake"

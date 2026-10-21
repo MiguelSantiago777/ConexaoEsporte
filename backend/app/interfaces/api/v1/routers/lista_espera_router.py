@@ -6,15 +6,18 @@ autenticação) — pensadas pra rodar embutidas via iframe numa landing page
 externa ao sistema. As demais rotas (listar pendentes, aceitar, excluir) exigem
 login de MASTER ou GESTOR_POLO, igual ao resto da API.
 """
-from typing import Annotated
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from app.application.lista_espera.service import ListaEsperaService
 from app.core.dependencies import CurrentUser, DbSession, UsuarioAutenticado, assert_acesso_ao_polo
 from app.core.rate_limit import limiter
 from app.domain.enums import PerfilUsuario
+from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
 from app.interfaces.api.v1.schemas.lista_espera_schemas import (
     AceitarInscricaoRequest,
     InscricaoListaEsperaCreateRequest,
@@ -46,20 +49,38 @@ def opcoes_publicas(db: DbSession) -> OpcoesPublicasResponse:
     status_code=status.HTTP_201_CREATED,
     response_model=InscricaoListaEsperaResponse,
     summary="[Público] Inscrever-se na lista de espera",
-    description="Sem autenticação — formulário público embutido na landing page. Envia um email de "
-    "confirmação para o email informado. Limitado a 5 tentativas por minuto por IP.",
+    description="Sem autenticação — formulário público embutido na landing page. multipart/form-data: "
+    "`dados` = JSON com os campos da inscrição (InscricaoListaEsperaCreateRequest) e, opcional, "
+    "`documento_identidade` = foto/PDF da identidade do participante (PDF, JPG, PNG, WEBP — até 10MB). "
+    "Envia um email de confirmação para o email informado. Limitado a 5 tentativas por minuto por IP.",
 )
 @limiter.limit("5/minute")
-def inscrever(
-    request: Request, body: InscricaoListaEsperaCreateRequest, db: DbSession,
+async def inscrever(
+    request: Request, db: DbSession,
+    dados: str = Form(...),
+    documento_identidade: UploadFile | None = File(default=None),
 ) -> InscricaoListaEsperaResponse:
+    try:
+        body = InscricaoListaEsperaCreateRequest.model_validate_json(dados)
+    except ValidationError as e:
+        raise RequestValidationError(e.errors()) from None
+
+    anexo = None
+    if documento_identidade is not None:
+        anexo = (
+            documento_identidade.filename or "documento_identidade",
+            documento_identidade.content_type,
+            await documento_identidade.read(),
+        )
+
     inscricao = ListaEsperaService(db).inscrever(
         nome_completo=body.nome_completo, data_nascimento=body.data_nascimento, documento=body.documento,
         nome_responsavel=body.nome_responsavel, documento_responsavel=body.documento_responsavel,
         telefone_whatsapp=body.telefone_whatsapp, email=body.email,
         bairro=body.bairro, cidade=body.cidade, modalidade_id=body.modalidade_id, polo_id=body.polo_id,
         como_conheceu=body.como_conheceu,
-        tamanho_camisa=body.tamanho_camisa, tamanho_calcado=body.tamanho_calcado,
+        tamanho_camisa=body.tamanho_camisa, tamanho_calcado=body.tamanho_calcado, turno=body.turno,
+        documento_identidade=anexo,
     )
     return InscricaoListaEsperaResponse.model_validate(inscricao)
 
@@ -104,6 +125,37 @@ def aceitar(
         assert_acesso_ao_polo(usuario, inscricao.polo_id)
 
     service.aceitar(inscricao_id, turma_id=body.turma_id, usuario_id=usuario.id)
+
+
+@router.get(
+    "/{inscricao_id}/documento-identidade",
+    summary="Baixar o documento de identidade anexado na inscrição",
+    description="Retorna o arquivo binário (PDF/imagem). MASTER de qualquer polo; GESTOR_POLO só do próprio polo.",
+)
+def baixar_documento_identidade(usuario: CurrentUser, db: DbSession, inscricao_id: UUID) -> Response:
+    inscricao = ListaEsperaService(db).repo.buscar_por_id(inscricao_id)
+    if not inscricao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
+    if usuario.perfil == PerfilUsuario.GESTOR_POLO:
+        assert_acesso_ao_polo(usuario, inscricao.polo_id)
+    elif usuario.perfil != PerfilUsuario.MASTER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Perfil sem permissão para executar esta ação.")
+    if not inscricao.documento_identidade_caminho:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição sem documento anexado.")
+
+    with armazenamento_documentos.abrir(inscricao.documento_identidade_caminho) as f:
+        conteudo = f.read()
+
+    # Mesmo cuidado do download de documentos do beneficiário: o nome veio do
+    # upload público, nunca interpolar bruto no header.
+    nome_seguro = (inscricao.documento_identidade_nome_arquivo or "documento").replace("\\", "_").replace('"', "_")
+    nome_ascii = nome_seguro.encode("ascii", errors="replace").decode("ascii")
+    content_disposition = f'attachment; filename="{nome_ascii}"; filename*=UTF-8\'\'{quote(nome_seguro)}'
+    return Response(
+        content=conteudo,
+        media_type=inscricao.documento_identidade_content_type or "application/octet-stream",
+        headers={"Content-Disposition": content_disposition},
+    )
 
 
 @router.delete(

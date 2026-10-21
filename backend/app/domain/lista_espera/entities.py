@@ -16,6 +16,9 @@ from app.domain.beneficiario.entities import validar_tamanhos
 IDADE_MINIMA_PROJETO = 6
 IDADE_MAXIMA_PROJETO = 17
 
+# Turno de preferência informado no pré-cadastro.
+TURNOS = ("MANHA", "TARDE")
+
 
 @dataclass
 class InscricaoListaEspera:
@@ -34,6 +37,12 @@ class InscricaoListaEspera:
     como_conheceu: str | None
     tamanho_camisa: str | None = None
     tamanho_calcado: str | None = None
+    turno: str | None = None
+    # Documento de identidade do participante anexado no pré-cadastro (foto
+    # ou PDF) — copiado pros documentos do beneficiário no aceite.
+    documento_identidade_nome_arquivo: str | None = None
+    documento_identidade_caminho: str | None = None
+    documento_identidade_content_type: str | None = None
     # Preenchidos só no aceite (ver LiataEsperaService.aceitar) — None = pendente.
     beneficiario_id: UUID | None = None
     turma_id: UUID | None = None
@@ -51,6 +60,8 @@ class InscricaoListaEspera:
         if not self.email or not self.email.strip():
             raise ValueError("Email é obrigatório.")
         validar_tamanhos(self.tamanho_camisa, self.tamanho_calcado)
+        if self.turno is not None and self.turno not in TURNOS:
+            raise ValueError("Turno inválido. Use MANHA ou TARDE.")
 
     @property
     def pendente(self) -> bool:

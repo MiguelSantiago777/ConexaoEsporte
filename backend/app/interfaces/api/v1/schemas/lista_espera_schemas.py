@@ -2,6 +2,8 @@
 from datetime import date, datetime
 from uuid import UUID
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -20,6 +22,7 @@ class InscricaoListaEsperaCreateRequest(BaseModel):
     como_conheceu: str | None = Field(default=None, max_length=200)
     tamanho_camisa: str | None = Field(default=None, max_length=5, examples=["10", "M"])
     tamanho_calcado: str | None = Field(default=None, max_length=3, examples=["34"])
+    turno: Literal["MANHA", "TARDE"] | None = None
 
 
 class InscricaoListaEsperaResponse(BaseModel):
@@ -38,6 +41,8 @@ class InscricaoListaEsperaResponse(BaseModel):
     como_conheceu: str | None
     tamanho_camisa: str | None
     tamanho_calcado: str | None
+    turno: str | None = None
+    documento_identidade_nome_arquivo: str | None = None
     criado_em: datetime | None
 
     model_config = {"from_attributes": True}

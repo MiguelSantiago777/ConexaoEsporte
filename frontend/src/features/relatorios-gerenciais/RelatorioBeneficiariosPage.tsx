@@ -45,13 +45,13 @@ export function RelatorioBeneficiariosPage() {
     return polos.find((p) => p.id === id)?.nome ?? "—";
   }
 
-  /** "Futebol, Vôlei (interesse)" — matriculadas primeiro; interesse = ainda aguardando turma. */
+  /** "Futebol, Vôlei" — matriculadas primeiro, depois as de interesse (ainda aguardando turma). */
   function modalidadesTexto(b: Beneficiario) {
     const nome = (id: string) => modalidades.find((m) => m.id === id)?.nome ?? "—";
-    const partes = [
+    const partes = [...new Set([
       ...(b.modalidades_matriculado ?? []).map(nome),
-      ...(b.modalidades_interesse ?? []).map((id) => `${nome(id)} (interesse)`),
-    ];
+      ...(b.modalidades_interesse ?? []).map(nome),
+    ])];
     return partes.length ? partes.join(", ") : "—";
   }
 

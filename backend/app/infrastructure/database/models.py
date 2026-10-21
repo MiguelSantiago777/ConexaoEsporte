@@ -591,6 +591,10 @@ class InscricaoListaEsperaModel(Base):
     como_conheceu: Mapped[str | None] = mapped_column(String(200), nullable=True)
     tamanho_camisa: Mapped[str | None] = mapped_column(String(5), nullable=True)
     tamanho_calcado: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    turno: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    documento_identidade_nome_arquivo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    documento_identidade_caminho: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    documento_identidade_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     beneficiario_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("beneficiarios.id", ondelete="SET NULL"), nullable=True
     )

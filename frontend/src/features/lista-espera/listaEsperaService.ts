@@ -16,6 +16,7 @@ export interface InscricaoListaEsperaPayload {
   como_conheceu: string | null;
   tamanho_camisa: string | null;
   tamanho_calcado: string | null;
+  turno: "MANHA" | "TARDE";
 }
 
 export async function buscarOpcoesPublicas(): Promise<OpcoesPublicasListaEspera> {
@@ -23,8 +24,20 @@ export async function buscarOpcoesPublicas(): Promise<OpcoesPublicasListaEspera>
   return data;
 }
 
-export async function inscreverNaListaEspera(payload: InscricaoListaEsperaPayload): Promise<InscricaoListaEspera> {
-  const { data } = await api.post<InscricaoListaEspera>("/lista-espera", payload);
+/** multipart: `dados` leva o JSON da inscrição e `documento_identidade` o
+ * arquivo (foto ou PDF) da identidade do participante. */
+export async function inscreverNaListaEspera(
+  payload: InscricaoListaEsperaPayload, documentoIdentidade: File | null,
+): Promise<InscricaoListaEspera> {
+  const formData = new FormData();
+  formData.append("dados", JSON.stringify(payload));
+  if (documentoIdentidade) formData.append("documento_identidade", documentoIdentidade);
+  const { data } = await api.post<InscricaoListaEspera>("/lista-espera", formData);
+  return data;
+}
+
+export async function baixarDocumentoIdentidade(inscricaoId: string): Promise<Blob> {
+  const { data } = await api.get<Blob>(`/lista-espera/${inscricaoId}/documento-identidade`, { responseType: "blob" });
   return data;
 }
 

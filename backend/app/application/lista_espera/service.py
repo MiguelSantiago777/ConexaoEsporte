@@ -6,29 +6,46 @@ Beneficiário + Matrícula na turma escolhida.
 from datetime import date
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.application.beneficiario.documento_service import CONTENT_TYPES_ACEITOS
 from app.application.beneficiario.service import BeneficiarioService
 from app.application.email.service import EmailService
 from app.application.matricula.service import MatriculaService
+from app.core.config import settings
+from app.domain.beneficiario.entities import BeneficiarioDocumento
 from app.domain.lista_espera.entities import InscricaoListaEspera
 from app.domain.matricula.entities import Matricula
-from app.domain.shared.exceptions import RecursoNaoEncontrado, RegraDeNegocioViolada
+from app.domain.shared.exceptions import (
+    ArquivoMuitoGrande,
+    RecursoNaoEncontrado,
+    RegraDeNegocioViolada,
+    TipoArquivoNaoSuportado,
+)
+from app.infrastructure.repositories.beneficiario_documento_repository import BeneficiarioDocumentoRepository
 from app.infrastructure.repositories.beneficiario_repository import BeneficiarioRepository
 from app.infrastructure.repositories.inscricao_lista_espera_repository import InscricaoListaEsperaRepository
 from app.infrastructure.repositories.modalidade_repository import ModalidadeRepository
 from app.infrastructure.repositories.polo_repository import PoloRepository
 from app.infrastructure.repositories.turma_repository import TurmaRepository
+from app.infrastructure.storage.armazenamento_documentos import armazenamento_documentos
 
 DIAS_SEMANA_LEGIVEL = {
     "SEG": "seg", "TER": "ter", "QUA": "qua", "QUI": "qui", "SEX": "sex", "SAB": "sáb", "DOM": "dom",
 }
+
+# Pasta (dentro de UPLOAD_DIR) dos documentos anexados no pré-cadastro, antes
+# de existir um beneficiário pra agrupá-los.
+PASTA_DOCUMENTOS_LISTA_ESPERA = "lista-espera"
+TIPO_DOCUMENTO_IDENTIDADE = "certidao_nascimento_ou_identidade"
 
 
 class ListaEsperaService:
     def __init__(self, db: Session):
         self.repo = InscricaoListaEsperaRepository(db)
         self.beneficiario_repo = BeneficiarioRepository(db)
+        self.documento_repo = BeneficiarioDocumentoRepository(db)
         self.beneficiario_service = BeneficiarioService(db)
         self.matricula_service = MatriculaService(db)
         self.modalidade_repo = ModalidadeRepository(db)
@@ -47,8 +64,11 @@ class ListaEsperaService:
         self, nome_completo: str, data_nascimento: date, documento: str, nome_responsavel: str | None,
         documento_responsavel: str | None, telefone_whatsapp: str, email: str, bairro: str | None,
         cidade: str | None, modalidade_id: UUID, polo_id: UUID, como_conheceu: str | None,
-        tamanho_camisa: str | None = None, tamanho_calcado: str | None = None,
+        tamanho_camisa: str | None = None, tamanho_calcado: str | None = None, turno: str | None = None,
+        documento_identidade: tuple[str, str | None, bytes] | None = None,
     ) -> InscricaoListaEspera:
+        """`documento_identidade` = (nome do arquivo, content type, conteúdo) da
+        foto/PDF da identidade do participante, opcional."""
         modalidade = self.modalidade_repo.buscar_por_id(modalidade_id)
         if not modalidade:
             raise RecursoNaoEncontrado("Modalidade não encontrada.")
@@ -62,9 +82,28 @@ class ListaEsperaService:
             telefone_whatsapp=telefone_whatsapp, email=email,
             bairro=bairro, cidade=cidade, modalidade_id=modalidade_id, polo_id=polo_id,
             como_conheceu=como_conheceu, tamanho_camisa=tamanho_camisa, tamanho_calcado=tamanho_calcado,
+            turno=turno,
         )
         inscricao.validar_faixa_etaria()
         inscricao.validar_responsavel_se_menor()
+
+        # Arquivo só é gravado depois de todas as validações dos dados —
+        # inscrição recusada não deixa arquivo órfão no disco.
+        if documento_identidade is not None:
+            nome_arquivo, content_type, conteudo = documento_identidade
+            if content_type not in CONTENT_TYPES_ACEITOS:
+                raise TipoArquivoNaoSuportado(
+                    "Tipo de arquivo não permitido para o documento de identidade. Envie PDF, JPG, PNG ou WEBP."
+                )
+            if len(conteudo) > settings.UPLOAD_MAX_SIZE_MB * 1024 * 1024:
+                raise ArquivoMuitoGrande(
+                    f"O documento de identidade excede o limite de {settings.UPLOAD_MAX_SIZE_MB}MB."
+                )
+            inscricao.documento_identidade_nome_arquivo = nome_arquivo
+            inscricao.documento_identidade_content_type = content_type
+            inscricao.documento_identidade_caminho = armazenamento_documentos.salvar(
+                PASTA_DOCUMENTOS_LISTA_ESPERA, nome_arquivo, conteudo,
+            )
 
         criada = self.repo.criar(inscricao)
 
@@ -86,6 +125,8 @@ class ListaEsperaService:
             raise RecursoNaoEncontrado("Inscrição não encontrada.")
         if not inscricao.pendente:
             raise RegraDeNegocioViolada("Esta inscrição já foi aceita e não pode ser excluída.")
+        if inscricao.documento_identidade_caminho:
+            armazenamento_documentos.remover(inscricao.documento_identidade_caminho)
         self.repo.remover(inscricao_id)
 
     def aceitar(self, inscricao_id: UUID, turma_id: UUID, usuario_id: UUID) -> Matricula:
@@ -121,6 +162,7 @@ class ListaEsperaService:
         matricula = self.matricula_service.matricular(beneficiario.id, turma_id)
 
         assert beneficiario.id is not None
+        self._anexar_identidade_ao_beneficiario(inscricao, beneficiario.id, usuario_id)
         self.repo.marcar_aceita(
             inscricao_id, beneficiario_id=beneficiario.id, turma_id=turma_id, aceito_por_id=usuario_id,
         )
@@ -136,3 +178,32 @@ class ListaEsperaService:
             dias_semana=dias, horario_inicio=turma.horario_inicio, horario_fim=turma.horario_fim,
         )
         return matricula
+
+    def _anexar_identidade_ao_beneficiario(
+        self, inscricao: InscricaoListaEspera, beneficiario_id: UUID, usuario_id: UUID,
+    ) -> None:
+        """Copia (não move) o documento de identidade da inscrição pra pasta
+        do beneficiário — assim a remoção do anexo no cadastro do beneficiário
+        não apaga o arquivo que a inscrição aceita ainda referencia. Beneficiário
+        reaproveitado que já tem identidade anexada fica como está."""
+        if not inscricao.documento_identidade_caminho:
+            return
+        ja_tem = any(
+            d.tipo == TIPO_DOCUMENTO_IDENTIDADE for d in self.documento_repo.listar_por_beneficiario(beneficiario_id)
+        )
+        if ja_tem:
+            return
+        try:
+            with armazenamento_documentos.abrir(inscricao.documento_identidade_caminho) as f:
+                conteudo = f.read()
+        except HTTPException:
+            # Arquivo sumiu do disco — o aceite segue, só sem o anexo.
+            return
+        nome_arquivo = inscricao.documento_identidade_nome_arquivo or "documento_identidade"
+        caminho = armazenamento_documentos.salvar(str(beneficiario_id), nome_arquivo, conteudo)
+        self.documento_repo.criar(BeneficiarioDocumento(
+            id=None, beneficiario_id=beneficiario_id, tipo=TIPO_DOCUMENTO_IDENTIDADE,
+            nome_arquivo=nome_arquivo, caminho_arquivo=caminho,
+            content_type=inscricao.documento_identidade_content_type, tamanho_bytes=len(conteudo),
+            enviado_por_id=usuario_id,
+        ))
