@@ -153,8 +153,9 @@ class ListaEsperaService:
 
         # CPF já cadastrado (ex.: irmão já matriculado) reaproveita o Beneficiário
         # existente em vez de duplicar o cadastro — só cria um novo quando não existe.
+        # Se o existente foi removido (inativo), `criar` reativa com os dados da inscrição.
         beneficiario = self.beneficiario_repo.buscar_por_documento(inscricao.documento)
-        if not beneficiario:
+        if not beneficiario or not beneficiario.ativo:
             beneficiario = self.beneficiario_service.criar(
                 nome_completo=inscricao.nome_completo, data_nascimento=inscricao.data_nascimento,
                 documento=inscricao.documento, polo_id=inscricao.polo_id,

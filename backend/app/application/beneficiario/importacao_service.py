@@ -98,8 +98,9 @@ class BeneficiarioImportacaoService:
 
             # Beneficiário já cadastrado + modalidades informadas: só acrescenta
             # os interesses (permite reimportar a planilha pra completar esse dado).
+            # Removido (inativo) não conta: segue pro `criar`, que reativa o cadastro.
             existente = self._buscar_por_documento(documento) if modalidade_ids else None
-            if existente:
+            if existente and existente.ativo:
                 assert existente.id is not None
                 if polo_fixo_id and existente.polo_id != polo_fixo_id:
                     raise RegraDeNegocioViolada("Documento já cadastrado em outro polo.")

@@ -1,11 +1,11 @@
 """Repositório de BENEFICIÁRIO (nomenclatura oficial e obrigatória)."""
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.domain.beneficiario.entities import Beneficiario
-from app.infrastructure.database.models import BeneficiarioModel, MatriculaModel
+from app.infrastructure.database.models import BeneficiarioInteresseModel, BeneficiarioModel, MatriculaModel
 from app.infrastructure.repositories.paginacao import paginar
 
 
@@ -78,6 +78,30 @@ class BeneficiarioRepository:
             tamanho_camisa=beneficiario.tamanho_camisa, tamanho_calcado=beneficiario.tamanho_calcado,
         )
         self.db.add(m)
+        self.db.commit()
+        self.db.refresh(m)
+        return _to_entity(m)
+
+    def reativar(self, beneficiario: Beneficiario) -> Beneficiario:
+        """Recadastro de um beneficiário removido (`ativo=false`): sobrescreve
+        todos os dados com os do novo cadastro — inclusive os que vierem vazios.
+        Matrículas antigas ficam inativas (o histórico de frequência continua)
+        e os interesses antigos saem, pra ele não reaparecer em turmas e listas
+        de interessados só por causa do cadastro anterior."""
+        m = self.db.get(BeneficiarioModel, beneficiario.id)
+        for campo in (
+            "nome_completo", "data_nascimento", "polo_id", "responsavel_legal_nome",
+            "responsavel_legal_data_nascimento", "responsavel_legal_tipo_relacao",
+            "responsavel_legal_telefone_1", "responsavel_legal_telefone_2", "responsavel_legal_email",
+            "responsavel_legal_rede_social", "endereco", "autoriza_whatsapp", "observacoes_medicas",
+            "tamanho_camisa", "tamanho_calcado",
+        ):
+            setattr(m, campo, getattr(beneficiario, campo))
+        m.ativo = True
+        self.db.execute(
+            update(MatriculaModel).where(MatriculaModel.beneficiario_id == m.id).values(ativo=False)
+        )
+        self.db.execute(delete(BeneficiarioInteresseModel).where(BeneficiarioInteresseModel.beneficiario_id == m.id))
         self.db.commit()
         self.db.refresh(m)
         return _to_entity(m)

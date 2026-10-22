@@ -45,11 +45,15 @@ class BeneficiarioService:
         # O documento é sempre exclusivo do próprio beneficiário — mesmo quando
         # dois irmãos compartilham o mesmo responsável legal, cada um tem seu
         # próprio documento aqui (o do responsável não é validado por unicidade).
-        if self.repo.buscar_por_documento(documento):
+        # "Remover" na tela só desativa: o registro continua no banco com o
+        # documento. Nesse caso o cadastro reaproveita o mesmo id (ver `criar`)
+        # em vez de recusar um CPF que não aparece em nenhuma listagem.
+        existente = self.repo.buscar_por_documento(documento)
+        if existente and existente.ativo:
             raise RecursoJaExiste("Já existe um beneficiário com este documento.")
 
         beneficiario = Beneficiario(
-            id=None, nome_completo=nome_completo, data_nascimento=data_nascimento,
+            id=existente.id if existente else None, nome_completo=nome_completo, data_nascimento=data_nascimento,
             documento=documento, polo_id=polo_id,
             responsavel_legal_nome=responsavel_legal_nome,
             responsavel_legal_data_nascimento=responsavel_legal_data_nascimento,
@@ -88,6 +92,8 @@ class BeneficiarioService:
             observacoes_medicas=observacoes_medicas,
             tamanho_camisa=tamanho_camisa, tamanho_calcado=tamanho_calcado,
         )
+        if beneficiario.id:
+            return self.repo.reativar(beneficiario)
         return self.repo.criar(beneficiario)
 
     def atualizar(self, beneficiario_id: UUID, **campos) -> Beneficiario | None:
