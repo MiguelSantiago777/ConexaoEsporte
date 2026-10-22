@@ -2069,6 +2069,8 @@ export interface components {
         BeneficiarioUpdateRequest: {
             /** Nome Completo */
             nome_completo?: string | null;
+            /** Data Nascimento */
+            data_nascimento?: string | null;
             /** Polo Id */
             polo_id?: string | null;
             /** Responsavel Legal Nome */

@@ -5,6 +5,7 @@ A matrícula em turmas/modalidades é tratada à parte — ver
 app/application/matricula/service.py — porque um beneficiário pode estar
 em várias ao mesmo tempo (ex.: judô e natação).
 """
+from dataclasses import replace
 from datetime import date
 from uuid import UUID
 
@@ -99,4 +100,11 @@ class BeneficiarioService:
     def atualizar(self, beneficiario_id: UUID, **campos) -> Beneficiario | None:
         # O PATCH grava direto no model, sem passar pelo __post_init__ da entidade.
         validar_tamanhos(campos.get("tamanho_camisa"), campos.get("tamanho_calcado"))
+        # Nova data de nascimento pode torná-lo menor de idade: aí precisa de
+        # responsável legal, como no cadastro.
+        if campos.get("data_nascimento"):
+            atual = self.repo.buscar_por_id(beneficiario_id)
+            if atual:
+                novos = {k: v for k, v in campos.items() if v is not None and hasattr(atual, k)}
+                replace(atual, **novos).validar_responsavel_legal_se_menor()
         return self.repo.atualizar(beneficiario_id, **campos)

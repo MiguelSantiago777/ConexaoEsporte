@@ -10,7 +10,6 @@ import { Select } from "@/components/ui/Select";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { maskCPF, maskTelefone, onlyDigits } from "@/lib/masks";
-import { formatarData } from "@/lib/format";
 import { TAMANHOS_CALCADO, TAMANHOS_CAMISA, TIPOS_RELACAO } from "./constants";
 import { DocumentosBeneficiarioTab } from "./DocumentosModal";
 
@@ -30,6 +29,7 @@ function formInicialDe(b: Beneficiario) {
   const tipoConhecido = b.responsavel_legal_tipo_relacao && TIPOS_RELACAO.includes(b.responsavel_legal_tipo_relacao);
   return {
     nome_completo: b.nome_completo,
+    data_nascimento: b.data_nascimento,
     polo_id: b.polo_id ?? "",
     responsavel_legal_nome: b.responsavel_legal_nome ?? "",
     responsavel_legal_data_nascimento: b.responsavel_legal_data_nascimento ?? "",
@@ -67,6 +67,7 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
           : payload.form.responsavel_legal_tipo_relacao;
       return api.patch(`/beneficiarios/${payload.id}`, {
         nome_completo: payload.form.nome_completo,
+        data_nascimento: payload.form.data_nascimento,
         polo_id: payload.form.polo_id,
         responsavel_legal_nome: payload.form.responsavel_legal_nome || null,
         responsavel_legal_data_nascimento: payload.form.responsavel_legal_data_nascimento || null,
@@ -104,15 +105,9 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
         {aba === "documentos" && <DocumentosBeneficiarioTab beneficiarioId={beneficiario.id} />}
         {aba === "dados" && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 rounded-lg p-3">
-              <div>
-                <span className="block text-xs text-gray-400">CPF (não editável)</span>
-                <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
-              </div>
-              <div>
-                <span className="block text-xs text-gray-400">Nascimento (não editável)</span>
-                <span className="font-medium text-gray-700">{formatarData(beneficiario.data_nascimento)}</span>
-              </div>
+            <div className="text-sm bg-gray-50 rounded-lg p-3">
+              <span className="block text-xs text-gray-400">CPF (não editável)</span>
+              <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -120,6 +115,14 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
                 label="Nome completo"
                 value={form.nome_completo}
                 onChange={(e) => setForm({ ...form, nome_completo: e.target.value })}
+                required
+              />
+              <Input
+                label="Data de nascimento"
+                type="date"
+                value={form.data_nascimento}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })}
                 required
               />
               <Select label="Polo" value={form.polo_id} onChange={(e) => setForm({ ...form, polo_id: e.target.value })} required>

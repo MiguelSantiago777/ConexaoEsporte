@@ -35,6 +35,7 @@ class BeneficiarioCreateRequest(BaseModel):
 
 class BeneficiarioUpdateRequest(BaseModel):
     nome_completo: str | None = Field(default=None, min_length=2, max_length=150)
+    data_nascimento: date | None = None
     polo_id: UUID | None = None
     responsavel_legal_nome: str | None = None
     responsavel_legal_data_nascimento: date | None = None
