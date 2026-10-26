@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { staggerStyle } from "@/lib/animation";
-import { formatarData } from "@/lib/format";
+import { formatarData, formatarDataHora } from "@/lib/format";
 import { maskCPF, maskTelefone, mascararCPFLGPD, mascararNomeLGPD } from "@/lib/masks";
 import { exportarPdf } from "@/lib/exportarPdf";
 import { exportarXlsx } from "@/lib/exportarXlsx";
@@ -19,7 +19,8 @@ import { useToast } from "@/components/ui/toast/ToastContext";
  * Ficha cadastral geral de todos os beneficiários ativos, opcionalmente
  * filtrada por polo (o filtro também vale pro PDF e o Excel). Uso externo
  * mascara nome e CPF (LGPD) — do beneficiário e também do responsável —
- * uso interno mostra os dados completos.
+ * uso interno mostra os dados completos e a data/hora do cadastro (coluna
+ * "Cadastrado em", que some no uso externo).
  */
 export function RelatorioBeneficiariosPage() {
   const toast = useToast();
@@ -82,6 +83,7 @@ export function RelatorioBeneficiariosPage() {
             : b.responsavel_legal_nome
           : "—",
         Contato: b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—",
+        ...(usoExterno ? {} : { "Cadastrado em": formatarDataHora(b.criado_em) }),
       }));
       await exportarXlsx(linhas, `ficha-cadastral-beneficiarios${sufixoArquivo}.xlsx`, "Beneficiários");
     } catch {
@@ -180,6 +182,9 @@ export function RelatorioBeneficiariosPage() {
                       {b.responsavel_legal_telefone_1 ? ` · ${maskTelefone(b.responsavel_legal_telefone_1)}` : ""}
                     </div>
                   )}
+                  {!usoExterno && (
+                    <div className="text-xs text-gray-500 mt-0.5">Cadastrado em {formatarDataHora(b.criado_em)}</div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -194,7 +199,8 @@ export function RelatorioBeneficiariosPage() {
                     <th className="px-3">Polo</th>
                     <th className="px-3">Modalidades</th>
                     <th className="px-3">Responsável</th>
-                    <th className="px-3 pr-8">Contato</th>
+                    <th className={usoExterno ? "px-3 pr-8" : "px-3"}>Contato</th>
+                    {!usoExterno && <th className="px-3 pr-8">Cadastrado em</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -216,9 +222,12 @@ export function RelatorioBeneficiariosPage() {
                             : b.responsavel_legal_nome
                           : "—"}
                       </td>
-                      <td className="px-3 pr-8 text-gray-600">
+                      <td className={`px-3 text-gray-600 ${usoExterno ? "pr-8" : ""}`}>
                         {b.responsavel_legal_telefone_1 ? maskTelefone(b.responsavel_legal_telefone_1) : "—"}
                       </td>
+                      {!usoExterno && (
+                        <td className="px-3 pr-8 text-gray-600 whitespace-nowrap">{formatarDataHora(b.criado_em)}</td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
