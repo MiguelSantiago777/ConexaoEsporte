@@ -22,6 +22,7 @@ def _to_entity(m: BeneficiarioModel) -> Beneficiario:
         endereco=m.endereco, autoriza_whatsapp=m.autoriza_whatsapp,
         observacoes_medicas=m.observacoes_medicas, ativo=m.ativo,
         tamanho_camisa=m.tamanho_camisa, tamanho_calcado=m.tamanho_calcado,
+        criado_em=m.criado_em,
     )
 
 

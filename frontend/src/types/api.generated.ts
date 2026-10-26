@@ -2054,6 +2054,8 @@ export interface components {
             tamanho_calcado: string | null;
             /** Ativo */
             ativo: boolean;
+            /** Criado Em */
+            criado_em?: string | null;
             /**
              * Modalidades Matriculado
              * @default []

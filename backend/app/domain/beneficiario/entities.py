@@ -48,6 +48,7 @@ class Beneficiario:
     ativo: bool = True
     tamanho_camisa: str | None = None
     tamanho_calcado: str | None = None
+    criado_em: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.nome_completo or not self.nome_completo.strip():

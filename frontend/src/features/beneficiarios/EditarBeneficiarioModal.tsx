@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { mensagemErroApi } from "@/lib/erros";
+import { formatarDataHora } from "@/lib/format";
 import type { Beneficiario, Polo } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -105,9 +106,15 @@ export function EditarBeneficiarioModal({ beneficiario, polos, onClose, onSalvo 
         {aba === "documentos" && <DocumentosBeneficiarioTab beneficiarioId={beneficiario.id} />}
         {aba === "dados" && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="text-sm bg-gray-50 rounded-lg p-3">
-              <span className="block text-xs text-gray-400">CPF (não editável)</span>
-              <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
+            <div className="text-sm bg-gray-50 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <span className="block text-xs text-gray-400">CPF (não editável)</span>
+                <span className="font-medium text-gray-700">{maskCPF(beneficiario.documento)}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-gray-400">Cadastrado em</span>
+                <span className="font-medium text-gray-700">{formatarDataHora(beneficiario.criado_em)}</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
