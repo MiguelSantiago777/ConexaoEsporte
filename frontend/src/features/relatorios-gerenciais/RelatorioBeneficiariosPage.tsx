@@ -5,6 +5,7 @@ import type { Beneficiario, Modalidade, Polo } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,7 +18,8 @@ import { useToast } from "@/components/ui/toast/ToastContext";
 
 /**
  * Ficha cadastral geral de todos os beneficiários ativos, opcionalmente
- * filtrada por polo (o filtro também vale pro PDF e o Excel). Uso externo
+ * filtrada por polo e por período de cadastro (os filtros também valem pro
+ * PDF e o Excel). Uso externo
  * mascara nome e CPF (LGPD) — do beneficiário e também do responsável —
  * uso interno mostra os dados completos e a data/hora do cadastro (coluna
  * "Cadastrado em", que some no uso externo).
@@ -38,6 +40,8 @@ export function RelatorioBeneficiariosPage() {
   });
   const [usoExterno, setUsoExterno] = useState(false);
   const [filtroPolo, setFiltroPolo] = useState("");
+  const [cadastroDe, setCadastroDe] = useState("");
+  const [cadastroAte, setCadastroAte] = useState("");
   const [exportando, setExportando] = useState(false);
   const [exportandoXlsx, setExportandoXlsx] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -93,7 +97,21 @@ export function RelatorioBeneficiariosPage() {
     }
   }
 
-  const ativos = beneficiarios.filter((b) => b.ativo && (!filtroPolo || b.polo_id === filtroPolo));
+  const ativos = beneficiarios.filter((b) => {
+    if (!b.ativo || (filtroPolo && b.polo_id !== filtroPolo)) return false;
+    if (!cadastroDe && !cadastroAte) return true;
+    const dia = diaCadastro(b.criado_em);
+    if (!dia) return false;
+    return (!cadastroDe || dia >= cadastroDe) && (!cadastroAte || dia <= cadastroAte);
+  });
+  const periodoCadastro =
+    cadastroDe && cadastroAte
+      ? `${formatarData(cadastroDe)} a ${formatarData(cadastroAte)}`
+      : cadastroDe
+        ? `a partir de ${formatarData(cadastroDe)}`
+        : cadastroAte
+          ? `até ${formatarData(cadastroAte)}`
+          : null;
   const poloFiltrado = filtroPolo ? poloNome(filtroPolo) : null;
   const sufixoArquivo = poloFiltrado
     ? `-${poloFiltrado.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`
@@ -102,10 +120,10 @@ export function RelatorioBeneficiariosPage() {
   return (
     <div className="space-y-6">
       <Card className="animate-fade-in-up" style={staggerStyle(0)}>
-        <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-end justify-between">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:items-end">
             <div className="sm:w-72">
-              <Select aria-label="Filtrar por polo" value={filtroPolo} onChange={(e) => setFiltroPolo(e.target.value)}>
+              <Select label="Polo" value={filtroPolo} onChange={(e) => setFiltroPolo(e.target.value)}>
                 <option value="">Todos os polos</option>
                 {polos.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -114,7 +132,13 @@ export function RelatorioBeneficiariosPage() {
                 ))}
               </Select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="sm:w-44">
+              <Input label="Cadastrado de" type="date" value={cadastroDe} onChange={(e) => setCadastroDe(e.target.value)} />
+            </div>
+            <div className="sm:w-44">
+              <Input label="Cadastrado até" type="date" value={cadastroAte} onChange={(e) => setCadastroAte(e.target.value)} />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none sm:pb-2">
               <input
                 type="checkbox"
                 className="w-5 h-5 accent-[#fcba27] rounded"
@@ -143,6 +167,7 @@ export function RelatorioBeneficiariosPage() {
         <div>
           <div className="font-bold text-brand-dark">Ficha Cadastral Geral de Beneficiários</div>
           {poloFiltrado && <div className="text-sm text-gray-600">Polo: {poloFiltrado}</div>}
+          {periodoCadastro && <div className="text-sm text-gray-600">Cadastrados: {periodoCadastro}</div>}
         </div>
       </div>
 
@@ -156,7 +181,13 @@ export function RelatorioBeneficiariosPage() {
           <Spinner label="Carregando beneficiários…" />
         ) : ativos.length === 0 ? (
           <EmptyState
-            message={poloFiltrado ? "Nenhum beneficiário ativo neste polo." : "Nenhum beneficiário ativo cadastrado."}
+            message={
+              periodoCadastro
+                ? "Nenhum beneficiário ativo cadastrado nesse período."
+                : poloFiltrado
+                  ? "Nenhum beneficiário ativo neste polo."
+                  : "Nenhum beneficiário ativo cadastrado."
+            }
           />
         ) : (
           <>
@@ -239,4 +270,11 @@ export function RelatorioBeneficiariosPage() {
       </div>
     </div>
   );
+}
+
+/** Dia do cadastro ("aaaa-mm-dd") no horário de Brasília, pra comparar com os inputs de data. */
+function diaCadastro(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 }
