@@ -10,13 +10,14 @@ import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Paginacao } from "@/components/ui/Paginacao";
-import { TrashIcon } from "@/components/ui/icons";
+import { PencilIcon, TrashIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/toast/ToastContext";
 import { staggerStyle } from "@/lib/animation";
 import { useAuth } from "@/features/auth/AuthContext";
 import { baixarExportacao } from "@/features/fichas-execucao/FichasExecucaoPage";
+import { EditarTurmaModal } from "./EditarTurmaModal";
 
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
 const MES_ATUAL = new Date().getMonth() + 1;
@@ -60,6 +61,7 @@ export function TurmasPage() {
   const professores = usuarios.filter((x) => x.perfil === "PROFESSOR");
 
   const [salvando, setSalvando] = useState(false);
+  const [turmaEditando, setTurmaEditando] = useState<Turma | null>(null);
   const [exportando, setExportando] = useState(false);
   const [form, setForm] = useState({
     polo_id: "", modalidade_id: "", horario_inicio: "", horario_fim: "",
@@ -314,6 +316,14 @@ export function TurmasPage() {
                       <Badge variant="accent">{t.vagas_ocupadas}/{t.limite_vagas}</Badge>
                       <button
                         type="button"
+                        title="Editar"
+                        onClick={() => setTurmaEditando(t)}
+                        className="text-gray-400 hover:text-brand transition-colors -m-1.5 p-1.5"
+                      >
+                        <PencilIcon className="w-[18px] h-[18px]" />
+                      </button>
+                      <button
+                        type="button"
                         title="Excluir"
                         onClick={() => excluirTurma(t)}
                         disabled={excluirTurmaMutation.isPending && excluirTurmaMutation.variables === t.id}
@@ -387,15 +397,25 @@ export function TurmasPage() {
                         </select>
                       </td>
                       <td className="px-3 text-right pr-8">
-                        <button
-                          type="button"
-                          title="Excluir"
-                          onClick={() => excluirTurma(t)}
-                          disabled={excluirTurmaMutation.isPending && excluirTurmaMutation.variables === t.id}
-                          className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                        >
-                          <TrashIcon />
-                        </button>
+                        <div className="inline-flex items-center gap-3">
+                          <button
+                            type="button"
+                            title="Editar"
+                            onClick={() => setTurmaEditando(t)}
+                            className="text-gray-400 hover:text-brand transition-colors"
+                          >
+                            <PencilIcon />
+                          </button>
+                          <button
+                            type="button"
+                            title="Excluir"
+                            onClick={() => excluirTurma(t)}
+                            disabled={excluirTurmaMutation.isPending && excluirTurmaMutation.variables === t.id}
+                            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -406,6 +426,18 @@ export function TurmasPage() {
         )}
         <Paginacao pagina={pagina} tamanhoPagina={TAMANHO_PAGINA} total={totalTurmas} onChange={setPagina} />
       </Card>
+      <EditarTurmaModal
+        turma={turmaEditando}
+        poloNome={turmaEditando ? poloNome(turmaEditando.polo_id) : ""}
+        modalidades={modalidades}
+        onClose={() => setTurmaEditando(null)}
+        onSalvo={() => {
+          setTurmaEditando(null);
+          toast.success("Turma atualizada.");
+          queryClient.invalidateQueries({ queryKey: ["turmas"] });
+          queryClient.invalidateQueries({ queryKey: ["beneficiarios"] });
+        }}
+      />
     </div>
   );
 }

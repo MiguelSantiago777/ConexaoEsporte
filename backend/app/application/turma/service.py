@@ -6,8 +6,12 @@ from sqlalchemy.orm import Session
 from app.application.beneficiario.interesse_service import BeneficiarioInteresseService
 from app.application.matricula.service import MatriculaService
 from app.domain.enums import PerfilUsuario
-from app.domain.shared.exceptions import RegraDeNegocioViolada
+from app.domain.shared.exceptions import RecursoNaoEncontrado, RegraDeNegocioViolada
 from app.domain.turma.entities import Turma
+from app.infrastructure.repositories.beneficiario_interesse_repository import BeneficiarioInteresseRepository
+from app.infrastructure.repositories.inscricao_lista_espera_repository import InscricaoListaEsperaRepository
+from app.infrastructure.repositories.matricula_repository import MatriculaRepository
+from app.infrastructure.repositories.modalidade_repository import ModalidadeRepository
 from app.infrastructure.repositories.turma_repository import TurmaRepository
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 
@@ -93,13 +97,43 @@ class TurmaService:
             matricula_service.matricular(beneficiario_id, turma.id)
 
     def atualizar(self, turma_id: UUID, **campos) -> dict | None:
+        turma_atual = self.repo.buscar_por_id(turma_id)
+        if not turma_atual:
+            return None
         if campos.get("professor_id") is not None:
-            turma_atual = self.repo.buscar_por_id(turma_id)
-            if not turma_atual:
-                return None
             self._validar_professor(campos["professor_id"], turma_atual.polo_id)
+        nova_modalidade_id = campos.get("modalidade_id")
+        if nova_modalidade_id is not None and not ModalidadeRepository(self.db).buscar_por_id(nova_modalidade_id):
+            raise RecursoNaoEncontrado("Modalidade não encontrada.")
         t = self.repo.atualizar(turma_id, **campos)
+        if t and nova_modalidade_id is not None and nova_modalidade_id != turma_atual.modalidade_id:
+            self._migrar_modalidade(t, turma_atual.modalidade_id)
         return self._com_vagas(t) if t else None
+
+    def _migrar_modalidade(self, turma: Turma, antiga_id: UUID) -> None:
+        """Depois de trocar a modalidade da turma (ex.: "Futsal" → "Futebol de
+        Campo"), leva junto o que ainda apontava pra modalidade antiga:
+        - o interesse dos matriculados na turma, que senão apareceriam como
+          "aguardando turma" da antiga;
+        - se o polo ficou sem turma ativa da antiga, também o interesse dos
+          demais beneficiários do polo e as inscrições pendentes da lista de
+          espera — a antiga deixou de ser oferecida ali e elas ficariam sem
+          turma pra serem aceitas."""
+        assert turma.id is not None
+        interesse_repo = BeneficiarioInteresseRepository(self.db)
+        sem_turma_da_antiga = set(interesse_repo.listar_interessados_sem_turma(turma.polo_id, antiga_id))
+        polo_ainda_oferece = any(t.modalidade_id == antiga_id for t in self.repo.listar(polo_id=turma.polo_id))
+        if polo_ainda_oferece:
+            matriculados = {
+                b_id for b_id, _ in MatriculaRepository(self.db).listar_beneficiarios_ativos_por_turma(turma.id)
+            }
+            migrar = sem_turma_da_antiga & matriculados
+        else:
+            migrar = sem_turma_da_antiga
+            InscricaoListaEsperaRepository(self.db).trocar_modalidade_pendentes(
+                turma.polo_id, antiga_id, turma.modalidade_id
+            )
+        interesse_repo.trocar_modalidade(list(migrar), antiga_id, turma.modalidade_id)
 
     def _com_vagas(self, turma: Turma) -> dict:
         ocupadas = self.repo.contar_beneficiarios_ativos(turma.id) if turma.id else 0

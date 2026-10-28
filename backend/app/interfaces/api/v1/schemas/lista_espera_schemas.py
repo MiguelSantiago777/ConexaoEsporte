@@ -53,8 +53,13 @@ class OpcaoResponse(BaseModel):
     nome: str
 
 
+class PoloOpcaoResponse(OpcaoResponse):
+    # Modalidades com turma ativa no polo — o formulário só oferece essas.
+    modalidade_ids: list[UUID]
+
+
 class OpcoesPublicasResponse(BaseModel):
-    polos: list[OpcaoResponse]
+    polos: list[PoloOpcaoResponse]
     modalidades: list[OpcaoResponse]
 
 

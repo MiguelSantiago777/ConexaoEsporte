@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.domain.lista_espera.entities import InscricaoListaEspera
@@ -58,6 +58,18 @@ class InscricaoListaEsperaRepository:
             stmt = stmt.where(InscricaoListaEsperaModel.polo_id == polo_id)
         stmt = stmt.order_by(InscricaoListaEsperaModel.criado_em)
         return [_to_entity(m) for m in self.db.scalars(stmt)]
+
+    def trocar_modalidade_pendentes(self, polo_id: UUID, antiga_id: UUID, nova_id: UUID) -> None:
+        self.db.execute(
+            update(InscricaoListaEsperaModel)
+            .where(
+                InscricaoListaEsperaModel.beneficiario_id.is_(None),
+                InscricaoListaEsperaModel.polo_id == polo_id,
+                InscricaoListaEsperaModel.modalidade_id == antiga_id,
+            )
+            .values(modalidade_id=nova_id)
+        )
+        self.db.commit()
 
     def marcar_aceita(
         self, inscricao_id: UUID, beneficiario_id: UUID, turma_id: UUID, aceito_por_id: UUID,

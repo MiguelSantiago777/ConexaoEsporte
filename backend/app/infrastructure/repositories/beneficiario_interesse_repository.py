@@ -42,6 +42,21 @@ class BeneficiarioInteresseRepository:
         )
         self.adicionar(beneficiario_id, modalidade_ids)
 
+    def trocar_modalidade(self, beneficiario_ids: list[UUID], antiga_id: UUID, nova_id: UUID) -> None:
+        """Troca o interesse na modalidade `antiga_id` pelo interesse em
+        `nova_id` — quem já tinha interesse na nova só perde o da antiga."""
+        if not beneficiario_ids:
+            return
+        self.db.execute(
+            delete(BeneficiarioInteresseModel).where(
+                BeneficiarioInteresseModel.beneficiario_id.in_(beneficiario_ids),
+                BeneficiarioInteresseModel.modalidade_id == antiga_id,
+            )
+        )
+        for beneficiario_id in beneficiario_ids:
+            self.adicionar(beneficiario_id, [nova_id])
+        self.db.commit()
+
     def resumo_modalidades(self, beneficiario_ids: list[UUID]) -> dict[UUID, tuple[list[UUID], list[UUID]]]:
         """{beneficiario_id: (modalidades com matrícula ativa, modalidades de
         interesse ainda sem matrícula)} — duas consultas pro lote inteiro."""

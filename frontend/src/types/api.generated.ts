@@ -778,6 +778,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/beneficiarios/documentos/{documento_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remover um documento anexado
+         * @description Somente MASTER. Remove o registro e o arquivo — usado para substituir um documento.
+         */
+        delete: operations["remover_documento_api_v1_beneficiarios_documentos__documento_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/frequencias/chamada": {
         parameters: {
             query?: never;
@@ -1629,7 +1649,7 @@ export interface paths {
         };
         /**
          * [Público] Polos e modalidades para o formulário de inscrição
-         * @description Sem autenticação — usado pelo formulário público embutido na landing page. Devolve só id e nome, nenhum outro dado do polo/modalidade.
+         * @description Sem autenticação — usado pelo formulário público embutido na landing page. Devolve só id e nome, nenhum outro dado do polo/modalidade, e em cada polo as modalidades que ele oferece (com turma ativa). Polos sem turma ativa não aparecem.
          */
         get: operations["opcoes_publicas_api_v1_lista_espera_opcoes_get"];
         put?: never;
@@ -1655,7 +1675,7 @@ export interface paths {
         put?: never;
         /**
          * [Público] Inscrever-se na lista de espera
-         * @description Sem autenticação — formulário público embutido na landing page. Envia um email de confirmação para o email informado. Limitado a 5 tentativas por minuto por IP.
+         * @description Sem autenticação — formulário público embutido na landing page. multipart/form-data: `dados` = JSON com os campos da inscrição (InscricaoListaEsperaCreateRequest) e, opcional, `documento_identidade` = foto/PDF da identidade do participante (PDF, JPG, PNG, WEBP — até 10MB). Envia um email de confirmação para o email informado. Limitado a 5 tentativas por minuto por IP.
          */
         post: operations["inscrever_api_v1_lista_espera_post"];
         delete?: never;
@@ -1679,6 +1699,46 @@ export interface paths {
          */
         post: operations["aceitar_api_v1_lista_espera__inscricao_id__aceitar_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lista-espera/{inscricao_id}/documento-identidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Baixar o documento de identidade anexado na inscrição
+         * @description Retorna o arquivo binário (PDF/imagem). MASTER de qualquer polo; GESTOR_POLO só do próprio polo.
+         */
+        get: operations["baixar_documento_identidade_api_v1_lista_espera__inscricao_id__documento_identidade_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lista-espera/{inscricao_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Excluir inscrição pendente
+         * @description Remove definitivamente uma inscrição ainda não aceita (ex.: duplicada, desistência). MASTER exclui de qualquer polo; GESTOR_POLO só do próprio polo. Inscrições já aceitas não podem ser excluídas.
+         */
+        delete: operations["excluir_api_v1_lista_espera__inscricao_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2207,6 +2267,13 @@ export interface components {
              * Format: binary
              */
             arquivo: string;
+        };
+        /** Body_inscrever_api_v1_lista_espera_post */
+        Body_inscrever_api_v1_lista_espera_post: {
+            /** Dados */
+            dados: string;
+            /** Documento Identidade */
+            documento_identidade?: string | null;
         };
         /** Body_login_api_v1_auth_login_post */
         Body_login_api_v1_auth_login_post: {
@@ -2784,65 +2851,6 @@ export interface components {
             /** Criado Em */
             criado_em: string | null;
         };
-        /** InscricaoListaEsperaCreateRequest */
-        InscricaoListaEsperaCreateRequest: {
-            /** Nome Completo */
-            nome_completo: string;
-            /**
-             * Data Nascimento
-             * Format: date
-             */
-            data_nascimento: string;
-            /**
-             * Documento
-             * @example 12345678900
-             */
-            documento: string;
-            /** Nome Responsavel */
-            nome_responsavel?: string | null;
-            /**
-             * Documento Responsavel
-             * @example 12345678900
-             */
-            documento_responsavel?: string | null;
-            /**
-             * Telefone Whatsapp
-             * @example (11) 91234-5678
-             */
-            telefone_whatsapp: string;
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Bairro */
-            bairro?: string | null;
-            /** Cidade */
-            cidade?: string | null;
-            /**
-             * Modalidade Id
-             * Format: uuid
-             */
-            modalidade_id: string;
-            /**
-             * Polo Id
-             * Format: uuid
-             */
-            polo_id: string;
-            /** Como Conheceu */
-            como_conheceu?: string | null;
-            /**
-             * Tamanho Camisa
-             * @example 10
-             * @example M
-             */
-            tamanho_camisa?: string | null;
-            /**
-             * Tamanho Calcado
-             * @example 34
-             */
-            tamanho_calcado?: string | null;
-        };
         /** InscricaoListaEsperaResponse */
         InscricaoListaEsperaResponse: {
             /**
@@ -3209,7 +3217,7 @@ export interface components {
         /** OpcoesPublicasResponse */
         OpcoesPublicasResponse: {
             /** Polos */
-            polos: components["schemas"]["OpcaoResponse"][];
+            polos: components["schemas"]["PoloOpcaoResponse"][];
             /** Modalidades */
             modalidades: components["schemas"]["OpcaoResponse"][];
         };
@@ -3409,6 +3417,18 @@ export interface components {
             latitude?: number | null;
             /** Longitude */
             longitude?: number | null;
+        };
+        /** PoloOpcaoResponse */
+        PoloOpcaoResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Modalidade Ids */
+            modalidade_ids: string[];
         };
         /** PoloResponse */
         PoloResponse: {
@@ -3967,6 +3987,8 @@ export interface components {
         };
         /** TurmaUpdateRequest */
         TurmaUpdateRequest: {
+            /** Modalidade Id */
+            modalidade_id?: string | null;
             /** Professor Id */
             professor_id?: string | null;
             /** Horario Inicio */
@@ -4119,6 +4141,11 @@ export interface components {
         UsuarioUpdateRequest: {
             /** Nome */
             nome?: string | null;
+            /**
+             * Email
+             * @description Novo email de login do usuário — precisa ser único no sistema.
+             */
+            email?: string | null;
             /** Ativo */
             ativo?: boolean | null;
             /** Polo Id */
@@ -5707,6 +5734,35 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remover_documento_api_v1_beneficiarios_documentos__documento_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documento_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7668,7 +7724,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["InscricaoListaEsperaCreateRequest"];
+                "multipart/form-data": components["schemas"]["Body_inscrever_api_v1_lista_espera_post"];
             };
         };
         responses: {
@@ -7706,6 +7762,66 @@ export interface operations {
                 "application/json": components["schemas"]["AceitarInscricaoRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baixar_documento_identidade_api_v1_lista_espera__inscricao_id__documento_identidade_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inscricao_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    excluir_api_v1_lista_espera__inscricao_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inscricao_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

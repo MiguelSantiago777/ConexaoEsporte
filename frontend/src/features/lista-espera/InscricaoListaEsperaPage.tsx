@@ -115,6 +115,11 @@ export function InscricaoListaEsperaPage() {
     queryFn: buscarOpcoesPublicas,
   });
 
+  // Só as modalidades com turma no polo escolhido — ex.: polo de futebol de
+  // campo não oferece futsal.
+  const poloEscolhido = opcoes?.polos.find((p) => p.id === form.polo_id);
+  const modalidadesDoPolo = (opcoes?.modalidades ?? []).filter((m) => poloEscolhido?.modalidade_ids.includes(m.id));
+
   const idade = calcularIdade(form.data_nascimento);
   const eMenorDeIdade = idade !== null && idade < 18;
   const { min: dataMinima, max: dataMaxima } = limitesDataNascimento(new Date());
@@ -330,21 +335,21 @@ export function InscricaoListaEsperaPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
-                label="Modalidade de interesse" value={form.modalidade_id}
-                onChange={(e) => campo("modalidade_id")(e.target.value)} required
-              >
-                <option value="">Selecione</option>
-                {opcoes?.modalidades.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nome}</option>
-                ))}
-              </Select>
-              <Select
                 label="Polo de interesse" value={form.polo_id}
-                onChange={(e) => campo("polo_id")(e.target.value)} required
+                onChange={(e) => setForm((f) => ({ ...f, polo_id: e.target.value, modalidade_id: "" }))} required
               >
                 <option value="">Selecione</option>
                 {opcoes?.polos.map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </Select>
+              <Select
+                label="Modalidade de interesse" value={form.modalidade_id}
+                onChange={(e) => campo("modalidade_id")(e.target.value)} required disabled={!form.polo_id}
+              >
+                <option value="">{form.polo_id ? "Selecione" : "Escolha o polo primeiro"}</option>
+                {modalidadesDoPolo.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nome}</option>
                 ))}
               </Select>
             </div>

@@ -31,6 +31,10 @@ class TurmaCreateRequest(BaseModel):
 
 
 class TurmaUpdateRequest(BaseModel):
+    # Trocar a modalidade leva junto os interesses dos matriculados e, se o polo
+    # ficar sem turma da modalidade antiga, os interessados e a lista de espera
+    # do polo — ver TurmaService._migrar_modalidade.
+    modalidade_id: UUID | None = None
     professor_id: UUID | None = None
     horario_inicio: str | None = None
     horario_fim: str | None = None

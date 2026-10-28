@@ -6,7 +6,23 @@ testes (ver conftest.py, `_sem_envio_real_de_email`).
 """
 import json
 
+import pytest
+
+from app.infrastructure.database.models import ModalidadeModel, TurmaModel
 from tests.conftest import login
+
+
+@pytest.fixture
+def seed_basico(seed_basico, db_session):
+    """O formulário público só aceita polo + modalidade com turma ativa — o
+    seed daqui já vem com uma turma de Judô em cada polo."""
+    for polo in (seed_basico["polo_a"], seed_basico["polo_b"]):
+        db_session.add(TurmaModel(
+            polo_id=polo.id, modalidade_id=seed_basico["modalidade"].id,
+            horario_inicio="18:00", horario_fim="19:00", dias_semana="TER", limite_vagas=10,
+        ))
+    db_session.commit()
+    return seed_basico
 
 
 def _criar_turma(client, token, polo_id, modalidade_id, limite_vagas=10):
@@ -45,6 +61,35 @@ def test_opcoes_publicas_sem_autenticacao(client, seed_basico):
     nomes_polos = [p["nome"] for p in body["polos"]]
     assert "Polo A" in nomes_polos and "Polo B" in nomes_polos
     assert any(m["nome"] == "Judô" for m in body["modalidades"])
+
+
+def test_opcoes_publicas_so_listam_modalidades_com_turma_no_polo(client, seed_basico, db_session):
+    futebol = ModalidadeModel(nome="Futebol de Campo")
+    db_session.add(futebol)
+    db_session.flush()
+    db_session.add(TurmaModel(
+        polo_id=seed_basico["polo_b"].id, modalidade_id=futebol.id,
+        horario_inicio="08:00", horario_fim="09:00", dias_semana="SAB", limite_vagas=10,
+    ))
+    db_session.add(ModalidadeModel(nome="Natação"))  # sem turma em lugar nenhum
+    db_session.commit()
+
+    body = client.get("/api/v1/lista-espera/opcoes").json()
+    por_polo = {p["nome"]: set(p["modalidade_ids"]) for p in body["polos"]}
+    judo = str(seed_basico["modalidade"].id)
+    assert por_polo["Polo A"] == {judo}
+    assert por_polo["Polo B"] == {judo, str(futebol.id)}
+    assert {m["nome"] for m in body["modalidades"]} == {"Judô", "Futebol de Campo"}
+
+
+def test_inscrever_em_modalidade_sem_turma_no_polo_falha(client, seed_basico, db_session):
+    futebol = ModalidadeModel(nome="Futebol de Campo")
+    db_session.add(futebol)
+    db_session.commit()
+
+    resp = _inscrever(client, str(seed_basico["polo_a"].id), str(futebol.id))
+    assert resp.status_code in (400, 409, 422), resp.text
+    assert "não oferece" in resp.json()["detail"]
 
 
 def test_inscrever_publico_cria_pendente_e_envia_confirmacao(client, seed_basico, _sem_envio_real_de_email):

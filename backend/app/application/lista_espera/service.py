@@ -56,12 +56,24 @@ class ListaEsperaService:
         self.turma_repo = TurmaRepository(db)
         self.email_service = EmailService()
 
-    def opcoes_publicas(self) -> tuple[list, list]:
-        """Polos ativos e modalidades, pro <select> do formulário público —
-        sem nenhum outro dado sensível do polo."""
-        polos = [p for p in self.polo_repo.listar() if p.status == "ATIVO"]
-        modalidades = self.modalidade_repo.listar()
-        return polos, modalidades
+    def opcoes_publicas(self) -> tuple[list, list, dict[UUID, list[UUID]]]:
+        """Polos ativos, modalidades e quais modalidades cada polo oferece
+        (tem turma ativa), pro <select> do formulário público — sem nenhum
+        outro dado sensível do polo. Polo sem turma ativa fica de fora: não
+        haveria turma pra aceitar a inscrição."""
+        oferecidas = self._modalidades_por_polo()
+        polos = [p for p in self.polo_repo.listar() if p.status == "ATIVO" and oferecidas.get(p.id)]
+        ids_oferecidos = {m_id for p in polos for m_id in oferecidas[p.id]}
+        modalidades = [m for m in self.modalidade_repo.listar() if m.id in ids_oferecidos]
+        return polos, modalidades, oferecidas
+
+    def _modalidades_por_polo(self) -> dict[UUID, list[UUID]]:
+        por_polo: dict[UUID, list[UUID]] = {}
+        for turma in self.turma_repo.listar():
+            modalidades = por_polo.setdefault(turma.polo_id, [])
+            if turma.modalidade_id not in modalidades:
+                modalidades.append(turma.modalidade_id)
+        return por_polo
 
     def inscrever(
         self, nome_completo: str, data_nascimento: date, documento: str, nome_responsavel: str | None,
@@ -78,6 +90,8 @@ class ListaEsperaService:
         polo = self.polo_repo.buscar_por_id(polo_id)
         if not polo or polo.status != "ATIVO":
             raise RecursoNaoEncontrado("Polo não encontrado.")
+        if modalidade_id not in self._modalidades_por_polo().get(polo_id, []):
+            raise RegraDeNegocioViolada(f"O polo {polo.nome} não oferece a modalidade {modalidade.nome}.")
 
         inscricao = InscricaoListaEspera(
             id=None, nome_completo=nome_completo, data_nascimento=data_nascimento, documento=documento,

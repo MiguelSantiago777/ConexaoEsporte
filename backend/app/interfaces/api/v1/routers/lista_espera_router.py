@@ -24,6 +24,7 @@ from app.interfaces.api.v1.schemas.lista_espera_schemas import (
     InscricaoListaEsperaResponse,
     OpcaoResponse,
     OpcoesPublicasResponse,
+    PoloOpcaoResponse,
 )
 
 router = APIRouter(prefix="/lista-espera", tags=["Lista de Espera"])
@@ -34,12 +35,15 @@ router = APIRouter(prefix="/lista-espera", tags=["Lista de Espera"])
     response_model=OpcoesPublicasResponse,
     summary="[Público] Polos e modalidades para o formulário de inscrição",
     description="Sem autenticação — usado pelo formulário público embutido na landing page. Devolve só "
-    "id e nome, nenhum outro dado do polo/modalidade.",
+    "id e nome, nenhum outro dado do polo/modalidade, e em cada polo as modalidades que ele oferece "
+    "(com turma ativa). Polos sem turma ativa não aparecem.",
 )
 def opcoes_publicas(db: DbSession) -> OpcoesPublicasResponse:
-    polos, modalidades = ListaEsperaService(db).opcoes_publicas()
+    polos, modalidades, oferecidas = ListaEsperaService(db).opcoes_publicas()
     return OpcoesPublicasResponse(
-        polos=[OpcaoResponse(id=p.id, nome=p.nome) for p in polos if p.id],
+        polos=[
+            PoloOpcaoResponse(id=p.id, nome=p.nome, modalidade_ids=oferecidas[p.id]) for p in polos if p.id
+        ],
         modalidades=[OpcaoResponse(id=m.id, nome=m.nome) for m in modalidades if m.id],
     )
 

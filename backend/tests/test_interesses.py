@@ -199,3 +199,68 @@ def test_importacao_sem_modalidades_continua_rejeitando_documento_repetido(clien
     arquivo = _planilha(COLUNAS_IMPORTACAO, [["Fulano", "01/01/2000", "666.000.000-00", polo_a.nome, ""]])
     resp = _upload(client, token, "/api/v1/beneficiarios/importar", arquivo, confirmar=True)
     assert resp.json()["falha"] == 1
+
+
+def _interesses(client, token, beneficiario_id):
+    return client.get(f"/api/v1/beneficiarios/{beneficiario_id}/interesses", headers=_auth(token)).json()[
+        "modalidade_ids"
+    ]
+
+
+def _trocar_modalidade(client, token, turma_id, modalidade_id):
+    return client.patch(f"/api/v1/turmas/{turma_id}", json={"modalidade_id": modalidade_id}, headers=_auth(token))
+
+
+def test_trocar_modalidade_da_unica_turma_do_polo_leva_interesses_e_lista_de_espera(client, seed_basico):
+    from tests.test_lista_espera import _inscrever
+
+    token = login(client, "gestor.a@test.com")
+    token_master = login(client, "master@test.com")
+    polo_a, polo_b = str(seed_basico["polo_a"].id), str(seed_basico["polo_b"].id)
+    judo = str(seed_basico["modalidade"].id)
+    futebol = client.post("/api/v1/modalidades", json={"nome": "Futebol de Campo"}, headers=_auth(token)).json()["id"]
+
+    matriculado = _criar_beneficiario(client, token, polo_a, "111.000.000-01", nome="A Matriculado")
+    _definir_interesses(client, token, matriculado["id"], [judo])
+    aguardando = _criar_beneficiario(client, token, polo_a, "111.000.000-02", nome="B Aguardando")
+    _definir_interesses(client, token, aguardando["id"], [judo])
+    outro_polo = _criar_beneficiario(client, token_master, polo_b, "111.000.000-03")
+    _definir_interesses(client, token_master, outro_polo["id"], [judo])
+    turma = _criar_turma(client, token, polo_a, judo, limite_vagas=1, matricular_interessados=True)
+    assert turma["vagas_ocupadas"] == 1
+    assert _inscrever(client, polo_a, judo).status_code == 201
+
+    resp = _trocar_modalidade(client, token, turma["id"], futebol)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["modalidade_id"] == futebol
+
+    assert _interesses(client, token, matriculado["id"]) == [futebol]
+    assert _interesses(client, token, aguardando["id"]) == [futebol]
+    assert _interesses(client, token_master, outro_polo["id"]) == [judo]
+    pendentes = client.get("/api/v1/lista-espera", headers=_auth(token)).json()
+    assert [i["modalidade_id"] for i in pendentes] == [futebol]
+
+
+def test_trocar_modalidade_com_outra_turma_da_antiga_no_polo_so_leva_os_matriculados(client, seed_basico):
+    token = login(client, "gestor.a@test.com")
+    polo_a = str(seed_basico["polo_a"].id)
+    judo = str(seed_basico["modalidade"].id)
+    futebol = client.post("/api/v1/modalidades", json={"nome": "Futebol de Campo"}, headers=_auth(token)).json()["id"]
+
+    matriculado = _criar_beneficiario(client, token, polo_a, "111.000.000-01", nome="A Matriculado")
+    _definir_interesses(client, token, matriculado["id"], [judo])
+    aguardando = _criar_beneficiario(client, token, polo_a, "111.000.000-02", nome="B Aguardando")
+    _definir_interesses(client, token, aguardando["id"], [judo])
+    turma = _criar_turma(client, token, polo_a, judo, limite_vagas=1, matricular_interessados=True)
+    _criar_turma(client, token, polo_a, judo)  # o polo continua oferecendo Judô
+
+    assert _trocar_modalidade(client, token, turma["id"], futebol).status_code == 200
+    assert _interesses(client, token, matriculado["id"]) == [futebol]
+    assert _interesses(client, token, aguardando["id"]) == [judo]
+
+
+def test_trocar_para_modalidade_inexistente_da_404(client, seed_basico):
+    token = login(client, "gestor.a@test.com")
+    turma = _criar_turma(client, token, str(seed_basico["polo_a"].id), str(seed_basico["modalidade"].id))
+    resp = _trocar_modalidade(client, token, turma["id"], "00000000-0000-0000-0000-000000000000")
+    assert resp.status_code == 404, resp.text
