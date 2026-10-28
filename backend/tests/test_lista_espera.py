@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from app.infrastructure.database.models import ModalidadeModel, TurmaModel
+from app.infrastructure.database.models import ModalidadeModel, PoloModel, TurmaModel
 from tests.conftest import login
 
 
@@ -79,7 +79,27 @@ def test_opcoes_publicas_so_listam_modalidades_com_turma_no_polo(client, seed_ba
     judo = str(seed_basico["modalidade"].id)
     assert por_polo["Polo A"] == {judo}
     assert por_polo["Polo B"] == {judo, str(futebol.id)}
-    assert {m["nome"] for m in body["modalidades"]} == {"Judô", "Futebol de Campo"}
+
+
+def test_opcoes_publicas_polo_sem_turma_aparece_com_todas_as_modalidades(client, seed_basico, db_session):
+    natacao = ModalidadeModel(nome="Natação")
+    db_session.add_all([natacao, PoloModel(nome="Polo C", endereco="End C", status="ATIVO")])
+    db_session.commit()
+
+    body = client.get("/api/v1/lista-espera/opcoes").json()
+    por_polo = {p["nome"]: set(p["modalidade_ids"]) for p in body["polos"]}
+    assert por_polo["Polo C"] == {str(seed_basico["modalidade"].id), str(natacao.id)}
+    assert por_polo["Polo A"] == {str(seed_basico["modalidade"].id)}
+
+
+def test_inscrever_em_polo_sem_turma_aceita_qualquer_modalidade(client, seed_basico, db_session):
+    natacao = ModalidadeModel(nome="Natação")
+    polo_c = PoloModel(nome="Polo C", endereco="End C", status="ATIVO")
+    db_session.add_all([natacao, polo_c])
+    db_session.commit()
+
+    resp = _inscrever(client, str(polo_c.id), str(natacao.id))
+    assert resp.status_code == 201, resp.text
 
 
 def test_inscrever_em_modalidade_sem_turma_no_polo_falha(client, seed_basico, db_session):

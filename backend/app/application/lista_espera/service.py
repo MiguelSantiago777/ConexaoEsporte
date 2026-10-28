@@ -57,15 +57,15 @@ class ListaEsperaService:
         self.email_service = EmailService()
 
     def opcoes_publicas(self) -> tuple[list, list, dict[UUID, list[UUID]]]:
-        """Polos ativos, modalidades e quais modalidades cada polo oferece
-        (tem turma ativa), pro <select> do formulário público — sem nenhum
-        outro dado sensível do polo. Polo sem turma ativa fica de fora: não
-        haveria turma pra aceitar a inscrição."""
+        """Polos ativos, modalidades e quais modalidades cada polo oferece,
+        pro <select> do formulário público — sem nenhum outro dado sensível
+        do polo. Polo com turma oferece só as modalidades das turmas; polo
+        ainda sem turma oferece todas (a inscrição fica na espera até abrir)."""
+        modalidades = self.modalidade_repo.listar()
+        polos = [p for p in self.polo_repo.listar() if p.status == "ATIVO"]
         oferecidas = self._modalidades_por_polo()
-        polos = [p for p in self.polo_repo.listar() if p.status == "ATIVO" and oferecidas.get(p.id)]
-        ids_oferecidos = {m_id for p in polos for m_id in oferecidas[p.id]}
-        modalidades = [m for m in self.modalidade_repo.listar() if m.id in ids_oferecidos]
-        return polos, modalidades, oferecidas
+        todas = [m.id for m in modalidades if m.id]
+        return polos, modalidades, {p.id: oferecidas.get(p.id) or todas for p in polos if p.id}
 
     def _modalidades_por_polo(self) -> dict[UUID, list[UUID]]:
         por_polo: dict[UUID, list[UUID]] = {}
@@ -90,7 +90,8 @@ class ListaEsperaService:
         polo = self.polo_repo.buscar_por_id(polo_id)
         if not polo or polo.status != "ATIVO":
             raise RecursoNaoEncontrado("Polo não encontrado.")
-        if modalidade_id not in self._modalidades_por_polo().get(polo_id, []):
+        oferecidas = self._modalidades_por_polo().get(polo_id)
+        if oferecidas and modalidade_id not in oferecidas:
             raise RegraDeNegocioViolada(f"O polo {polo.nome} não oferece a modalidade {modalidade.nome}.")
 
         inscricao = InscricaoListaEspera(

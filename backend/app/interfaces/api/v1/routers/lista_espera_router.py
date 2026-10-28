@@ -36,7 +36,7 @@ router = APIRouter(prefix="/lista-espera", tags=["Lista de Espera"])
     summary="[Público] Polos e modalidades para o formulário de inscrição",
     description="Sem autenticação — usado pelo formulário público embutido na landing page. Devolve só "
     "id e nome, nenhum outro dado do polo/modalidade, e em cada polo as modalidades que ele oferece "
-    "(com turma ativa). Polos sem turma ativa não aparecem.",
+    "(as das turmas ativas; polo ainda sem turma oferece todas).",
 )
 def opcoes_publicas(db: DbSession) -> OpcoesPublicasResponse:
     polos, modalidades, oferecidas = ListaEsperaService(db).opcoes_publicas()
